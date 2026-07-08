@@ -56,6 +56,26 @@ class Fabric:
 
 
 @dataclass
+class NMXCPartition:
+    domain_name: str
+    partition_id: int
+    partition_name: str
+    resiliency_mode: str
+    status: str
+
+    @classmethod
+    def from_api(cls, payload: dict) -> "NMXCPartition":
+        return cls(
+            domain_name=payload.get("domainName", ""),
+            partition_id=payload.get("partitionId", 0),
+            partition_name=payload.get("partitionName", ""),
+            resiliency_mode=payload.get("resiliencyMode", ""),
+            status=payload.get("status", ""),
+        )
+
+
+
+@dataclass
 class VNetInfo:
     name: str | None = None
     description: str | None = None
@@ -98,6 +118,14 @@ class Tenant:
     ns_vni_id: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    # UFM-specific fields
+    pkey_value: str | None = None
+    ufm_allocated_ports: int = 0
+    ufm_allocated_servers: int = 0
+    # NMXC-specific fields
+    nmxc_gpus_allocated: int = 0
+    nmxc_servers_allocated: int = 0
+    nmxc_partitions: list[NMXCPartition] = field(default_factory=list)
 
     @classmethod
     def from_api(cls, payload: dict) -> "Tenant":
@@ -107,7 +135,7 @@ class Tenant:
             description=payload.get("description", ""),
             fabric_name=payload.get("fabricName"),
             max_gpus_allowed=payload.get("maxGpusAllowed", 0),
-            gpus_allocated=payload.get("gpusAllocated", 0),
+            gpus_allocated=payload.get("gpusAllocated", 0) or 0,
             alloted_gpus=payload.get("allotedGpus", "") or "",
             vni_id=payload.get("vniId"),
             vlan_id=payload.get("vlanId"),
@@ -123,6 +151,12 @@ class Tenant:
             ns_vni_id=payload.get("nsVniId"),
             created_at=_parse_timestamp(payload.get("createdAt")),
             updated_at=_parse_timestamp(payload.get("updatedAt")),
+            pkey_value=payload.get("pkeyValue"),
+            ufm_allocated_ports=payload.get("ufmAllocatedPorts", 0),
+            ufm_allocated_servers=payload.get("ufmAllocatedServers", 0),
+            nmxc_gpus_allocated=payload.get("nmxcGpusAllocated", 0),
+            nmxc_servers_allocated=payload.get("nmxcServersAllocated", 0),
+            nmxc_partitions=[NMXCPartition.from_api(p) for p in payload.get("nmxcPartitions", []) or []],
         )
 
     @property

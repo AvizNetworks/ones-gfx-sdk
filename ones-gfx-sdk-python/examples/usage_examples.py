@@ -83,20 +83,22 @@ from ones_gfx import (
 # CONFIG — fill these in for your environment.
 # ---------------------------------------------------------------------------
 
-BASE_URL = "https://10.4.5.76:8089"
-REFRESH_URL = "https://10.4.5.76:8089/refresh"
+BASE_URL = "https://10.4.5.71:8089"
+REFRESH_URL = "https://10.4.5.71:8089/refresh"
 
-ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjoiU1VQRVJfQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJSRUFEIiwiV1JJVEUiXSwidHlwIjoiYWNjZXNzIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiNTQ5Zjg3OWQtNDA2Yi00MjdlLWI3ZjgtNDU1ZGVhMjNjOTczIiwiaWF0IjoxNzc3NTUwMDExLCJleHAiOjE3Nzc2MzY0MTF9.vbc1g-cxjzl-34tcNIWBXyiZ7BIJKef_KkqjAkJ2ShE"
-REFRESH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJ0eXAiOiJyZWZyZXNoIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiZTdlMjhkYjctNjI5OS00ZGU3LThmYzktM2VjMjU0ZjUxNjI1IiwiaWF0IjoxNzc3NTUwMDExLCJleHAiOjE3Nzc1NjQ0MTF9.uMKNHHi4FXtDSS2WCu-uShrLAkf0RxKWnyuqn7HA-EY"
+ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjoiU1VQRVJfQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJSRUFEIiwiV1JJVEUiXSwidHlwIjoiYWNjZXNzIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiZjFjMGZmN2YtMWY1Yy00NWM4LWJmM2ItNGEwMDFiNzEyY2ExIiwiaWF0IjoxNzgzNTAyNzkwLCJleHAiOjE3ODM1MDk5OTB9.6EgDX-Ez3sCA8zr1SwYdzBuPJSnjBOHjvDLdMKEGNeY"
+REFRESH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJ0eXAiOiJyZWZyZXNoIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiZTk1NjcwYWYtNjFhMi00YzQ2LWI1MzEtMWU2YmQ4YWMzZmNiIiwiaWF0IjoxNzgzNTAyNzkwLCJleHAiOjE3ODM1ODkxOTB9.wQCP_HYSKEdDpeASV8buPDooyEMJy46AF2oMUyo90Qg"
 
 LOGIN_USERNAME = "superadmin"
-LOGIN_PASSWORD = "Admin@1234"
+LOGIN_PASSWORD = "Admin@123456"
 
-FABRIC_NAME = "sdk-ones"
+FABRIC_NAME = "NMXC"
 
-# A couple of sample server hostnames you expect to be available in the
-# fabric. The example will try to allocate then deallocate these.
+# Sample server hostnames for UFM fabric.
 SAMPLE_SERVERS = ["hgx-su00-h00"]
+
+# Sample server hostnames for NMXC fabric (4 ports per server, IDs 1-4).
+NMXC_SAMPLE_SERVERS = ["su00-rack00-node00", "su00-rack01-node00"]
 
 # Webhook receiver URL for the async-webhook example. The SDK does not
 # implement the receiver — point this at an HTTP endpoint you control.
@@ -369,6 +371,17 @@ def _parse_servers(raw: str | None) -> list[str]:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _parse_ports(raw: str | None) -> list[int]:
+    if not raw:
+        return []
+    result = []
+    for item in raw.split(","):
+        item = item.strip()
+        if item.isdigit():
+            result.append(int(item))
+    return result
+
+
 def _report_sdk_error(err: ONESError) -> None:
     status = f" (status={err.status_code})" if err.status_code is not None else ""
     print(f"[SDK error] {err}{status}")
@@ -380,6 +393,7 @@ def scenario_tenant_action(
     action: str,
     tenant_name: str | None,
     servers: list[str] | None,
+    port_ids: list[int] | None,
     peering_name: str | None,
     vpc_name: str | None,
     peer_vpc_name: str | None,
@@ -494,6 +508,33 @@ def scenario_tenant_action(
             )
             print(f"  -> response: {result}")
             return
+
+        if action == "assign-ports":
+            if not servers:
+                raise ValueError("No servers provided. Use --servers.")
+            print(f"AssignPorts {servers} ports={port_ids} to {tenant_name!r} on {FABRIC_NAME!r}...")
+            client.tenants.assign_ports(
+                fabric_name=FABRIC_NAME,
+                tenant_name=tenant_name,
+                server_names=servers,
+                gpu_ids=port_ids,
+            )
+            print("  -> assign-ports done")
+            return
+
+        if action == "unassign-ports":
+            if not servers:
+                raise ValueError("No servers provided. Use --servers.")
+            print(f"UnassignPorts {servers} ports={port_ids} from {tenant_name!r} on {FABRIC_NAME!r}...")
+            client.tenants.unassign_ports(
+                fabric_name=FABRIC_NAME,
+                tenant_name=tenant_name,
+                server_names=servers,
+                gpu_ids=port_ids,
+            )
+            print("  -> unassign-ports done")
+            return
+
     except ONESError as e:
         _report_sdk_error(e)
         return
@@ -555,6 +596,8 @@ def main() -> None:
             "allocate",
             "deallocate",
             "delete",
+            "assign-ports",
+            "unassign-ports",
             "vpcpeering",
         ],
         help="Action to run (default: lifecycle)",
@@ -577,7 +620,12 @@ def main() -> None:
     parser.add_argument(
         "--servers",
         default=None,
-        help="Comma-separated server list for allocate/deallocate",
+        help="Comma-separated server list for allocate/deallocate/assign-ports/unassign-ports",
+    )
+    parser.add_argument(
+        "--ports",
+        default=None,
+        help="Comma-separated port IDs for assign-ports/unassign-ports (e.g. 1,2,3,4)",
     )
     parser.add_argument(
         "--peering-name",
@@ -623,6 +671,7 @@ def main() -> None:
                     args.action,
                     args.tenant_name,
                     _parse_servers(args.servers),
+                    _parse_ports(args.ports),
                     args.peering_name,
                     args.vpc_name,
                     args.peer_vpc_name,
