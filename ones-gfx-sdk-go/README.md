@@ -115,6 +115,17 @@ func main() {
     }
     fmt.Println("GPUs allocated successfully")
 
+    //Assign specific ports — UFM / NMXC fabrics only (always synchronous mode)
+    req := resources.GpuPortAssignmentRequest{
+        ServerNames: []string{"su00-rack00-node00"},
+        GPUIDs:      []int{1, 2, 3},
+    }
+    err = client.Tenants.AssignPorts(ctx, "sdk", "demo-tenant", req)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Ports assigned successfully")
+
     // 6. Get tenant details
     updatedTenant, err := client.Tenants.Get(ctx, "sdk", "demo-tenant")
     if err != nil {
@@ -127,6 +138,13 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
+
+    //Unassign ports
+    err = client.Tenants.UnassignPorts(ctx, "sdk", "demo-tenant", req)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Ports unassigned successfully")
 
     // 8. Delete tenant
     err = client.Tenants.Delete(ctx, "sdk", "demo-tenant")
@@ -190,6 +208,12 @@ servers, err := client.Tenants.AvailableServers(ctx, fabricName)
 // Convert hostnames to ServerSpec entries
 serverSpecs := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
 
+// Request body for Specific Gpus UFM / NMXC fabrics (But for UFM serverNames is {"hgx-su00-h00"} )
+req := resources.GpuPortAssignmentRequest{
+    ServerNames: []string{"su00-rack00-node00"},
+    GPUIDs:      []int{1, 2, 3},
+}
+
 // Create (sync)
 tenant, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
     Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
@@ -218,6 +242,18 @@ err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs)
 
 // Deallocate GPUs (async)
 op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
+
+// Assign specific ports — UFM / NMXC fabrics only (always sync)
+err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, req)
+
+// Assign all ports on each server (omit GPUIDs)
+err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
+
+// Unassign specific ports
+err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, req)
+
+// Unassign all ports on each server (omit GPUIDs)
+err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
 ```
 
 ---
@@ -462,112 +498,6 @@ Found 3 tenant(s)
 Test 3: Checking available servers...
 Available servers: [hgx-su00-h00 hgx-su00-h01 hgx-su00-h02]
 All tests passed!
-```
-
----
-
-## API Reference
-
-### Client Construction
-
-```go
-// Minimal
-client := sdk.NewClient(baseURL, auth)
-
-// With options
-client := sdk.NewClient(baseURL, auth,
-    ones.WithClientTimeout(20*time.Minute),
-    ones.WithTLSVerify(false),
-    ones.WithTLSConfig(customTLSConfig),
-)
-```
-
-### Authentication
-
-```go
-auth, err := ones.NewJWTAuth(accessToken, refreshToken, refreshURL,
-    ones.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
-        // Persist tokens
-    }),
-    ones.WithAuthTLSVerify(false),
-    ones.WithProactiveRefreshBuffer(10*time.Second),
-    ones.WithRefreshTimeout(10*time.Second),
-)
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### Fabrics
-
-```go
-fabrics, err := client.Fabrics.List(ctx)
-```
-
-### Tenants
-
-```go
-// List
-tenants, err := client.Tenants.List(ctx, fabricName)
-
-// Get
-tenant, err := client.Tenants.Get(ctx, fabricName, tenantName)
-
-// Available servers
-servers, err := client.Tenants.AvailableServers(ctx, fabricName)
-
-// Convert hostnames to ServerSpec entries
-serverSpecs := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
-
-// Create (sync)
-tenant, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
-    Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
-})
-
-// Create (async)
-op, err := client.Tenants.CreateAsync(ctx, fabricName, req)
-
-// Delete (sync)
-err := client.Tenants.Delete(ctx, fabricName, tenantName)
-
-// Delete (async)
-op, err := client.Tenants.DeleteAsync(ctx, fabricName, tenantName)
-
-// Allocate GPUs (sync)
-err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName,
-    serverSpecs,
-    ones.WithTimeout(15*time.Minute),
-)
-
-// Allocate GPUs (async)
-op, err := client.Tenants.AllocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
-
-// Deallocate GPUs (sync)
-err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs)
-
-// Deallocate GPUs (async)
-op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
-```
-
-### Operations
-
-```go
-op, err := client.Operations.Get(ctx, operationID)
-
-// Check status
-if op.IsDone() {
-    if op.IsSuccess() {
-        fmt.Println("Result:", op.Result)
-    } else {
-        fmt.Println("Error:", op.ErrorMessage)
-    }
-}
-```
-
-### VPC Peering
-
-```go
-result, err := client.Peering.Create(ctx, fabricName, name, vpcName, peerVPCName)
 ```
 
 ---
