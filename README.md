@@ -14,7 +14,7 @@ Provides programmatic access to:
 ## Choose Your Language
 
 ### [📘 Python SDK](./ones-gfx-sdk-python/)
-**Status:** Production-ready (v0.1.0)
+**Status:** Production-ready (v1.0.0)
 
 - **Requirements:** Python 3.9+
 - **Installation:** `pip install ./ones-gfx-sdk-python`
@@ -142,6 +142,8 @@ tenant, err := client.Tenants.Create(ctx, "sdk", ones.CreateTenantRequest{
 ones-gfx-sdk/
 ├── README.md                    # This file (language picker)
 ├── LICENSE                      # Apache 2.0
+├── CONTRIBUTING.md              # Contribution guidelines
+├── .github/ISSUE_TEMPLATE/      # Bug report / feature request templates
 ├── ones-gfx-sdk-python/         # Python implementation
 │   ├── ones_gfx/                # Core library package
 │   ├── examples/                # CLI with 8 commands
@@ -193,28 +195,32 @@ Both SDKs wrap the same ONES Spectrum-X API. For raw curl examples, see:
 
 ---
 
-## Version Compatibility
+## Versioning Policy
 
-| ONES API Version | Python SDK | Go SDK |
-|------------------|------------|---------|
-| 4.2.1 | ✅ v1.0.0 | ✅ v1.0.0 |
+This repository's version follows [Semantic Versioning (SemVer)](https://semver.org/) (`MAJOR.MINOR.PATCH`) and is maintained **independently** of AVIZ ONES Spectrum-X platform releases — a version bump here does not imply a corresponding change in the ONES platform version, and vice versa.
+- MAJOR: Incremented for breaking, backward-incompatible changes (e.g., 2.0.0)
+- MINOR: Incremented when adding new, backward-compatible features or functionality (e.g., 2.1.0)
+- PATCH: Incremented for backward-compatible bug fixes and small corrections (e.g., 2.1.1)
 
-Both SDKs target **ONES 4.2.1**. 
+### Compatibility Matrix
+
+| Go SDK | Python SDK | Supported ONES Version |
+|--------|------------|------------------------|
+| v1.0.0 | v1.0.0     |      4.2.1             |  
+
 
 ---
 
 ## Contributing
 
-See language-specific contribution guidelines:
-- [Python Contributing Guide](./ones-gfx-sdk-python/CONTRIBUTING.md) *(coming soon)*
-- [Go Contributing Guide](./ones-gfx-sdk-go/CONTRIBUTING.md) *(coming soon)*
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, coding conventions, and the PR workflow.
 
 ---
 
 ## Support
 
 - **Documentation:** See language-specific READMEs
-- **Issues:** [GitHub Issues](https://github.com/aviznetworks/ones-gfx-sdk/issues)
+- **Issues:** [Open an issue](https://github.com/aviznetworks/ones-gfx-sdk/issues/new/choose) — pick the bug report or feature request template
 - **Security:** Report vulnerabilities to security@aviznetworks.com
 
 ---

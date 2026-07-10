@@ -649,7 +649,7 @@ err := client.Tenants.AllocateGPUs(ctx, ...,
 
 ---
 
-## Known Limitations (v1.0)
+## Known Limitations (v1.0.0)
 
 - **No login endpoint** — Partners supply tokens obtained out-of-band. Login support planned for v1.1.
 - **CLI not yet complete** — Core library is fully functional. CLI wrapper coming in v1.1.

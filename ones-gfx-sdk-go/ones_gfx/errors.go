@@ -107,7 +107,7 @@ func (e *OperationFailedError) Error() string {
 func (e *OperationFailedError) ONESError() {}
 
 // ConfigurationFailedError is reserved for future helpers that watch
-// config_status transitions. Not used in v1.0.
+// config_status transitions. Not used in v1.0.0
 type ConfigurationFailedError struct {
 	TenantName   string
 	FabricName   string

@@ -6,7 +6,7 @@ allocations across an NVIDIA Spectrum-X fabric.
 
 ## Status
 
-**v0.1** — initial release. Covers tenant CRUD, GPU allocate/deallocate,
+**v1.0.0** — initial release. Covers tenant CRUD, GPU allocate/deallocate,
 fabric and operation reads, and VPC peering. JWT-based auth with automatic
 token refresh.
 
@@ -56,13 +56,13 @@ pip install build && python -m build
 
 Outputs land in `dist/`:
 
-- `ones_gfx_sdk-0.1.0-py3-none-any.whl` — the wheel partners install
-- `ones_gfx_sdk-0.1.0.tar.gz` — the source distribution
+- `ones_gfx_sdk-1.0.0-py3-none-any.whl` — the wheel partners install
+- `ones_gfx_sdk-1.0.0.tar.gz` — the source distribution
 
 Ship the `.whl` to partners; they install with:
 
 ```bash
-pip install ones_gfx_sdk-0.1.0-py3-none-any.whl
+pip install ones_gfx_sdk-1.0.0-py3-none-any.whl
 ```
 
 ### Running the example without installing
@@ -241,7 +241,7 @@ ONESClient(base_url=..., auth=..., verify_tls=False)             # dev only!
 
 ## Limitations / planned
 
-- v0.1 does not include a login/logout flow — partners supply tokens
-  obtained out-of-band. Login support is planned for v0.2.
-- v0.1 does not retry on transport errors beyond the single 401 retry.
+- v1.0.0 does not include a login/logout flow — partners supply tokens
+  obtained out-of-band. Login support is planned for v1.1.0
+- v1.0.0 does not retry on transport errors beyond the single 401 retry.
   Wrap calls with your own retry policy if you need exponential backoff.
