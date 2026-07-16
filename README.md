@@ -46,11 +46,11 @@ tenant = client.tenants.create(fabric, "tenant1", "desc", max_gpus=8)
 **Quick Start:**
 ```go
 import (
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
 )
 
-auth, err := ones.NewJWTAuth(accessToken, refreshToken, refreshURL)
+auth, err := ones_gfx.NewJWTAuth(accessToken, refreshToken, refreshURL)
 if err != nil {
     panic(err)
 }
@@ -128,10 +128,10 @@ print(f"Created tenant ID: {tenant['tenant']['id']}")
 
 ### Go Controller (Library Import)
 ```go
-import "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
+import "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 
 client := sdk.NewClient(baseURL, auth)
-tenant, err := client.Tenants.Create(ctx, "sdk", ones.CreateTenantRequest{
+tenant, err := client.Tenants.Create(ctx, "sdk", ones_gfx.CreateTenantRequest{
     Name: "controller-tenant", MaxGPUsAllowed: 8,
 })
 ```
@@ -152,7 +152,7 @@ ones-gfx-sdk/
 │   ├── pyproject.toml
 │   └── README.md
 └── ones-gfx-sdk-go/             # Go implementation
-    ├── ones/                    # Core library (importable)
+    ├── ones_gfx/                # Core library (importable)
     ├── cmd/                     # CLI binary (v1.1)
     ├── go.mod
     └── README.md
@@ -195,6 +195,7 @@ Both SDKs wrap the same ONES Spectrum-X API. For raw curl examples, see:
 - `PATCH /fabrics/{fabricName}/tenants/{name}` — Allocate/deallocate GPUs (all fabric types)
 - `POST /fabrics/{fabricName}/tenants/{name}/gpus` — Assign/unassign Specific GPUs (UFM / NMXC only)
 - `GET /fabrics` — List fabrics
+- `POST /fabrics/{fabricName}/inventorySync` — Trigger UFM inventory sync (UFM enabled fabrics only, no body)
 - `GET /operations/{id}` — Poll async operation
 - `POST /fabrics/{fabricName}/vpcpeering` — VPC peering
 

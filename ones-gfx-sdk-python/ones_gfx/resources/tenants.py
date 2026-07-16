@@ -99,10 +99,10 @@ class TenantsResource:
         return None
 
     def assign_ports(self, fabric_name: str, tenant_name: str, server_names: list[str], gpu_ids: list[int] | None = None) -> None:
-        return self._post_gpus(fabric_name, tenant_name, "ADD", server_names, gpu_ids)
+        self._post_gpus(fabric_name, tenant_name, "ADD", server_names, gpu_ids)
 
     def unassign_ports(self, fabric_name: str, tenant_name: str, server_names: list[str], gpu_ids: list[int] | None = None) -> None:
-        return self._post_gpus(fabric_name, tenant_name, "DELETE", server_names, gpu_ids)
+        self._post_gpus(fabric_name, tenant_name, "DELETE", server_names, gpu_ids)
 
     def _post_gpus(self, fabric_name: str, tenant_name: str, operation: str, server_names: list[str], gpu_ids: list[int] | None) -> None:
         _require(fabric_name, "fabric_name")
@@ -115,12 +115,11 @@ class TenantsResource:
         }
         if gpu_ids:
             body["gpuIds"] = gpu_ids
-        result = self._transport.post(
+        self._transport.post(
             f"fabrics/{fabric_name}/tenants/{tenant_name}/gpus",
             json_body=body,
             mode=OperationMode.SYNCHRONOUS,
         )
-        return result
 
 
 def _require(value: Any, field_name: str) -> None:

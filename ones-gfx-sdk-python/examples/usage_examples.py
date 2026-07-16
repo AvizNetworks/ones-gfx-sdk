@@ -98,7 +98,7 @@ FABRIC_NAME = "NMXC"
 SAMPLE_SERVERS = ["hgx-su00-h00"]
 
 # Sample server hostnames for NMXC fabric (4 ports per server, IDs 1-4).
-NMXC_SAMPLE_SERVERS = ["su00-rack00-node00", "su00-rack01-node00"]
+NMXC_SAMPLE_SERVERS = ["su00-rack00-node00", "su00-rack01-node18"]
 
 # Webhook receiver URL for the async-webhook example. The SDK does not
 # implement the receiver — point this at an HTTP endpoint you control.
@@ -535,6 +535,12 @@ def scenario_tenant_action(
             print("  -> unassign-ports done")
             return
 
+        if action == "inventory-sync":
+            print(f"InventorySync on fabric {FABRIC_NAME!r}...")
+            client.fabrics.inventory_sync(FABRIC_NAME)
+            print("  -> inventory-sync done")
+            return
+
     except ONESError as e:
         _report_sdk_error(e)
         return
@@ -598,6 +604,7 @@ def main() -> None:
             "delete",
             "assign-ports",
             "unassign-ports",
+            "inventory-sync",
             "vpcpeering",
         ],
         help="Action to run (default: lifecycle)",
