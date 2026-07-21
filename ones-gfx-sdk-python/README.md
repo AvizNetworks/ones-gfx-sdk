@@ -167,6 +167,39 @@ print(op.id, op.webhook_registered)
 The SDK does not implement the receiver — you build that on your side.
 The server will POST the operation result to `webhook_url` on completion.
 
+## Partial GPU allocation
+
+Map or unmap specific GPU indices to a tenant on a shared server. This
+complements `allocate_gpus` (whole-server attachment) with fine-grained
+per-GPU control via `POST /fabrics/{fabric}/tenants/{tenant}/gpuAllocations`.
+
+```python
+from ones_gfx import ONESClient, JWTAuth
+
+auth = JWTAuth(access_token=..., refresh_token=..., refresh_url=...)
+with ONESClient(base_url=..., auth=auth) as client:
+    # Map G0-G3 on hgx-su00-h00 (server index "0") to tenant-A
+    result = client.fabrics.modify_gpu_allocations(
+        fabric_name="my-fabric",
+        tenant_name="tenant-A",
+        operation="ADD",           # or "DELETE"
+        suid={
+            "0": {
+                "hgx-su00-h00": {"gpus": ["G0", "G1", "G2", "G3"]}
+            }
+        },
+    )
+    print(result["status"], result["message"])
+```
+
+**Notes:**
+- The server must already be attached to the tenant via `allocate_gpus` before mapping individual GPUs.
+- Remove per-GPU mappings with `operation="DELETE"` before calling `deallocate_gpus` to detach the server.
+- This endpoint is valid only for externally managed fabrics; on ONES-controlled fabrics it returns `409 FABRIC_NOT_EXTERNALLY_MANAGED` (use the tenant-update flow instead).
+- Multiple tenants can share the same physical server (e.g. G0–G3 → tenant-A, G4–G7 → tenant-B) when the server is attached with `shared=True`.
+
+---
+
 ## Unlimited GPU quota
 
 Use the `UNLIMITED_GPUS` constant (or pass `-1` directly) to mean
