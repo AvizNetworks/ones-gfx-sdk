@@ -105,7 +105,7 @@ func buildClient() *sdk.Client {
 		baseURL,
 		auth,
 		ones_gfx.WithTLSVerify(verifyTLS),
-		ones_gfx.WithClientTimeout(defaultTimeoutS*time.Second),
+		ones_gfx.WithClientTimeout(time.Duration(defaultTimeoutS)*time.Second),
 	)
 }
 
@@ -164,7 +164,7 @@ func scenarioLogin(username, password string) {
 
 	loginURL := strings.TrimRight(baseURL, "/") + "/login"
 	httpClient := &http.Client{
-		Timeout: defaultTimeoutS * time.Second,
+		Timeout: time.Duration(defaultTimeoutS) * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: !verifyTLS,
@@ -404,6 +404,34 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 			fmt.Printf("  Tenant now has servers: %v\n", refreshed.AllotedServers())
 		}
 
+		// --- Modify GPU Allocations (fine-grained, partial GPU allocation) ---
+		fmt.Printf("Modifying GPU allocations (ADD) on %s (%s)...\n", tenantName, label)
+
+		// Example: allocate specific GPUs (G0, G1, G2, G3) to a specific server.
+		// This is more granular than AllocateGPUs which allocates all GPUs on a server.
+		addReq := ones_gfx.GPUAllocationRequest{
+			Operation: ones_gfx.OperationAdd,
+			Suid: map[string]map[string]ones_gfx.ServerGPUs{
+				"0": {
+					sampleServers[0]: {GPUs: []string{"G0", "G1", "G2", "G3"}},
+				},
+			},
+		}
+
+		addResp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, addReq)
+		if err != nil {
+			fmt.Printf("  -> modify GPU allocations (ADD) error: %v\n", err)
+		} else {
+			fmt.Printf("  -> status: %s\n", addResp.Status)
+			if addResp.OperationID != "" {
+				fmt.Printf("  -> operation id: %s (async)\n", addResp.OperationID)
+				// In real usage, poll the operation to completion if needed
+			}
+			if addResp.Message != "" {
+				fmt.Printf("  -> message: %s\n", addResp.Message)
+			}
+		}
+
 		// --- VPC Peering (sync only): after allocate so tenant VPC is live with GPUs ---
 		peeringName := fmt.Sprintf("%s-storage-route-leak", tenantName)
 		vpcName := defaultVPCName(tenantName)
@@ -415,6 +443,30 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 			fmt.Printf("  -> peering error: %v\n", err)
 		} else {
 			fmt.Printf("  -> response: %v\n", peeringResult)
+		}
+
+		fmt.Printf("Modifying GPU allocations (DELETE) on %s (%s)...\n", tenantName, label)
+		delReq := ones_gfx.GPUAllocationRequest{
+			Operation: ones_gfx.OperationDelete,
+			Suid: map[string]map[string]ones_gfx.ServerGPUs{
+				"0": {
+					sampleServers[0]: {GPUs: []string{"G0", "G1", "G2", "G3"}},
+				},
+			},
+		}
+
+		delResp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, delReq)
+		if err != nil {
+			fmt.Printf("  -> modify GPU allocations (DELETE) error: %v\n", err)
+		} else {
+			fmt.Printf("  -> status: %s\n", delResp.Status)
+			if delResp.OperationID != "" {
+				fmt.Printf("  -> operation id: %s (async)\n", delResp.OperationID)
+				// In real usage, poll the operation to completion if needed
+			}
+			if delResp.Message != "" {
+				fmt.Printf("  -> message: %s\n", delResp.Message)
+			}
 		}
 
 		// --- Deallocate GPUs ---
@@ -519,6 +571,7 @@ func scenarioTenantAction(
 	tenantNameOverride string,
 	servers []string,
 	portIDs []int,
+	shared bool,
 	peeringNameOverride string,
 	vpcNameOverride string,
 	peerVPCNameOverride string,
@@ -587,8 +640,11 @@ func scenarioTenantAction(
 			fmt.Println("No servers provided for allocate. Use --servers or update sampleServers.")
 			return
 		}
-		fmt.Printf("Allocating GPUs %v to %s (%s)...\n", srvs, tName, label)
-		serverSpecs := resources.ServerSpecsFromNames(srvs)
+		fmt.Printf("Allocating GPUs %v to %s (%s, shared=%v)...\n", srvs, tName, label, shared)
+		serverSpecs := make([]resources.ServerSpec, 0, len(srvs))
+		for _, serverName := range srvs {
+			serverSpecs = append(serverSpecs, resources.ServerSpec{ServerName: serverName, Shared: shared})
+		}
 		timeout500 := 500 * time.Second
 
 		if isAsync(mode) {
@@ -618,8 +674,11 @@ func scenarioTenantAction(
 			fmt.Println("No servers provided for deallocate. Use --servers or update sampleServers.")
 			return
 		}
-		fmt.Printf("Deallocating GPUs %v (%s)...\n", srvs, label)
-		serverSpecs := resources.ServerSpecsFromNames(srvs)
+		fmt.Printf("Deallocating GPUs %v (%s, shared=%v)...\n", srvs, label, shared)
+		serverSpecs := make([]resources.ServerSpec, 0, len(srvs))
+		for _, serverName := range srvs {
+			serverSpecs = append(serverSpecs, resources.ServerSpec{ServerName: serverName, Shared: shared})
+		}
 		timeout500 := 500 * time.Second
 
 		if isAsync(mode) {
@@ -775,15 +834,20 @@ func main() {
 	// log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	mode := flag.String("mode", "sync", "Tenant lifecycle mode: sync, async-poll, async-webhook")
-	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete, assign-ports, unassign-ports, inventory-sync, vpcpeering")
+	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete,  gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering")
 	tenantNameFlag := flag.String("tenant-name", "", "Override tenant name")
 	username := flag.String("username", "", "Username for login action (default: loginUsername)")
 	password := flag.String("password", "", "Password for login action (default: loginPassword)")
 	serversFlag := flag.String("servers", "", "Comma-separated server list for allocate/deallocate/assign-ports/unassign-ports")
 	portsFlag := flag.String("ports", "", "Comma-separated port IDs for assign-ports/unassign-ports (e.g. 1,2,3,4)")
+	sharedFlag := flag.Bool("shared", false, "Set shared on allocate/deallocate server specs (e.g. --shared=true)")
 	peeringNameFlag := flag.String("peering-name", "", "Peering name for vpcpeering (default: <tenant>-storage-route-leak)")
 	vpcNameFlag := flag.String("vpc-name", "", "Tenant VPC name for vpcpeering (default: <tenant>-<fabric>-north-south)")
 	peerVPCNameFlag := flag.String("peer-vpc-name", "", "Peer VPC name for vpcpeering (default: <fabric>-Storage-VPC)")
+	gpuOperation := flag.String("gpu-operation", "ADD", "GPU allocation operation: ADD or DELETE (used with --action gpu-allocations)")
+	gpuHostname := flag.String("gpu-hostname", "", "Compute node hostname for gpu-allocations (e.g. hgx-su00-h00)")
+	gpuIDs := flag.String("gpu-ids", "G0,G1,G2,G3", "Comma-separated GPU IDs for gpu-allocations (e.g. G0,G1,G2,G3)")
+	gpuServerIndex := flag.String("gpu-server-index", "0", "Server index key in suid map (default: 0)")
 	flag.Parse()
 
 	// Validate mode
@@ -796,7 +860,7 @@ func main() {
 	validActions := map[string]bool{
 		"lifecycle": true, "read-only": true, "login": true,
 		"create": true, "allocate": true, "deallocate": true,
-		"delete": true, "vpcpeering": true,
+		"delete": true, "vpcpeering": true, "gpu-allocations": true,
 		"assign-ports": true, "unassign-ports": true,
 		"inventory-sync": true,
 	}
@@ -824,6 +888,20 @@ func main() {
 		scenarioReadOnly(client)
 		scenarioTenantLifecycle(client, *mode)
 		scenarioErrorHandling(client)
+	} else if *action == "gpu-allocations" {
+		tName := *tenantNameFlag
+		if tName == "" {
+			log.Fatal("--tenant-name is required for gpu-allocations")
+		}
+		hostname := *gpuHostname
+		if hostname == "" {
+			if len(sampleServers) > 0 {
+				hostname = sampleServers[0]
+			} else {
+				log.Fatal("--gpu-hostname is required (or set sampleServers in config)")
+			}
+		}
+		scenarioGPUAllocations(client, tName, *gpuOperation, *gpuServerIndex, hostname, parseServers(*gpuIDs))
 	} else {
 		scenarioTenantAction(
 			client,
@@ -832,9 +910,53 @@ func main() {
 			*tenantNameFlag,
 			parseServers(*serversFlag),
 			parsePorts(*portsFlag),
+			*sharedFlag,
 			*peeringNameFlag,
 			*vpcNameFlag,
 			*peerVPCNameFlag,
 		)
+	}
+}
+
+// scenarioGPUAllocations calls POST /fabrics/{fabric}/tenants/{tenant}/gpuAllocations.
+//
+// This endpoint performs fine-grained GPU mapping on a shared server:
+// operation ADD allocates the listed GPU IDs to the tenant, while DELETE
+// removes those GPU assignments.
+//
+// Parameters:
+//   - tenantName: target tenant that receives or releases GPUs.
+//   - operation: ADD to allocate GPUs, DELETE to deallocate.
+//   - serverIndex: suid map key (for example "0").
+//   - hostname: compute node hostname under the selected server index.
+//   - gpuIDs: explicit GPU IDs to map (for example []string{"G0", "G1"}).
+func scenarioGPUAllocations(client *sdk.Client, tenantName, operation, serverIndex, hostname string, gpuIDs []string) {
+	fmt.Printf("\n--- Scenario: gpu-allocations ---\n")
+	fmt.Printf("  fabric:   %s\n", fabricName)
+	fmt.Printf("  tenant:   %s\n", tenantName)
+	fmt.Printf("  op:       %s\n", operation)
+	fmt.Printf("  suid[%s][%s].gpus: %v\n", serverIndex, hostname, gpuIDs)
+
+	ctx := context.Background()
+	req := ones_gfx.GPUAllocationRequest{
+		Operation: ones_gfx.GPUOperation(operation),
+		Suid: map[string]map[string]ones_gfx.ServerGPUs{
+			serverIndex: {
+				hostname: {GPUs: gpuIDs},
+			},
+		},
+	}
+
+	resp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, req)
+	if err != nil {
+		reportSDKError(err)
+		return
+	}
+	fmt.Printf("  -> status: %s\n", resp.Status)
+	if resp.OperationID != "" {
+		fmt.Printf("  -> operation id: %s\n", resp.OperationID)
+	}
+	if resp.Message != "" {
+		fmt.Printf("  -> message: %s\n", resp.Message)
 	}
 }

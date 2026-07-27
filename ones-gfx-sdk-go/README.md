@@ -262,6 +262,36 @@ err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, req)
 err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
 ```
 
+### Partial GPU Allocation
+
+Map or unmap specific GPUs to a tenant on a shared server. This is distinct
+from `AllocateGPUs` (which attaches a whole server): `ModifyGPUAllocations`
+gives fine-grained control over which GPU indices a tenant can access.
+
+```go
+req := ones_gfx.GPUAllocationRequest{
+    Operation: ones_gfx.OperationAdd, // or ones_gfx.OperationDelete
+    // Suid map: serverIndex → hostname → {GPUs: [...]}
+    Suid: map[string]map[string]ones_gfx.ServerGPUs{
+        "0": {
+            "hgx-su00-h00": {GPUs: []string{"G0", "G1", "G2", "G3"}},
+        },
+    },
+}
+
+resp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, req)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("status=%s  msg=%s\n", resp.Status, resp.Message)
+```
+
+**Notes:**
+- The server must already be attached to the tenant via `AllocateGPUs` before mapping individual GPUs.
+- Remove per-GPU mappings with `OperationDelete` before calling `DeallocateGPUs` to detach the server.
+- This endpoint is valid only for externally managed fabrics; on ONES-controlled fabrics it returns `409 FABRIC_NOT_EXTERNALLY_MANAGED` (use the tenant-update flow instead).
+- Multiple tenants can share the same physical server (e.g. G0–G3 → tenant-A, G4–G7 → tenant-B) when the server is attached with `Shared: true`.
+
 ---
 
 ## Operation Modes

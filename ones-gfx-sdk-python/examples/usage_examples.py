@@ -316,6 +316,26 @@ def scenario_tenant_lifecycle(client: ONESClient, mode: OperationMode) -> None:
         refreshed = client.tenants.get(FABRIC_NAME, tenant_name)
         print(f"  Tenant now has servers: {refreshed.alloted_servers}")
 
+        # --- Partial GPU allocation (fine-grained suid addressing): ADD after allocate ---
+        print(f"Modifying GPU allocations (ADD) on {tenant_name} ({label})...")
+        # This is more granular than allocate_gpus: targets specific GPU IDs
+        # on a specific server rather than allocating all GPUs on a server.
+        gpu_alloc_add_result = client.fabrics.modify_gpu_allocations(
+            fabric_name=FABRIC_NAME,
+            tenant_name=tenant_name,
+            operation="ADD",
+            suid={
+                "0": {
+                    SAMPLE_SERVERS[0]: {"gpus": ["G0", "G1", "G2", "G3"]},
+                }
+            },
+        )
+        print(f"  -> status: {gpu_alloc_add_result.get('status')}")
+        if gpu_alloc_add_result.get("operationId"):
+            print(f"  -> operation id: {gpu_alloc_add_result['operationId']} (async)")
+        if gpu_alloc_add_result.get("message"):
+            print(f"  -> message: {gpu_alloc_add_result['message']}")
+
         # Peering after allocate so tenant VPC / NS path is live with GPUs attached.
         peering_name = f"{tenant_name}-storage-route-leak"
         vpc_name = _default_vpc_name(tenant_name)
@@ -330,6 +350,24 @@ def scenario_tenant_lifecycle(client: ONESClient, mode: OperationMode) -> None:
             peer_vpc_name=peer_vpc_name,
         )
         print(f"  -> response: {peering_result}")
+
+        # --- Partial GPU allocation cleanup: DELETE before deallocate ---
+        print(f"Modifying GPU allocations (DELETE) on {tenant_name} ({label})...")
+        gpu_alloc_delete_result = client.fabrics.modify_gpu_allocations(
+            fabric_name=FABRIC_NAME,
+            tenant_name=tenant_name,
+            operation="DELETE",
+            suid={
+                "0": {
+                    SAMPLE_SERVERS[0]: {"gpus": ["G0", "G1", "G2", "G3"]},
+                }
+            },
+        )
+        print(f"  -> status: {gpu_alloc_delete_result.get('status')}")
+        if gpu_alloc_delete_result.get("operationId"):
+            print(f"  -> operation id: {gpu_alloc_delete_result['operationId']} (async)")
+        if gpu_alloc_delete_result.get("message"):
+            print(f"  -> message: {gpu_alloc_delete_result['message']}")
 
         print(f"Deallocating GPUs {SAMPLE_SERVERS} ({label})...")
         deallocate_result = client.tenants.deallocate_gpus(
@@ -365,6 +403,53 @@ def scenario_tenant_lifecycle(client: ONESClient, mode: OperationMode) -> None:
         print("  -> delete done")
 
 
+def scenario_gpu_allocations(
+    client: ONESClient,
+    tenant_name: str,
+    operation: str,
+    server_index: str,
+    hostname: str,
+    gpu_ids: list[str],
+) -> None:
+    """Call POST /fabrics/{fabric}/tenants/{tenant}/gpuAllocations directly.
+
+    This endpoint performs fine-grained GPU mapping on a shared fabric server:
+    it allocates (ADD) or deallocates (DELETE) the given GPU IDs for the target
+    tenant.
+
+    Parameters:
+        tenant_name: Tenant that will receive or release the GPUs.
+        operation: "ADD" to allocate GPUs, "DELETE" to remove them.
+        server_index: String key used in the `suid` map (for example "0").
+        hostname: Compute node hostname inside the selected server index.
+        gpu_ids: Explicit GPU identifiers (for example ["G0", "G1"]).
+    """
+    print("\n--- Scenario: gpu-allocations ---")
+    print(f"  fabric:   {FABRIC_NAME}")
+    print(f"  tenant:   {tenant_name}")
+    print(f"  op:       {operation}")
+    print(f"  suid[{server_index}][{hostname}].gpus: {gpu_ids}")
+
+    try:
+        result = client.fabrics.modify_gpu_allocations(
+            fabric_name=FABRIC_NAME,
+            tenant_name=tenant_name,
+            operation=operation,
+            suid={
+                server_index: {
+                    hostname: {"gpus": gpu_ids},
+                }
+            },
+        )
+        print(f"  -> status: {result.get('status')}")
+        if result.get("operationId"):
+            print(f"  -> operation id: {result['operationId']}")
+        if result.get("message"):
+            print(f"  -> message: {result['message']}")
+    except ONESError as e:
+        _report_sdk_error(e)
+
+
 def _parse_servers(raw: str | None) -> list[str]:
     if not raw:
         return []
@@ -380,10 +465,20 @@ def _parse_ports(raw: str | None) -> list[int]:
         if item.isdigit():
             result.append(int(item))
     return result
+def _parse_bool_flag(raw: str | bool) -> bool:
+    if isinstance(raw, bool):
+        return raw
+    val = str(raw).strip().lower()
+    if val in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if val in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(f"invalid boolean value: {raw!r}")
 
 
 def _report_sdk_error(err: ONESError) -> None:
-    status = f" (status={err.status_code})" if err.status_code is not None else ""
+    status_code = getattr(err, "status_code", None)
+    status = f" (status={status_code})" if status_code is not None else ""
     print(f"[SDK error] {err}{status}")
 
 
@@ -394,6 +489,7 @@ def scenario_tenant_action(
     tenant_name: str | None,
     servers: list[str] | None,
     port_ids: list[int] | None,
+    shared_server: bool,
     peering_name: str | None,
     vpc_name: str | None,
     peer_vpc_name: str | None,
@@ -434,11 +530,12 @@ def scenario_tenant_action(
         if action == "allocate":
             if not servers:
                 raise ValueError("No servers provided for allocate. Use --servers or update SAMPLE_SERVERS.")
-            print(f"Allocating GPUs {servers} to {tenant_name} ({label})...")
+            server_specs = [{"serverName": host, "shared": shared_server} for host in servers]
+            print(f"Allocating GPUs {servers} to {tenant_name} ({label}, shared={shared_server})...")
             allocate_result = client.tenants.allocate_gpus(
                 fabric_name=FABRIC_NAME,
                 name=tenant_name,
-                servers=servers,
+                servers=server_specs,
                 timeout=500,
                 mode=mode,
                 webhook_url=WEBHOOK_URL if mode is OperationMode.ASYNC_WEBHOOK else None,
@@ -455,11 +552,12 @@ def scenario_tenant_action(
         if action == "deallocate":
             if not servers:
                 raise ValueError("No servers provided for deallocate. Use --servers or update SAMPLE_SERVERS.")
-            print(f"Deallocating GPUs {servers} ({label})...")
+            server_specs = [{"serverName": host, "shared": shared_server} for host in servers]
+            print(f"Deallocating GPUs {servers} ({label}, shared={shared_server})...")
             deallocate_result = client.tenants.deallocate_gpus(
                 fabric_name=FABRIC_NAME,
                 name=tenant_name,
-                servers=servers,
+                servers=server_specs,
                 timeout=500,
                 mode=mode,
                 webhook_url=WEBHOOK_URL if mode is OperationMode.ASYNC_WEBHOOK else None,
@@ -606,6 +704,7 @@ def main() -> None:
             "unassign-ports",
             "inventory-sync",
             "vpcpeering",
+            "gpu-allocations",
         ],
         help="Action to run (default: lifecycle)",
     )
@@ -635,6 +734,14 @@ def main() -> None:
         help="Comma-separated port IDs for assign-ports/unassign-ports (e.g. 1,2,3,4)",
     )
     parser.add_argument(
+        "--shared",
+        nargs="?",
+        const=True,
+        default=False,
+        type=_parse_bool_flag,
+        help="Set shared on allocate/deallocate server specs (e.g. --shared=true)",
+    )
+    parser.add_argument(
         "--peering-name",
         default=None,
         help="Peering name for vpcpeering (default: <tenant>-storage-route-leak)",
@@ -648,6 +755,27 @@ def main() -> None:
         "--peer-vpc-name",
         default=None,
         help="Peer VPC name for vpcpeering (default: <fabric>-Storage-VPC)",
+    )
+    parser.add_argument(
+        "--gpu-operation",
+        default="ADD",
+        choices=["ADD", "DELETE"],
+        help="GPU allocation operation: ADD or DELETE (used with --action gpu-allocations)",
+    )
+    parser.add_argument(
+        "--gpu-hostname",
+        default=None,
+        help="Compute node hostname for gpu-allocations (e.g. hgx-su00-h00)",
+    )
+    parser.add_argument(
+        "--gpu-ids",
+        default="G0,G1,G2,G3",
+        help="Comma-separated GPU IDs for gpu-allocations (e.g. G0,G1,G2,G3)",
+    )
+    parser.add_argument(
+        "--gpu-server-index",
+        default="0",
+        help="Server index key in suid map (default: 0)",
     )
     args = parser.parse_args()
 
@@ -671,6 +799,20 @@ def main() -> None:
                 scenario_read_only(client)
                 scenario_tenant_lifecycle(client, mode_map[args.mode])
                 scenario_error_handling(client)
+            elif args.action == "gpu-allocations":
+                if not args.tenant_name:
+                    parser.error("--tenant-name is required for gpu-allocations")
+                hostname = args.gpu_hostname or (SAMPLE_SERVERS[0] if SAMPLE_SERVERS else None)
+                if not hostname:
+                    parser.error("--gpu-hostname is required (or set SAMPLE_SERVERS in config)")
+                scenario_gpu_allocations(
+                    client,
+                    args.tenant_name,
+                    args.gpu_operation,
+                    args.gpu_server_index,
+                    hostname,
+                    _parse_servers(args.gpu_ids),
+                )
             else:
                 scenario_tenant_action(
                     client,
@@ -679,6 +821,7 @@ def main() -> None:
                     args.tenant_name,
                     _parse_servers(args.servers),
                     _parse_ports(args.ports),
+                    args.shared,
                     args.peering_name,
                     args.vpc_name,
                     args.peer_vpc_name,
