@@ -15,6 +15,11 @@ class FabricsResource:
         items = body.get("fabrics", []) if isinstance(body, dict) else []
         return [Fabric.from_api(item) for item in items]
 
+    def inventory_sync(self, fabric_name: str) -> None:
+        # POST /fabrics/{fabricName}/inventorySync — UFM enabled fabrics only.
+        if not fabric_name:
+            raise ValueError("fabric_name is required")
+        self._transport.post(f"fabrics/{fabric_name}/inventorySync")
     def modify_gpu_allocations(
         self,
         fabric_name: str,

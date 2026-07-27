@@ -93,6 +93,9 @@ with ONESClient(base_url="https://10.4.5.76:8089", auth=auth) as client:
     for fabric in client.fabrics.list():
         print(fabric.fabric_name, fabric.default_storage_name)
 
+    # Inventory sync — UFM enabled fabrics
+    client.fabrics.inventory_sync("UFM-fabric")
+
     # Create a tenant (synchronous — blocks until done)
     tenant = client.tenants.create(
         fabric_name="UI-CIT-fabric482",
@@ -102,11 +105,27 @@ with ONESClient(base_url="https://10.4.5.76:8089", auth=auth) as client:
     )
     print(tenant.id, tenant.vlan_id)
 
-    # Allocate GPUs
+    # Allocate GPUs (PATCH /tenants — all fabric types)
     client.tenants.allocate_gpus(
         fabric_name="UI-CIT-fabric482",
         name="tenant2",
         servers=["hgx-su00-h00", "hgx-su00-h01"],
+    )
+
+    # Assign specific ports — UFM/NMXC fabrics (POST /gpus, always sync)
+    client.tenants.assign_ports(
+        fabric_name="NMXC",
+        tenant_name="tenant2",
+        server_names=["su00-rack00-node00", "su00-rack01-node18"],
+        gpu_ids=[1, 2, 3],
+    )
+
+    # Unassign ports
+    client.tenants.unassign_ports(
+        fabric_name="NMXC",
+        tenant_name="tenant2",
+        server_names=["su00-rack00-node00", "su00-rack01-node18"],
+        gpu_ids=[1, 2, 3],
     )
 ```
 

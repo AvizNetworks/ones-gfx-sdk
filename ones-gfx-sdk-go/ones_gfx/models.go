@@ -52,30 +52,49 @@ func (v *VNetInfo) UnmarshalJSON(data []byte) error {
 
 // Tenant represents a tenant within a fabric.
 type Tenant struct {
-	ID                int          `json:"id"`
-	Name              string       `json:"name"`
-	Description       string       `json:"description"`
-	FabricName        string       `json:"fabricName"`
-	MaxGPUsAllowed    int          `json:"maxGpusAllowed"`
-	GPUsAllocated     int          `json:"gpusAllocated"`
-	AllotedGPUs       string       `json:"allotedGpus"` // Comma-separated hostnames
-	VNIID             *int         `json:"vniId,omitempty"`
-	VLANID            *int         `json:"vlanId,omitempty"`
-	TransitVLANID     *int         `json:"transitVlanId,omitempty"`
-	VLANVNIID         *int         `json:"vlanVniId,omitempty"`
-	VLANSubnetCPU     string       `json:"vlanSubnetCPU,omitempty"`
-	VLANSubnetStorage string       `json:"vlanSubnetStorage,omitempty"`
-	ConfigStatus      ConfigStatus `json:"-"` // Parsed from string
-	ConfigStatusRaw   string       `json:"config_status"`
-	Networks          []string     `json:"networks,omitempty"`
-	Tags              []Tag        `json:"tags,omitempty"`
-	VNets             *VNetInfo    `json:"vnets,omitempty"`
-	Shared            bool         `json:"shared,omitempty"`
-	NSVNIID           *int         `json:"nsVniId,omitempty"`
-	CreatedAt         time.Time    `json:"-"` // Parsed from ms-epoch or ISO
-	UpdatedAt         time.Time    `json:"-"`
-	CreatedAtRaw      interface{}  `json:"createdAt"`
-	UpdatedAtRaw      interface{}  `json:"updatedAt"`
+	ID                    int             `json:"id"`
+	Name                  string          `json:"name"`
+	Description           *string         `json:"description"`
+	FabricName            string          `json:"fabricName"`
+	MaxGPUsAllowed        int             `json:"maxGpusAllowed"`
+	GPUsAllocated         int             `json:"gpusAllocated"`
+	AllotedGPUs           string          `json:"allotedGpus"` // Comma-separated hostnames
+	VNIID                 *int            `json:"vniId,omitempty"`
+	VLANID                *int            `json:"vlanId,omitempty"`
+	TransitVLANID         *int            `json:"transitVlanId,omitempty"`
+	VLANVNIID             *int            `json:"vlanVniId,omitempty"`
+	VLANSubnetCPU         *string         `json:"vlanSubnetCPU,omitempty"`
+	VLANSubnetStorage     *string         `json:"vlanSubnetStorage,omitempty"`
+	ConfigStatus          ConfigStatus    `json:"-"` // Parsed from string
+	ConfigStatusRaw       string          `json:"config_status"`
+	Networks              []string        `json:"networks,omitempty"`
+	Tags                  []Tag           `json:"tags,omitempty"`
+	VNets                 *VNetInfo       `json:"vnets,omitempty"`
+	Shared                bool            `json:"shared,omitempty"`
+	NSVNIID               *int            `json:"nsVniId,omitempty"`
+	CreatedAt             time.Time       `json:"-"` // Parsed from ms-epoch or ISO
+	UpdatedAt             time.Time       `json:"-"`
+	CreatedAtRaw          interface{}     `json:"createdAt"`
+	UpdatedAtRaw          interface{}     `json:"updatedAt"`
+
+	// UFM-specific fields (IB_EW fabrics).
+	PKeyValue             *string         `json:"pkeyValue"`
+	UFMAllocatedPorts     int             `json:"ufmAllocatedPorts,omitempty"`
+	UFMAllocatedServers   int             `json:"ufmAllocatedServers,omitempty"`
+
+	// NMXC-specific fields.
+	NMXCGPUsAllocated     int             `json:"nmxcGpusAllocated,omitempty"`
+	NMXCServersAllocated  int             `json:"nmxcServersAllocated,omitempty"`
+	NMXCPartitions        []NMXCPartition `json:"nmxcPartitions,omitempty"`
+}
+
+// NMXCPartition represents a partition assigned to a tenant on an NMXC fabric.
+type NMXCPartition struct {
+	DomainName     string `json:"domainName"`
+	PartitionID    int    `json:"partitionId"`
+	PartitionName  string `json:"partitionName"`
+	ResiliencyMode string `json:"resiliencyMode"`
+	Status         string `json:"status"`
 }
 
 // Tag represents a key-value tag on a tenant.

@@ -11,7 +11,7 @@ Public API:
     UNLIMITED_GPUS     - sentinel value for max_gpus_allowed=-1
 
     Models:
-        Fabric, Tenant, VNetInfo, Operation
+        Fabric, Tenant, VNetInfo, Operation, NMXCPartition
 
     Exceptions:
         ONESError (base), AuthenticationError, BadRequestError,
@@ -40,7 +40,7 @@ from .exceptions import (
     ServerError,
     TransportError,
 )
-from .models import Fabric, Operation, Tenant, VNetInfo
+from .models import Fabric, NMXCPartition, Operation, Tenant, VNetInfo
 
 __all__ = [
     "__version__",
@@ -55,6 +55,7 @@ __all__ = [
     "Tenant",
     "VNetInfo",
     "Operation",
+    "NMXCPartition",
     "ONESError",
     "APIError",
     "AuthenticationError",

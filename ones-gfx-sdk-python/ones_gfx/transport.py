@@ -101,10 +101,13 @@ class Transport:
             return body
         data = body.get("data")
         if isinstance(data, str):
-            try:
-                data = json.loads(data)
-            except (json.JSONDecodeError, ValueError):
-                pass
+            if data != "":
+                try:
+                    data = json.loads(data)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+            else:
+                data = None  # empty string — fall through to message
         if data is None:
             return body.get("message")
         return data

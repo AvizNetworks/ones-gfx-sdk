@@ -49,16 +49,16 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	baseURL    = "https://10.4.5.76:8089"
-	refreshURL = "https://10.4.5.76:8089/refresh"
+	baseURL    = "https://10.4.5.71:8089"
+	refreshURL = "https://10.4.5.71:8089/refresh"
 
-	accessToken  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjoiU1VQRVJfQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJXUklURSIsIlJFQUQiXSwidHlwIjoiYWNjZXNzIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiNDBmM2RkZTctNzMzZi00YWQxLTk0MzYtMmY2MWMwY2FjMThkIiwiaWF0IjoxNzc3ODg1NTkyLCJleHAiOjE3Nzc5NzE5OTJ9.7AaKjidz0CYYJ4Rhxz6IAQW4TVxdBe7HOcQwgOQHxgg"
-	refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJ0eXAiOiJyZWZyZXNoIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiNDczMzY4ZmMtN2I4My00OWE1LTljZjAtMGQ3MzFiNDE4MmViIiwiaWF0IjoxNzc3ODg1NTkyLCJleHAiOjE3Nzc4OTk5OTJ9.wtG3l6ee12KJg2FXyqOE_LnEKhbjg5Nkb_Asg4WxuuQ "
+	accessToken  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjoiU1VQRVJfQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJXUklURSIsIlJFQUQiXSwidHlwIjoiYWNjZXNzIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiNGEzZDM3MWItNTQ5Ni00MGQyLTk4OWUtMTQ0MWQyNGExMDY0IiwiaWF0IjoxNzg0MTg0OTgzLCJleHAiOjE3ODQxOTIxODN9._5fZBpXdGk8fpbqjl2rlXTWDr4XxikckFLGETDemYVM"
+	refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJ0eXAiOiJyZWZyZXNoIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiZjE5NmQ1M2QtNGMzYi00MTBiLWI5YzMtYzBjMGZlZmQ1MjI0IiwiaWF0IjoxNzg0MTg0OTgzLCJleHAiOjE3ODQyNzEzODN9.BcQ__f0fBr574LcthvIuijmKWnyvhZ-93KwT98vB4VE"
 
 	loginUsername = "superadmin"
-	loginPassword = "Admin@1234"
+	loginPassword = "Admin@123456"
 
-	fabricName = "test707"
+	fabricName = "NMXC"
 
 	// Webhook receiver URL for the async-webhook example. The SDK does not
 	// implement the receiver — point this at an HTTP endpoint you control.
@@ -75,6 +75,7 @@ const (
 // A couple of sample server hostnames you expect to be available in the
 // fabric. The example will try to allocate then deallocate these.
 var sampleServers = []string{"hgx-su00-h00"}
+var nmxcSampleServers = []string{"su00-rack00-node00", "su00-rack01-node18"}
 
 // ---------------------------------------------------------------------------
 // Auth callback (optional) — persist rotated tokens so they survive a
@@ -539,6 +540,21 @@ func parseServers(raw string) []string {
 	return result
 }
 
+func parsePorts(raw string) []int {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	result := make([]int, 0, len(parts))
+	for _, p := range parts {
+		var n int
+		if _, err := fmt.Sscanf(strings.TrimSpace(p), "%d", &n); err == nil {
+			result = append(result, n)
+		}
+	}
+	return result
+}
+
 func reportSDKError(err error) {
 	var apiErr *ones_gfx.APIError
 	if errors.As(err, &apiErr) {
@@ -554,6 +570,7 @@ func scenarioTenantAction(
 	action string,
 	tenantNameOverride string,
 	servers []string,
+	portIDs []int,
 	shared bool,
 	peeringNameOverride string,
 	vpcNameOverride string,
@@ -735,6 +752,38 @@ func scenarioTenantAction(
 		}
 		fmt.Printf("  -> response: %v\n", result)
 
+	case "assign-ports":
+		if len(servers) == 0 {
+			fmt.Println("No servers provided. Use --servers.")
+			return
+		}
+		fmt.Printf("AssignPorts %v ports=%v to %q on %q...\n", servers, portIDs, tName, fabricName)
+		if err := client.Tenants.AssignPorts(ctx, fabricName, tName, resources.GpuPortAssignmentRequest{ServerNames: servers, GPUIDs: portIDs}); err != nil {
+			reportSDKError(err)
+			return
+		}
+		fmt.Println("  -> assign-ports done")
+
+	case "unassign-ports":
+		if len(servers) == 0 {
+			fmt.Println("No servers provided. Use --servers.")
+			return
+		}
+		fmt.Printf("UnassignPorts %v ports=%v from %q on %q...\n", servers, portIDs, tName, fabricName)
+		if err := client.Tenants.UnassignPorts(ctx, fabricName, tName, resources.GpuPortAssignmentRequest{ServerNames: servers, GPUIDs: portIDs}); err != nil {
+			reportSDKError(err)
+			return
+		}
+		fmt.Println("  -> unassign-ports done")
+
+	case "inventory-sync":
+		fmt.Printf("InventorySync on fabric %q...\n", fabricName)
+		if err := client.Fabrics.InventorySync(ctx, fabricName); err != nil {
+			reportSDKError(err)
+			return
+		}
+		fmt.Println("  -> inventory-sync done")
+
 	default:
 		fmt.Printf("Unknown action: %s\n", action)
 	}
@@ -785,11 +834,12 @@ func main() {
 	// log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	mode := flag.String("mode", "sync", "Tenant lifecycle mode: sync, async-poll, async-webhook")
-	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete, vpcpeering, gpu-allocations")
-	tenantNameFlag := flag.String("tenant-name", "", "Override tenant name for create/delete/allocate/deallocate")
+	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete,  gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering")
+	tenantNameFlag := flag.String("tenant-name", "", "Override tenant name")
 	username := flag.String("username", "", "Username for login action (default: loginUsername)")
 	password := flag.String("password", "", "Password for login action (default: loginPassword)")
-	serversFlag := flag.String("servers", "", "Comma-separated server list for allocate/deallocate")
+	serversFlag := flag.String("servers", "", "Comma-separated server list for allocate/deallocate/assign-ports/unassign-ports")
+	portsFlag := flag.String("ports", "", "Comma-separated port IDs for assign-ports/unassign-ports (e.g. 1,2,3,4)")
 	sharedFlag := flag.Bool("shared", false, "Set shared on allocate/deallocate server specs (e.g. --shared=true)")
 	peeringNameFlag := flag.String("peering-name", "", "Peering name for vpcpeering (default: <tenant>-storage-route-leak)")
 	vpcNameFlag := flag.String("vpc-name", "", "Tenant VPC name for vpcpeering (default: <tenant>-<fabric>-north-south)")
@@ -811,6 +861,8 @@ func main() {
 		"lifecycle": true, "read-only": true, "login": true,
 		"create": true, "allocate": true, "deallocate": true,
 		"delete": true, "vpcpeering": true, "gpu-allocations": true,
+		"assign-ports": true, "unassign-ports": true,
+		"inventory-sync": true,
 	}
 	if !validActions[*action] {
 		log.Fatalf("invalid action %q", *action)
@@ -857,6 +909,7 @@ func main() {
 			*action,
 			*tenantNameFlag,
 			parseServers(*serversFlag),
+			parsePorts(*portsFlag),
 			*sharedFlag,
 			*peeringNameFlag,
 			*vpcNameFlag,

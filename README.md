@@ -5,6 +5,7 @@ Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
 Provides programmatic access to:
 - Tenant lifecycle management (create, read, update, delete)
 - GPU server allocation and deallocation
+- For specific GPUs assignment and unassignment
 - Fabric discovery and configuration
 - VPC peering setup
 - Asynchronous operation tracking (sync / async-poll / async-webhook)
@@ -45,11 +46,11 @@ tenant = client.tenants.create(fabric, "tenant1", "desc", max_gpus=8)
 **Quick Start:**
 ```go
 import (
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
 )
 
-auth, err := ones.NewJWTAuth(accessToken, refreshToken, refreshURL)
+auth, err := ones_gfx.NewJWTAuth(accessToken, refreshToken, refreshURL)
 if err != nil {
     panic(err)
 }
@@ -67,6 +68,7 @@ tenant, err := client.Tenants.Create(ctx, fabricName, req)
 |---------|--------|-----|-------|
 | **Tenant CRUD** | ✅ | ✅ | Full parity |
 | **GPU allocation/deallocation** | ✅ | ✅ | Timeout override supported |
+| **Specific GPUs assign/unassign** | ✅ | ✅ | UFM / NMXC fabrics only |
 | **Async modes** | ✅ | ✅ | sync / async-poll / async-webhook |
 | **JWT auto-refresh** | ✅ | ✅ | Proactive + reactive |
 | **Timeout override** | ✅ | ✅ | Per-call override for long operations |
@@ -126,10 +128,10 @@ print(f"Created tenant ID: {tenant['tenant']['id']}")
 
 ### Go Controller (Library Import)
 ```go
-import "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
+import "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 
 client := sdk.NewClient(baseURL, auth)
-tenant, err := client.Tenants.Create(ctx, "sdk", ones.CreateTenantRequest{
+tenant, err := client.Tenants.Create(ctx, "sdk", ones_gfx.CreateTenantRequest{
     Name: "controller-tenant", MaxGPUsAllowed: 8,
 })
 ```
@@ -150,7 +152,7 @@ ones-gfx-sdk/
 │   ├── pyproject.toml
 │   └── README.md
 └── ones-gfx-sdk-go/             # Go implementation
-    ├── ones/                    # Core library (importable)
+    ├── ones_gfx/                # Core library (importable)
     ├── cmd/                     # CLI binary (v1.1)
     ├── go.mod
     └── README.md
@@ -171,6 +173,8 @@ python examples/usage_examples.py --mode sync --action lifecycle --fabric sdk
 // See ones-gfx-sdk-go/README.md for complete example
 tenant, _ := client.Tenants.Create(ctx, fabricName, req)
 _ = client.Tenants.AllocateGPUs(ctx, fabricName, name, servers)
+_ = client.Tenants.AssignPorts(ctx, fabricName, name, reqGpus)
+_ = client.Tenants.UnassignPorts(ctx, fabricName, name, reqGpus)
 _ = client.Tenants.DeallocateGPUs(ctx, fabricName, name, servers)
 _ = client.Tenants.Delete(ctx, fabricName, name)
 ```
@@ -188,8 +192,10 @@ Both SDKs wrap the same ONES Spectrum-X API. For raw curl examples, see:
 - `GET /fabrics/{fabricName}/tenants` — List tenants
 - `GET /fabrics/{fabricName}/tenants/{name}` — Get tenant
 - `DELETE /fabrics/{fabricName}/tenants/{name}` — Delete tenant
-- `PATCH /fabrics/{fabricName}/tenants/{name}` — Allocate/deallocate GPUs
+- `PATCH /fabrics/{fabricName}/tenants/{name}` — Allocate/deallocate GPUs (all fabric types)
+- `POST /fabrics/{fabricName}/tenants/{name}/gpus` — Assign/unassign Specific GPUs (UFM / NMXC only)
 - `GET /fabrics` — List fabrics
+- `POST /fabrics/{fabricName}/inventorySync` — Trigger UFM inventory sync (UFM enabled fabrics only, no body)
 - `GET /operations/{id}` — Poll async operation
 - `POST /fabrics/{fabricName}/vpcpeering` — VPC peering
 

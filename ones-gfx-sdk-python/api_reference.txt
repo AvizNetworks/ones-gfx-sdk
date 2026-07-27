@@ -91,8 +91,8 @@ data:{"pendingWebhooks":1,"timestamp":"2026-04-18T14:06:27.728136988Z","message"
 event:webhook
 data:{"receivedAt":"2026-04-18T14:07:51.323988821Z","deliveryId":"7b89ced3-d032-4828-84c5-037b883118b4","eventType":"TENANT_DELETE","operationId":"TENANT_1776521210967_d4f8_e4dd2615_17","signatureProvided":true,"signatureValid":true,"payload":{"operationId":"TENANT_1776521210967_d4f8_e4dd2615_17","type":"TENANT_DELETE","status":"SUCCESS","tenantName":"tenant3","fabricName":"Fab101","result":"Tenant 'tenant3' in fabric 'Fab101' deleted successfully.","completedAt":"2026-04-18T14:07:51.312252490Z","progress":100}}
 
-GPU Update ADD : 
-SYNC : 
+GPU Update ADD :
+SYNC :
 curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-Type: application/json" -H "Prefer: respond-sync" -d '{
   "operation": "ADD",
   "servers": [
@@ -100,6 +100,29 @@ curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-T
   ]
 }'
 {"status":"success","message":"GPU update processed successfully."}
+
+Note: serverName format differs by fabric type — UFM: "hgx-su00-h00", NMXC: "su00-rack00-node00"
+
+Assign specific ports (1-based port IDs):
+curl -X POST https://10.4.5.71:8089/fabrics/NMXC/tenants/tenant1/gpus \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "operation": "ADD",
+    "serverNames": ["su00-rack00-node00", "su00-rack01-node18"],
+    "gpuIds": [1, 2, 3]
+  }'
+{"status":"success","message":"GPU allocation processed successfully.","data":""}
+
+Assign all ports on each server (omit gpuIds entirely):
+curl -X POST https://10.4.5.71:8089/fabrics/NMXC/tenants/tenant1/gpus \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "operation": "ADD",
+    "serverNames": ["su00-rack00-node00"]
+  }'
+{"status":"success","message":"GPU allocation processed successfully.","data":""}
 
 ASYNC
 curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-Type: application/json" -H "Prefer: respond-async" -d '{
@@ -139,8 +162,8 @@ event:webhook
 data:{"receivedAt":"2026-04-18T14:46:50.068116296Z","deliveryId":"4cfa3440-3c98-4389-816e-9c1822f0c117","eventType":"GPU_ALLOCATE","operationId":"GPU_1776523281436_d4f8_e8a0e2a2_60","signatureProvided":true,"signatureValid":true,"payload":{"operationId":"GPU_1776523281436_d4f8_e8a0e2a2_60","type":"GPU_ALLOCATE","status":"SUCCESS","tenantName":"tenant1","fabricName":"Fab101","result":"GPU update processed successfully.","completedAt":"2026-04-18T14:46:50.058057171Z","progress":100}}
 
 
-GPU Update DELETE: 
-SYNC : 
+GPU Update DELETE:
+SYNC :
 curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-Type: application/json" -H "Prefer: respond-sync" -d '{
   "operation": "DELETE",
   "servers": [
@@ -149,6 +172,29 @@ curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-T
 }'
 
 {"status":"success","message":"GPU update processed successfully."}
+
+Note: serverName format differs by fabric type — UFM: "hgx-su00-h00", NMXC: "su00-rack00-node00"
+
+Unassign specific ports:
+curl -X POST https://10.4.5.71:8089/fabrics/NMXC/tenants/tenant1/gpus \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "operation": "DELETE",
+    "serverNames": ["su00-rack00-node00", "su00-rack01-node18"],
+    "gpuIds": [1, 2, 3]
+  }'
+{"status":"success","message":"GPU allocation processed successfully.","data":""}
+
+Unassign all ports on each server (omit gpuIds entirely):
+curl -X POST https://10.4.5.71:8089/fabrics/NMXC/tenants/tenant1/gpus \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{
+    "operation": "DELETE",
+    "serverNames": ["su00-rack00-node00"]
+  }'
+{"status":"success","message":"GPU allocation processed successfully.","data":""}
 
 ASYNC:
 curl -X PATCH http://localhost:8787/fabrics/Fab101/tenants/tenant1 -H "Content-Type: application/json" -H "Prefer: respond-async" -d '{
@@ -187,6 +233,14 @@ Webhook receiver:
 
 event:webhook
 data:{"receivedAt":"2026-04-18T14:57:07.376889694Z","deliveryId":"48e0dac6-f56f-4e38-acce-7bc23c9209a5","eventType":"GPU_DEALLOCATE","operationId":"GPU_1776523896921_d4f8_1c9fce9c_ac","signatureProvided":true,"signatureValid":true,"payload":{"operationId":"GPU_1776523896921_d4f8_1c9fce9c_ac","type":"GPU_DEALLOCATE","status":"SUCCESS","tenantName":"tenant1","fabricName":"Fab101","result":"GPU update processed successfully.","completedAt":"2026-04-18T14:57:07.367789850Z","progress":100}}
+
+
+Inventory Sync (UFM enabled fabrics only — no request body):
+
+curl -X POST https://10.4.5.71:8089/fabrics/UFM-fabric/inventorySync \
+  -H "Authorization: Bearer <token>"
+
+{"status":"success","message":"Inventory sync completed successfully.","data":{"success":true,"fabricName":"UFM-fabric","hostsDiscovered":12,"portsDiscovered":96,"message":"Inventory sync completed successfully."}}
 
 
 Get Tenants: But there is no Async support for this .

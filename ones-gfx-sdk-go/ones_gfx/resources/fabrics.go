@@ -58,6 +58,15 @@ func (r *FabricsResource) List(ctx context.Context) ([]ones_gfx.Fabric, error) {
 	return fabrics, nil
 }
 
+// InventorySync triggers an immediate UFM inventory sync.
+// Maps to POST /fabrics/{fabricName}/inventorySync — UFM enabled fabrics only.
+func (r *FabricsResource) InventorySync(ctx context.Context, fabricName string) error {
+	if fabricName == "" {
+		return fmt.Errorf("fabricName is required")
+	}
+	path := fmt.Sprintf("fabrics/%s/inventorySync", fabricName)
+	_, err := r.transport.Post(path, nil, ones_gfx.OperationModeSynchronous, nil)
+	return err
 // ModifyGPUAllocations maps or unmaps specific GPUs to a tenant on shared
 // fabric servers. It maps to:
 //

@@ -232,18 +232,21 @@ func unwrapEnvelope(body interface{}) interface{} {
 	// Extract data field
 	data, hasData := obj["data"]
 	if hasData {
-		// data may be JSON-encoded string
-		if str, ok := data.(string); ok && str != "" {
-			var parsed interface{}
-			if err := json.Unmarshal([]byte(str), &parsed); err == nil {
-				return parsed
+		if str, ok := data.(string); ok {
+			if str != "" {
+				var parsed interface{}
+				if err := json.Unmarshal([]byte(str), &parsed); err == nil {
+					return parsed
+				}
+				return str
 			}
-			return str
+			// empty string — fall through to message
+		} else {
+			return data
 		}
-		return data
 	}
 
-	// If no data field, return message
+	// No data field or data was empty string — return message
 	if msg, hasMsg := obj["message"]; hasMsg {
 		return msg
 	}

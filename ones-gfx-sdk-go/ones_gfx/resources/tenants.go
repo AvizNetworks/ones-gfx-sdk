@@ -34,6 +34,14 @@ type ServerSpec struct {
 	Shared     bool
 }
 
+// GpuPortAssignmentRequest is the request for POST .../gpus.
+// GPUIDs are integer port IDs (1, 2, 3, ...).
+type GpuPortAssignmentRequest struct {
+	Operation   string   // "ADD" or "DELETE"
+	ServerNames []string
+	GPUIDs      []int
+}
+
 // ServerSpecsFromNames converts server hostnames into ServerSpec entries.
 func ServerSpecsFromNames(names []string) []ServerSpec {
 	servers := make([]ServerSpec, 0, len(names))
@@ -343,6 +351,37 @@ func (r *TenantsResource) gpuUpdateAsync(ctx context.Context, fabricName, tenant
 	return extractOperation(result)
 }
 
+// AssignPorts assigns specific ports to a tenant.
+// Maps to POST /fabrics/{fabricName}/tenants/{tenantName}/gpus with operation="ADD".
+func (r *TenantsResource) AssignPorts(ctx context.Context, fabricName, tenantName string, req GpuPortAssignmentRequest) error {
+	req.Operation = "ADD"
+	return r.postGPUs(ctx, fabricName, tenantName, req)
+}
+
+// UnassignPorts removes specific ports from a tenant.
+// Maps to POST /fabrics/{fabricName}/tenants/{tenantName}/gpus with operation="DELETE".
+func (r *TenantsResource) UnassignPorts(ctx context.Context, fabricName, tenantName string, req GpuPortAssignmentRequest) error {
+	req.Operation = "DELETE"
+	return r.postGPUs(ctx, fabricName, tenantName, req)
+}
+
+// postGPUs is the shared implementation for AssignPorts and UnassignPorts.
+func (r *TenantsResource) postGPUs(ctx context.Context, fabricName, tenantName string, req GpuPortAssignmentRequest) error {
+	if fabricName == "" {
+		return fmt.Errorf("fabricName is required")
+	}
+	if tenantName == "" {
+		return fmt.Errorf("tenantName is required")
+	}
+	if len(req.ServerNames) == 0 {
+		return fmt.Errorf("serverNames cannot be empty")
+	}
+
+	path := fmt.Sprintf("fabrics/%s/tenants/%s/gpus", fabricName, tenantName)
+	_, err := r.transport.Post(path, buildAssignPortsBody(req), ones_gfx.OperationModeSynchronous, nil)
+	return err
+}
+
 // Helper functions
 
 func validateCreateRequest(fabricName string, req CreateTenantRequest) error {
@@ -365,6 +404,17 @@ func buildCreateBody(req CreateTenantRequest) map[string]interface{} {
 		"maxGpusAllowed": req.MaxGPUsAllowed,
 		"shared":         req.Shared,
 	}
+}
+
+func buildAssignPortsBody(req GpuPortAssignmentRequest) map[string]interface{} {
+	body := map[string]interface{}{
+		"operation":   req.Operation,
+		"serverNames": req.ServerNames,
+	}
+	if len(req.GPUIDs) > 0 {
+		body["gpuIds"] = req.GPUIDs
+	}
+	return body
 }
 
 func buildGPUUpdateBody(operation string, servers []ServerSpec) map[string]interface{} {
@@ -404,6 +454,9 @@ func attachWebhookFields(body map[string]interface{}, webhookURL string, webhook
 }
 
 func extractTenant(result interface{}) (*ones_gfx.Tenant, error) {
+	if _, ok := result.(string); ok {
+		return &ones_gfx.Tenant{}, nil
+	}
 	obj, ok := result.(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("unexpected result type: %T", result)

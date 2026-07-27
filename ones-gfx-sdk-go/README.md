@@ -52,21 +52,21 @@ import (
     "log"
     "time"
 
-    ones "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
+    ones_gfx "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
 )
 
 func main() {
     // 1. Set up JWT authentication
-    auth, err := ones.NewJWTAuth(
+    auth, err := ones_gfx.NewJWTAuth(
         "your-access-token",
         "your-refresh-token",
         "https://10.4.5.76:8089/refresh",
-        ones.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
+        ones_gfx.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
             fmt.Printf("Tokens refreshed, expires in %d seconds\n", expiresIn)
         }),
-        ones.WithAuthTLSVerify(false), // Only for dev/lab with self-signed certs
+        ones_gfx.WithAuthTLSVerify(false), // Only for dev/lab with self-signed certs
     )
     if err != nil {
         log.Fatal(err)
@@ -76,8 +76,8 @@ func main() {
     client := sdk.NewClient(
         "https://10.4.5.76:8089",
         auth,
-        ones.WithClientTimeout(20*time.Minute), // Default 30s, increase for long ops
-        ones.WithTLSVerify(false),               // Only for dev/lab
+        ones_gfx.WithClientTimeout(20*time.Minute), // Default 30s, increase for long ops
+        ones_gfx.WithTLSVerify(false),               // Only for dev/lab
     )
     defer client.Close()
 
@@ -108,12 +108,23 @@ func main() {
     // 5. Allocate GPUs with timeout override (15 minutes)
     servers := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
     err = client.Tenants.AllocateGPUs(ctx, "sdk", "demo-tenant", servers,
-        ones.WithTimeout(15*time.Minute), // Override client timeout for this call
+        ones_gfx.WithTimeout(15*time.Minute), // Override client timeout for this call
     )
     if err != nil {
         log.Fatal(err)
     }
     fmt.Println("GPUs allocated successfully")
+
+    //Assign specific ports — UFM / NMXC fabrics only (always synchronous mode)
+    req := resources.GpuPortAssignmentRequest{
+        ServerNames: []string{"su00-rack00-node00"},
+        GPUIDs:      []int{1, 2, 3},
+    }
+    err = client.Tenants.AssignPorts(ctx, "sdk", "demo-tenant", req)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Ports assigned successfully")
 
     // 6. Get tenant details
     updatedTenant, err := client.Tenants.Get(ctx, "sdk", "demo-tenant")
@@ -127,6 +138,13 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
+
+    //Unassign ports
+    err = client.Tenants.UnassignPorts(ctx, "sdk", "demo-tenant", req)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Ports unassigned successfully")
 
     // 8. Delete tenant
     err = client.Tenants.Delete(ctx, "sdk", "demo-tenant")
@@ -147,22 +165,22 @@ client := sdk.NewClient(baseURL, auth)
 
 // With options
 client := sdk.NewClient(baseURL, auth,
-    ones.WithClientTimeout(20*time.Minute),
-    ones.WithTLSVerify(false),
-    ones.WithTLSConfig(customTLSConfig),
+    ones_gfx.WithClientTimeout(20*time.Minute),
+    ones_gfx.WithTLSVerify(false),
+    ones_gfx.WithTLSConfig(customTLSConfig),
 )
 ```
 
 ### Authentication
 
 ```go
-auth, err := ones.NewJWTAuth(accessToken, refreshToken, refreshURL,
-    ones.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
+auth, err := ones_gfx.NewJWTAuth(accessToken, refreshToken, refreshURL,
+    ones_gfx.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
         // Persist tokens
     }),
-    ones.WithAuthTLSVerify(false),
-    ones.WithProactiveRefreshBuffer(10*time.Second),
-    ones.WithRefreshTimeout(10*time.Second),
+    ones_gfx.WithAuthTLSVerify(false),
+    ones_gfx.WithProactiveRefreshBuffer(10*time.Second),
+    ones_gfx.WithRefreshTimeout(10*time.Second),
 )
 if err != nil {
     log.Fatal(err)
@@ -172,7 +190,11 @@ if err != nil {
 ### Fabrics
 
 ```go
+// List
 fabrics, err := client.Fabrics.List(ctx)
+
+// Inventory sync — UFM enabled fabrics only
+err := client.Fabrics.InventorySync(ctx, fabricName)
 ```
 
 ### Tenants
@@ -190,13 +212,21 @@ servers, err := client.Tenants.AvailableServers(ctx, fabricName)
 // Convert hostnames to ServerSpec entries
 serverSpecs := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
 
+// Request body for Specific Gpus UFM / NMXC fabrics (But for UFM serverNames is {"hgx-su00-h00"} )
+req := resources.GpuPortAssignmentRequest{
+    ServerNames: []string{"su00-rack00-node00"},
+    GPUIDs:      []int{1, 2, 3},
+}
+
 // Create (sync)
 tenant, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
     Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
 })
 
 // Create (async)
-op, err := client.Tenants.CreateAsync(ctx, fabricName, req)
+op, err := client.Tenants.CreateAsync(ctx, fabricName, resources.CreateTenantRequest{
+    Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
+})
 
 // Delete (sync)
 err := client.Tenants.Delete(ctx, fabricName, tenantName)
@@ -207,7 +237,7 @@ op, err := client.Tenants.DeleteAsync(ctx, fabricName, tenantName)
 // Allocate GPUs (sync)
 err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName,
     serverSpecs,
-    ones.WithTimeout(15*time.Minute),
+    ones_gfx.WithTimeout(15*time.Minute),
 )
 
 // Allocate GPUs (async)
@@ -218,6 +248,18 @@ err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs)
 
 // Deallocate GPUs (async)
 op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
+
+// Assign specific ports — UFM / NMXC fabrics only (always sync)
+err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, req)
+
+// Assign all ports on each server (omit GPUIDs)
+err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
+
+// Unassign specific ports
+err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, req)
+
+// Unassign all ports on each server (omit GPUIDs)
+err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
 ```
 
 ### Partial GPU Allocation
@@ -261,7 +303,7 @@ All mutating methods support two execution modes:
 Blocks until the server completes the operation. Returns the result directly.
 
 ```go
-// Returns *ones.Tenant when done
+// Returns *ones_gfx.Tenant when done
 tenant, err := client.Tenants.Create(ctx, fabricName, req)
 ```
 
@@ -270,7 +312,7 @@ tenant, err := client.Tenants.Create(ctx, fabricName, req)
 Returns immediately with an Operation handle. You poll for completion.
 
 ```go
-// Returns *ones.Operation immediately
+// Returns *ones_gfx.Operation immediately
 op, err := client.Tenants.CreateAsync(ctx, fabricName, req)
 
 // Poll until done
@@ -294,7 +336,7 @@ Returns immediately. Server POSTs result to your webhook URL.
 
 ```go
 op, err := client.Tenants.CreateAsync(ctx, fabricName, req,
-    ones.WithWebhook("http://receiver:8000/hook", []string{"tenant.create"}))
+    ones_gfx.WithWebhook("http://receiver:8000/hook", []string{"tenant.create"}))
 
 fmt.Printf("Operation submitted: %s (webhook: %v)\n", 
     op.ID, op.WebhookRegistered)
@@ -310,18 +352,18 @@ Long-running operations (GPU allocate/deallocate) can take 10-15 minutes. Overri
 ```go
 // Client-level default: 20 minutes
 client := sdk.NewClient(baseURL, auth,
-    ones.WithClientTimeout(20*time.Minute))
+    ones_gfx.WithClientTimeout(20*time.Minute))
 
 // Per-call override: 15 minutes for this specific allocation
 err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName, servers,
-    ones.WithTimeout(15*time.Minute))
+    ones_gfx.WithTimeout(15*time.Minute))
 ```
 
 ---
 
 ## Error Handling
 
-All errors implement the `ones.ONESError` interface. Use `errors.As` to check types:
+All errors implement the `ones_gfx.ONESError` interface. Use `errors.As` to check types:
 
 ```go
 import "errors"
@@ -329,20 +371,20 @@ import "errors"
 tenant, err := client.Tenants.Get(ctx, fabricName, "nonexistent")
 if err != nil {
     // Check for specific error types
-    var notFound *ones.NotFoundError
+    var notFound *ones_gfx.NotFoundError
     if errors.As(err, &notFound) {
         fmt.Printf("Tenant not found (HTTP %d)\n", notFound.StatusCode)
         return
     }
     
-    var conflict *ones.ConflictError
+    var conflict *ones_gfx.ConflictError
     if errors.As(err, &conflict) {
         fmt.Println("Conflict:", conflict.Message)
         return
     }
     
     // Generic ONESError check
-    var onesErr ones.ONESError
+    var onesErr ones_gfx.ONESError
     if errors.As(err, &onesErr) {
         fmt.Println("SDK error:", err)
         return
@@ -414,17 +456,17 @@ import (
     "log"
     "time"
 
-    ones "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
+    ones_gfx "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
 )
 
 func main() {
-    auth, err := ones.NewJWTAuth(
+    auth, err := ones_gfx.NewJWTAuth(
         "YOUR_ACCESS_TOKEN",
         "YOUR_REFRESH_TOKEN",
         "https://YOUR_ONES_IP:8089/refresh",
-        ones.WithAuthTLSVerify(false),
+        ones_gfx.WithAuthTLSVerify(false),
     )
     if err != nil {
         log.Fatal(err)
@@ -433,8 +475,8 @@ func main() {
     client := sdk.NewClient(
         "https://YOUR_ONES_IP:8089",
         auth,
-        ones.WithTLSVerify(false),
-        ones.WithClientTimeout(20*time.Minute),
+        ones_gfx.WithTLSVerify(false),
+        ones_gfx.WithClientTimeout(20*time.Minute),
     )
     defer client.Close()
 
@@ -496,112 +538,6 @@ All tests passed!
 
 ---
 
-## API Reference
-
-### Client Construction
-
-```go
-// Minimal
-client := sdk.NewClient(baseURL, auth)
-
-// With options
-client := sdk.NewClient(baseURL, auth,
-    ones.WithClientTimeout(20*time.Minute),
-    ones.WithTLSVerify(false),
-    ones.WithTLSConfig(customTLSConfig),
-)
-```
-
-### Authentication
-
-```go
-auth, err := ones.NewJWTAuth(accessToken, refreshToken, refreshURL,
-    ones.WithTokenRefreshCallback(func(access, refresh string, expiresIn int) {
-        // Persist tokens
-    }),
-    ones.WithAuthTLSVerify(false),
-    ones.WithProactiveRefreshBuffer(10*time.Second),
-    ones.WithRefreshTimeout(10*time.Second),
-)
-if err != nil {
-    log.Fatal(err)
-}
-```
-
-### Fabrics
-
-```go
-fabrics, err := client.Fabrics.List(ctx)
-```
-
-### Tenants
-
-```go
-// List
-tenants, err := client.Tenants.List(ctx, fabricName)
-
-// Get
-tenant, err := client.Tenants.Get(ctx, fabricName, tenantName)
-
-// Available servers
-servers, err := client.Tenants.AvailableServers(ctx, fabricName)
-
-// Convert hostnames to ServerSpec entries
-serverSpecs := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
-
-// Create (sync)
-tenant, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
-    Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
-})
-
-// Create (async)
-op, err := client.Tenants.CreateAsync(ctx, fabricName, req)
-
-// Delete (sync)
-err := client.Tenants.Delete(ctx, fabricName, tenantName)
-
-// Delete (async)
-op, err := client.Tenants.DeleteAsync(ctx, fabricName, tenantName)
-
-// Allocate GPUs (sync)
-err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName,
-    serverSpecs,
-    ones.WithTimeout(15*time.Minute),
-)
-
-// Allocate GPUs (async)
-op, err := client.Tenants.AllocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
-
-// Deallocate GPUs (sync)
-err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs)
-
-// Deallocate GPUs (async)
-op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
-```
-
-### Operations
-
-```go
-op, err := client.Operations.Get(ctx, operationID)
-
-// Check status
-if op.IsDone() {
-    if op.IsSuccess() {
-        fmt.Println("Result:", op.Result)
-    } else {
-        fmt.Println("Error:", op.ErrorMessage)
-    }
-}
-```
-
-### VPC Peering
-
-```go
-result, err := client.Peering.Create(ctx, fabricName, name, vpcName, peerVPCName)
-```
-
----
-
 ## File Structure
 
 ```
@@ -609,7 +545,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 ├── go.mod                      # Module definition
 ├── README.md                   # This file
 ├── IMPLEMENTATION_STATUS.md    # Build status
-├── ones/                       # Core library (importable)
+├── ones_gfx/                   # Core library (importable)
 │   ├── auth.go                 # JWT authentication
 │   ├── transport.go            # HTTP client
 │   ├── enums.go                # Operation modes, statuses
@@ -638,7 +574,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 
 ```go
 client := sdk.NewClient(baseURL, auth,
-    ones.WithTLSVerify(false))
+    ones_gfx.WithTLSVerify(false))
 ```
 
 For production, provide a CA bundle:
@@ -656,7 +592,7 @@ tlsConfig := &tls.Config{
 }
 
 client := sdk.NewClient(baseURL, auth,
-    ones.WithTLSConfig(tlsConfig))
+    ones_gfx.WithTLSConfig(tlsConfig))
 ```
 
 ### Issue: `context deadline exceeded`
@@ -666,11 +602,11 @@ client := sdk.NewClient(baseURL, auth,
 ```go
 // Client-level
 client := sdk.NewClient(baseURL, auth,
-    ones.WithClientTimeout(20*time.Minute))
+    ones_gfx.WithClientTimeout(20*time.Minute))
 
 // Per-call
 err := client.Tenants.AllocateGPUs(ctx, ...,
-    ones.WithTimeout(15*time.Minute))
+    ones_gfx.WithTimeout(15*time.Minute))
 ```
 
 ### Issue: `authentication error: token refresh failed`
