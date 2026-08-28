@@ -25,7 +25,7 @@ Public API:
 
 from ._version import __version__
 from .auth import AuthBase, JWTAuth
-from .client import ONESClient
+from .client import Client, NotAuthenticatedError, ONESClient
 from .enums import (
     UNLIMITED_GPUS,
     ConfigStatus,
@@ -147,6 +147,8 @@ from .apis import (
 
 __all__ = [
     "__version__",
+    "Client",
+    "NotAuthenticatedError",
     "ONESClient",
     "AuthBase",
     "JWTAuth",

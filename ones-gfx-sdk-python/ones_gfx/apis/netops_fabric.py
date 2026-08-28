@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import NetOpsAction
-from ..client import get_client
+from ..client import Client
 
 
-def netops_fabric(fabricName: str, *, action: NetOpsAction, params: dict[str, str | int | list[str]]) -> bool:
-    client = get_client()
+def netops_fabric(client: Client, fabricName: str, *, action: NetOpsAction, params: dict[str, str | int | list[str]]) -> bool:
     path = f"netopsfabric/{fabricName}"
     body: dict[str, Any] = {}
     body["action"] = action

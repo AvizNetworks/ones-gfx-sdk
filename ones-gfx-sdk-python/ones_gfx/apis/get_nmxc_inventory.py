@@ -6,10 +6,9 @@ Full NMX-C inventory snapshot.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_nmxc_inventory(fabricName: str) -> dict[str, object]:
-    client = get_client()
+def get_nmxc_inventory(client: Client, fabricName: str) -> dict[str, object]:
     path = f"fabrics/{fabricName}/nmxc/inventory"
     return client.call_api("GET", path)

@@ -7,13 +7,12 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from ..client import get_client
+from ..client import Client
 
 HostAction = Literal["ADD", "DELETE"]
 
 
-def update_hosts(*, hostnames: list[str], hostAction: HostAction, tenantName: str, fabricName: str) -> bool:
-    client = get_client()
+def update_hosts(client: Client, *, hostnames: list[str], hostAction: HostAction, tenantName: str, fabricName: str) -> bool:
     path = "updateHosts"
     body: dict[str, Any] = {}
     body["hostnames"] = hostnames

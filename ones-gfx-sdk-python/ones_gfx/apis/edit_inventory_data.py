@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import InventoryItem
-from ..client import get_client
+from ..client import Client
 
 
-def edit_inventory_data(fabricName: str, *, items: list[InventoryItem]) -> str:
-    client = get_client()
+def edit_inventory_data(client: Client, fabricName: str, *, items: list[InventoryItem]) -> str:
     path = f"fabrics/{fabricName}/editInventoryData"
     return client.call_api("PATCH", path, json_body=items)

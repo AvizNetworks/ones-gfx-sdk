@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import SuidMap
-from ..client import get_client
+from ..client import Client
 
 
-def auto_allocate_gpus_to_tenants(*, fabricName: str, tenantName: str, autoAllocationDevicesNeed: int, suid: SuidMap | None = None) -> bool:
-    client = get_client()
+def auto_allocate_gpus_to_tenants(client: Client, *, fabricName: str, tenantName: str, autoAllocationDevicesNeed: int, suid: SuidMap | None = None) -> bool:
     path = "autoAllocateGpusToTenants"
     body: dict[str, Any] = {}
     body["fabricName"] = fabricName

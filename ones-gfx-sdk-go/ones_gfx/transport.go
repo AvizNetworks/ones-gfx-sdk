@@ -75,6 +75,12 @@ func (t *Transport) Delete(path string, body interface{}, mode OperationMode, ti
 	return t.request("DELETE", path, body, mode, timeout)
 }
 
+// SetBaseURL repoints the transport at a different base URL. Pass the Fabric
+// Manager base (see FMBaseURL), not the root URL.
+func (t *Transport) SetBaseURL(baseURL string) {
+	t.baseURL = baseURL
+}
+
 // Close releases HTTP resources.
 func (t *Transport) Close() error {
 	t.httpClient.CloseIdleConnections()

@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import DeviceConfigRestore
-from ..client import get_client
+from ..client import Client
 
 
-def restore_config(*, items: list[DeviceConfigRestore]) -> bool:
-    client = get_client()
+def restore_config(client: Client, *, items: list[DeviceConfigRestore]) -> bool:
     path = "restoreconfig"
     return client.call_api("POST", path, json_body=items)

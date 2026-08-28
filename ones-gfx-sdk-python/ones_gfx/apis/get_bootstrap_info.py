@@ -9,7 +9,7 @@ from typing import TypedDict
 
 
 from .._types import BootstrapsubnetItem
-from ..client import get_client
+from ..client import Client
 
 class BootstrapinfoRecord(TypedDict, total=False):
     """Models/Bootstrapinfo.java JSON (response)"""
@@ -41,7 +41,6 @@ class BootstrapinfoRecord(TypedDict, total=False):
     lastupdated: str
 
 
-def get_bootstrap_info() -> list[BootstrapinfoRecord]:
-    client = get_client()
+def get_bootstrap_info(client: Client) -> list[BootstrapinfoRecord]:
     path = "getbootstrapinfo"
     return client.call_api("GET", path)

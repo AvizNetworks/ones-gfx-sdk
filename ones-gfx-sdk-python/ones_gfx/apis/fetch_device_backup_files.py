@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from ..client import get_client
+from ..client import Client
 
 class FetchBackupFilesResult(TypedDict, total=False):
     """POST /fetchdevicebackupfiles"""
@@ -15,8 +15,7 @@ class FetchBackupFilesResult(TypedDict, total=False):
     fetchedConfig: str
 
 
-def fetch_device_backup_files(*, ip: str | None = None, timestamp: str | None = None) -> FetchBackupFilesResult:
-    client = get_client()
+def fetch_device_backup_files(client: Client, *, ip: str | None = None, timestamp: str | None = None) -> FetchBackupFilesResult:
     path = "fetchdevicebackupfiles"
     body: dict[str, Any] = {}
     if ip is not None:

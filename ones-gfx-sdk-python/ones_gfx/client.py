@@ -1,77 +1,56 @@
 """
 Main client entry point for the ONES Spectrum-X SDK.
 
-Single-token auth model: log in once, persist the token to a local
-``secrets.json``, and attach it as a raw ``authorization`` header on every
-subsequent request. The token is also exposed as the module-level global
-``auth_token``, which is populated from ``secrets.json`` on import.
+Single-token auth model, held per client instance: log in (or supply a token),
+and it is attached as a raw ``authorization`` header on every subsequent
+request. Nothing is stored globally or on disk — construct as many clients as
+you need, for different hosts or different users.
+
+Pass the client explicitly into the ``ones_gfx.apis`` functions::
+
+    from ones_gfx import Client
+    from ones_gfx.apis import get_all_fabrics
+
+    client = Client.initialize_with_creds("https://host:3002", "admin", "secret")
+    fabrics = get_all_fabrics(client)
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
-from pathlib import Path
 from typing import Any
 
 import requests
 
 from ._types import AuthResponse
 
-# Local file that persists the auth token between runs. Defined as a module
-# constant so the location is easy to change.
-SECRETS_FILE = Path("secrets.json")
-
-# Global auth token, populated on startup from SECRETS_FILE and refreshed on
-# every login/refresh. Sent as the raw ``authorization`` header.
-auth_token: str | None = None
-
 
 class NotAuthenticatedError(RuntimeError):
-    """Raised when an authenticated API call is made before login()."""
+    """Raised when an authenticated API call is made without a token."""
 
 
-def _load_token() -> str | None:
-    """Populate the global ``auth_token`` from ``secrets.json`` if present.
+class Client:
+    """A configured connection to one ONES instance.
 
-    Tolerates a missing file or malformed JSON by leaving the token as None.
+    Holds the base URL, the auth token, and (optionally) the credentials used to
+    obtain it. Prefer the :meth:`initialize_with_creds` / :meth:`initialize_with_token`
+    factories over the constructor.
     """
-    global auth_token
-    try:
-        data = json.loads(SECRETS_FILE.read_text())
-        auth_token = data.get("auth_token")
-    except (OSError, json.JSONDecodeError, ValueError):
-        auth_token = None
-    return auth_token
 
-
-def _save_token(token: str | None) -> None:
-    """Set the global token and persist it to ``secrets.json``.
-
-    Merges with any existing keys in the file so unrelated data is preserved.
-    """
-    global auth_token
-    auth_token = token
-    data: dict[str, Any] = {}
-    try:
-        existing = json.loads(SECRETS_FILE.read_text())
-        if isinstance(existing, dict):
-            data = existing
-    except (OSError, json.JSONDecodeError, ValueError):
-        data = {}
-    data["auth_token"] = token
-    SECRETS_FILE.write_text(json.dumps(data, indent=2))
-
-
-# Populate the global token on import.
-_load_token()
-
-
-class ONESClient:
-    def __init__(self, base_url: str, verify_tls: bool | str = True):
-        if not base_url:
-            raise ValueError("base_url is required.")
-        self.base_url = base_url.rstrip("/")
+    def __init__(
+        self,
+        baseUrl: str,
+        authToken: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        verify_tls: bool | str = True,
+    ) -> None:
+        if not baseUrl:
+            raise ValueError("baseUrl is required.")
+        self.baseUrl = baseUrl.rstrip("/")
+        self.authToken = authToken
+        self.username = username
+        self.password = password
         self.verify_tls = verify_tls
         self._session = requests.Session()
         # Silence the InsecureRequestWarning when TLS verification is off.
@@ -80,9 +59,177 @@ class ONESClient:
                 requests.packages.urllib3.exceptions.InsecureRequestWarning
             )
 
+    # ------------------------------------------------------------------
+    # Factories
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def initialize_with_creds(
+        cls,
+        baseUrl: str,
+        username: str,
+        password: str,
+        verify_tls: bool | str = True,
+    ) -> "Client":
+        """Build a client, log in, and store the returned token.
+
+        Raises whatever ``login`` raises if authentication fails, so a returned
+        client is always usable.
+        """
+        client = cls(
+            baseUrl=baseUrl,
+            username=username,
+            password=password,
+            verify_tls=verify_tls,
+        )
+        client.login()
+        return client
+
+    @classmethod
+    def initialize_with_token(
+        cls,
+        baseUrl: str,
+        token: str,
+        verify_tls: bool | str = True,
+    ) -> "Client":
+        """Build a client from an existing token.
+
+        Raises:
+            ValueError: if ``token`` is missing or empty.
+        """
+        if not token:
+            raise ValueError("token is required when initializing with a token.")
+        return cls(baseUrl=baseUrl, authToken=token, verify_tls=verify_tls)
+
+    # ------------------------------------------------------------------
+    # Getters / setters
+    # ------------------------------------------------------------------
+
+    def get_base_url(self) -> str:
+        return self.baseUrl
+
+    def set_base_url(self, baseUrl: str) -> None:
+        if not baseUrl:
+            raise ValueError("baseUrl is required.")
+        self.baseUrl = baseUrl.rstrip("/")
+
+    def get_auth_token(self) -> str | None:
+        return self.authToken
+
+    def set_auth_token(self, authToken: str | None) -> None:
+        self.authToken = authToken
+
+    def get_username(self) -> str | None:
+        return self.username
+
+    def set_username(self, username: str | None) -> None:
+        self.username = username
+
+    def get_password(self) -> str | None:
+        return self.password
+
+    def set_password(self, password: str | None) -> None:
+        self.password = password
+
+    # ------------------------------------------------------------------
+    # Token management
+    # ------------------------------------------------------------------
+
+    def update_token(self, token: str) -> None:
+        """Replace the stored token.
+
+        Unlike :meth:`set_auth_token` this rejects an empty value, so it is the
+        safer entry point when rotating a token.
+        """
+        if not token:
+            raise ValueError("token is required.")
+        self.authToken = token
+
+    def is_authenticated(self) -> bool:
+        """True when a token is held."""
+        return bool(self.authToken)
+
     def _auth_headers(self) -> dict[str, str]:
         """Header dict carrying the raw token, or empty when unauthenticated."""
-        return {"authorization": auth_token} if auth_token else {}
+        return {"authorization": self.authToken} if self.authToken else {}
+
+    # ------------------------------------------------------------------
+    # Session endpoints (/api/user/...)
+    # ------------------------------------------------------------------
+
+    def login(self, username: str | None = None, password: str | None = None) -> AuthResponse:
+        """Authenticate and store the returned token.
+
+        POST {baseUrl}/api/user/login with {"username", "password"}, falling back
+        to the credentials already on the client. Returns
+        ``{"data": {"message", "token", "isPwdResetNeeded"}}``.
+        """
+        user = username if username is not None else self.username
+        pwd = password if password is not None else self.password
+        if not user or not pwd:
+            raise ValueError("username and password are required to log in.")
+        # Remember them so refresh/re-login works without re-supplying.
+        self.username = user
+        self.password = pwd
+
+        response = self._session.post(
+            f"{self.baseUrl}/api/user/login",
+            json={"username": user, "password": pwd},
+            verify=self.verify_tls,
+        )
+        response.raise_for_status()
+        body = response.json()
+        token = body.get("data", {}).get("token")
+        if token:
+            self.authToken = token
+        return body
+
+    def refresh_auth(self) -> AuthResponse:
+        """Exchange the current token for a new one and store it.
+
+        POST {baseUrl}/api/user/refresh with the current token in the
+        ``authorization`` header. Returns ``{"data": {"message", "token"}}`` —
+        the same shape as login, with message "Token refreshed".
+
+        Raises:
+            NotAuthenticatedError: if there is no current token to exchange.
+        """
+        if not self.authToken:
+            raise NotAuthenticatedError(
+                "Not authenticated: no token to refresh. Call login() first."
+            )
+        response = self._session.post(
+            f"{self.baseUrl}/api/user/refresh",
+            headers=self._auth_headers(),
+            verify=self.verify_tls,
+        )
+        response.raise_for_status()
+        body = response.json()
+        token = body.get("data", {}).get("token")
+        if token:
+            self.update_token(token)
+        return body
+
+    def logout(self) -> Any:
+        """Log out server-side, then clear the stored token.
+
+        POST {baseUrl}/api/user/logout with the auth header. The local token is
+        cleared regardless of the server's response.
+        """
+        try:
+            response = self._session.post(
+                f"{self.baseUrl}/api/user/logout",
+                headers=self._auth_headers(),
+                verify=self.verify_tls,
+            )
+            body = response.json() if response.content else None
+        finally:
+            self.authToken = None
+        return body
+
+    # ------------------------------------------------------------------
+    # Request plumbing
+    # ------------------------------------------------------------------
 
     def call_api(
         self,
@@ -97,7 +244,7 @@ class ONESClient:
     ) -> Any:
         """Call a Fabric Manager endpoint under ``/api/fm/``.
 
-        This is the shared entry point used by every generated method in
+        This is the shared entry point used by every function in
         ``ones_gfx.apis``. It enforces the auth guard, prefixes the path with
         ``/api/fm/``, attaches the raw ``authorization`` header, and unwraps the
         standard ``{"data": ...}`` response envelope when present.
@@ -114,13 +261,13 @@ class ONESClient:
             extra_headers: Additional request headers (e.g. ``Prefer``).
 
         Raises:
-            NotAuthenticatedError: if no auth token is set (login() not called).
+            NotAuthenticatedError: if no auth token is set.
         """
-        if not auth_token:
+        if not self.authToken:
             raise NotAuthenticatedError(
                 "Not authenticated: call login() before calling Fabric Manager APIs."
             )
-        url = f"{self.base_url}/api/fm/{path.lstrip('/')}"
+        url = f"{self.baseUrl}/api/fm/{path.lstrip('/')}"
         headers = self._auth_headers()
         if extra_headers:
             headers.update(extra_headers)
@@ -145,71 +292,14 @@ class ONESClient:
             return body["data"]
         return body
 
-    def login(self, username: str, password: str) -> AuthResponse:
-        """Authenticate and persist the returned token.
-
-        POST {base_url}/api/user/login with {"username", "password"}. Returns
-        ``{"data": {"message", "token", "isPwdResetNeeded"}}``; stores
-        ``data.token`` and returns the full parsed response.
-        """
-        response = self._session.post(
-            f"{self.base_url}/api/user/login",
-            json={"username": username, "password": password},
-            verify=self.verify_tls,
-        )
-        response.raise_for_status()
-        body = response.json()
-        token = body.get("data", {}).get("token")
-        if token:
-            _save_token(token)
-        return body
-
-    def refresh(self) -> AuthResponse:
-        """Refresh the auth token and persist it.
-
-        POST {base_url}/api/user/refresh with the current token in the
-        ``authorization`` header. Returns ``{"data": {"message", "token"}}`` —
-        the same shape as login, but with message "Token refreshed" and no
-        ``isPwdResetNeeded``. Stores the new ``data.token`` in the same place as
-        login (global + secrets.json) and returns the full parsed response.
-        """
-        response = self._session.post(
-            f"{self.base_url}/api/user/refresh",
-            headers=self._auth_headers(),
-            verify=self.verify_tls,
-        )
-        response.raise_for_status()
-        body = response.json()
-        token = body.get("data", {}).get("token")
-        if token:
-            _save_token(token)
-        return body
-
-    def logout(self) -> Any:
-        """Log out server-side, then clear the local token.
-
-        POST {base_url}/api/logout with the auth header, then blank the global
-        and the ``auth_token`` field in ``secrets.json`` regardless of outcome.
-        """
-        try:
-            response = self._session.post(
-                f"{self.base_url}/api/user/logout",
-                headers=self._auth_headers(),
-                verify=self.verify_tls,
-            )
-            body = response.json() if response.content else None
-        finally:
-            _save_token(None)
-        return body
-
-    def getTeleDevices(self) -> Any:
+    def get_tele_devices(self) -> Any:
         """Fetch the inventory devices list.
 
-        GET {base_url}/api/inventory/Devices with the auth header. Returns the
+        GET {baseUrl}/api/inventory/Devices with the auth header. Returns the
         ``data`` field of the response when present, otherwise the full body.
         """
         response = self._session.get(
-            f"{self.base_url}/api/inventory/Devices",
+            f"{self.baseUrl}/api/inventory/Devices",
             headers=self._auth_headers(),
             verify=self.verify_tls,
         )
@@ -219,23 +309,16 @@ class ONESClient:
             return body["data"]
         return body
 
+    def close(self) -> None:
+        """Release the underlying HTTP session."""
+        self._session.close()
 
-# Shared client used by the ones_gfx.apis functions. Configure it once at
-# startup with configure(); the api modules import get_client() and use it.
-_client: ONESClient | None = None
+    def __enter__(self) -> "Client":
+        return self
 
-
-def configure(base_url: str, verify_tls: bool | str = True) -> ONESClient:
-    """Create and register the shared client used by ones_gfx.apis."""
-    global _client
-    _client = ONESClient(base_url, verify_tls=verify_tls)
-    return _client
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
 
-def get_client() -> ONESClient:
-    """Return the shared client, or raise if configure() was never called."""
-    if _client is None:
-        raise RuntimeError(
-            "Client not configured: call ones_gfx.client.configure(base_url) first."
-        )
-    return _client
+# Backwards-compatible alias for the previous class name.
+ONESClient = Client

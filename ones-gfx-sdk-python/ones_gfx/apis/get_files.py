@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class GetFilesResult(TypedDict, total=False):
     """GET /getfiles/{filetype} — files is a grouped map (ALL) or a list (typed)"""
@@ -20,7 +20,6 @@ class GetFilesResult(TypedDict, total=False):
     error: str
 
 
-def get_files(filetype: str) -> GetFilesResult:
-    client = get_client()
+def get_files(client: Client, filetype: str) -> GetFilesResult:
     path = f"getfiles/{filetype}"
     return client.call_api("GET", path)

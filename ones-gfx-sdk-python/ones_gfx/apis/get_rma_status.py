@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from ..client import get_client
+from ..client import Client
 
 class RMAStatusItem(TypedDict, total=False):
     """Models/RMAStatus.java JSON"""
@@ -22,8 +22,7 @@ class RMAStatusItem(TypedDict, total=False):
     tasktitle: str
 
 
-def get_rma_status(*, rmaInfoId: int) -> list[RMAStatusItem]:
-    client = get_client()
+def get_rma_status(client: Client, *, rmaInfoId: int) -> list[RMAStatusItem]:
     path = "getrmastatus"
     params: dict[str, Any] = {}
     params["rmaInfoId"] = rmaInfoId

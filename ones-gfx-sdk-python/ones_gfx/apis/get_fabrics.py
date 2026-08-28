@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class FabricsListResponse(TypedDict):
     """GET /fabrics"""
@@ -32,7 +32,6 @@ class FabricDtoItem(TypedDict, total=False):
     updatedAt: str
 
 
-def get_fabrics() -> FabricsListResponse:
-    client = get_client()
+def get_fabrics(client: Client) -> FabricsListResponse:
     path = "fabrics"
     return client.call_api("GET", path)

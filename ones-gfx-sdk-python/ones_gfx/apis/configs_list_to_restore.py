@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def configs_list_to_restore(*, devices: list[str] | None = None, onlylimited: bool | None = None) -> str | None:
-    client = get_client()
+def configs_list_to_restore(client: Client, *, devices: list[str] | None = None, onlylimited: bool | None = None) -> str | None:
     path = "configslisttorestore"
     body: dict[str, Any] = {}
     if devices is not None:

@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def stop_streaming(*, filename: str) -> str:
-    client = get_client()
+def stop_streaming(client: Client, *, filename: str) -> str:
     path = "stop"
     params: dict[str, Any] = {}
     params["filename"] = filename

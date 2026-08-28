@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class DeleteFileResult(TypedDict, total=False):
     """DELETE /deletefile/{id}"""
@@ -19,7 +19,6 @@ class DeleteFileResult(TypedDict, total=False):
     error: str
 
 
-def delete_file(id: str) -> DeleteFileResult:
-    client = get_client()
+def delete_file(client: Client, id: str) -> DeleteFileResult:
     path = f"deletefile/{id}"
     return client.call_api("DELETE", path)

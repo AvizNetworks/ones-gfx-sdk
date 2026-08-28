@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import GpuItem
-from ..client import get_client
+from ..client import Client
 
 
-def get_gpus_by_host(hostName: str, fabricName: str) -> list[GpuItem]:
-    client = get_client()
+def get_gpus_by_host(client: Client, hostName: str, fabricName: str) -> list[GpuItem]:
     path = f"getGpusByHost/{hostName}/{fabricName}"
     return client.call_api("GET", path)

@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import FabricItem
-from ..client import get_client
+from ..client import Client
 
 
-def get_all_fabrics() -> list[FabricItem]:
-    client = get_client()
+def get_all_fabrics(client: Client) -> list[FabricItem]:
     path = "getAllFabrics"
     return client.call_api("GET", path)

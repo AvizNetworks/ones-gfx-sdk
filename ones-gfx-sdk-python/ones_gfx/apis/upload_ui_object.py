@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import DeviceItem, ParametersItem, QosItem, QosmappingItem, SchedulerItem
-from ..client import get_client
+from ..client import Client
 
 
-def upload_ui_object(*, x_request_origin: str | None = None, id: int | None = None, name: str | None = None, fabricId: int | None = None, orchestrationMode: str | None = None, sspineCount: int | None = None, spineCount: int | None = None, leafCount: int | None = None, fec: str | None = None, mtu: str | None = None, adminStatus: str | None = None, asnSSpine: str | None = None, isAsnSSpineUnique: bool | None = None, asnLeaf: str | None = None, isAsnLeafUnique: bool | None = None, asnSpine: str | None = None, isAsnSpineUnique: bool | None = None, ntpServer: str | None = None, timezone: str | None = None, sysLogServer: str | None = None, snmpServer: str | None = None, isBGP_U: bool | None = None, isTorPresent: bool | None = None, ND_RA: int | None = None, isactive: bool | None = None, logs: str | None = None, issag: bool | None = None, dhcpServerIps: str | None = None, dhcpRelaySrcInterface: str | None = None, dhcpRelaySrcInterfaceIP: str | None = None, devices: list[DeviceItem] | None = None, qosmappings: list[QosmappingItem] | None = None, schedulers: list[SchedulerItem] | None = None, QoS: QosItem | None = None, parameters: ParametersItem | None = None) -> str:
-    client = get_client()
+def upload_ui_object(client: Client, *, x_request_origin: str | None = None, id: int | None = None, name: str | None = None, fabricId: int | None = None, orchestrationMode: str | None = None, sspineCount: int | None = None, spineCount: int | None = None, leafCount: int | None = None, fec: str | None = None, mtu: str | None = None, adminStatus: str | None = None, asnSSpine: str | None = None, isAsnSSpineUnique: bool | None = None, asnLeaf: str | None = None, isAsnLeafUnique: bool | None = None, asnSpine: str | None = None, isAsnSpineUnique: bool | None = None, ntpServer: str | None = None, timezone: str | None = None, sysLogServer: str | None = None, snmpServer: str | None = None, isBGP_U: bool | None = None, isTorPresent: bool | None = None, ND_RA: int | None = None, isactive: bool | None = None, logs: str | None = None, issag: bool | None = None, dhcpServerIps: str | None = None, dhcpRelaySrcInterface: str | None = None, dhcpRelaySrcInterfaceIP: str | None = None, devices: list[DeviceItem] | None = None, qosmappings: list[QosmappingItem] | None = None, schedulers: list[SchedulerItem] | None = None, QoS: QosItem | None = None, parameters: ParametersItem | None = None) -> str:
     path = "uploadUIObject"
     headers: dict[str, str] = {}
     if x_request_origin is not None:

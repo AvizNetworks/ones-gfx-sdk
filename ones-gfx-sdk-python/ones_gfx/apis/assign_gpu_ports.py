@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from .._types import GpuAction
-from ..client import get_client
+from ..client import Client
 
 class GpuPortAssignmentResult(TypedDict, total=False):
     """POST .../tenants/{tenantName}/gpus"""
@@ -24,8 +24,7 @@ class GpuPortAssignmentResult(TypedDict, total=False):
     gpuIdsProcessed: int | None
 
 
-def assign_gpu_ports(fabricName: str, tenantName: str, *, operation: GpuAction, serverNames: list[str] | None = None, gpuIds: list[int] | None = None, membership: str | None = None) -> GpuPortAssignmentResult:
-    client = get_client()
+def assign_gpu_ports(client: Client, fabricName: str, tenantName: str, *, operation: GpuAction, serverNames: list[str] | None = None, gpuIds: list[int] | None = None, membership: str | None = None) -> GpuPortAssignmentResult:
     path = f"fabrics/{fabricName}/tenants/{tenantName}/gpus"
     body: dict[str, Any] = {}
     body["operation"] = operation

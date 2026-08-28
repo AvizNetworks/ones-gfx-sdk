@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class OperationStatusItem(TypedDict, total=False):
     """Models/OperationStatus.java — GET /operations/{operationId}"""
@@ -29,7 +29,6 @@ class OperationStatusItem(TypedDict, total=False):
     fabricName: str
 
 
-def get_operation(operationId: str) -> OperationStatusItem:
-    client = get_client()
+def get_operation(client: Client, operationId: str) -> OperationStatusItem:
     path = f"operations/{operationId}"
     return client.call_api("GET", path)

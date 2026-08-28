@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def replace_config(*, deviceip: str, file: str, onlydiff: bool | None = None) -> object:
-    client = get_client()
+def replace_config(client: Client, *, deviceip: str, file: str, onlydiff: bool | None = None) -> object:
     path = "replaceConfig"
     params: dict[str, Any] = {}
     params["deviceip"] = deviceip

@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def update_fabric_status(*, name: str, status: str | None = None, intent: str | None = None, description: str | None = None, deploymentType: str | None = None) -> str:
-    client = get_client()
+def update_fabric_status(client: Client, *, name: str, status: str | None = None, intent: str | None = None, description: str | None = None, deploymentType: str | None = None) -> str:
     path = "updateFabricStatus"
     body: dict[str, Any] = {}
     body["name"] = name

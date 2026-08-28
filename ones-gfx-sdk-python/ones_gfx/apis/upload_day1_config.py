@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def upload_day1_config(*, file: str, x_request_origin: str | None = None) -> str:
-    client = get_client()
+def upload_day1_config(client: Client, *, file: str, x_request_origin: str | None = None) -> str:
     path = "uploadDay1Config"
     headers: dict[str, str] = {}
     if x_request_origin is not None:

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class TriggerBootstrapResult(TypedDict):
     """POST /triggerbootstrapconfig"""
@@ -17,7 +17,6 @@ class TriggerBootstrapResult(TypedDict):
     message: str
 
 
-def trigger_bootstrap_config() -> TriggerBootstrapResult:
-    client = get_client()
+def trigger_bootstrap_config(client: Client) -> TriggerBootstrapResult:
     path = "triggerbootstrapconfig"
     return client.call_api("POST", path)

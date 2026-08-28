@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def update_fabric_sim_status(*, name: str, status: str | None = None) -> str:
-    client = get_client()
+def update_fabric_sim_status(client: Client, *, name: str, status: str | None = None) -> str:
     path = "updateFabricSimStatus"
     body: dict[str, Any] = {}
     body["name"] = name

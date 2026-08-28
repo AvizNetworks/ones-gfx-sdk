@@ -6,10 +6,9 @@ Returns the literal string 'uploadStatus'.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_upload_status() -> str:
-    client = get_client()
+def get_upload_status(client: Client) -> str:
     path = "uploadStatus"
     return client.call_api("GET", path)

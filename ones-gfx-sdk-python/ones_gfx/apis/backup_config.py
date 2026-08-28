@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class DeviceConfigBackup(TypedDict):
     """Helper/DeviceConfigBackup.java"""
@@ -17,7 +17,6 @@ class DeviceConfigBackup(TypedDict):
     label: str
 
 
-def backup_config(*, items: list[DeviceConfigBackup]) -> bool:
-    client = get_client()
+def backup_config(client: Client, *, items: list[DeviceConfigBackup]) -> bool:
     path = "backupConfig"
     return client.call_api("POST", path, json_body=items)

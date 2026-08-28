@@ -3,10 +3,9 @@ package ones
 // types.go re-exports the types, constants and options a caller needs, so
 // `ones` is the only package you have to import:
 //
-//	client := ones.Init("https://host:3002")
-//	client.Login(user, pass)
-//	fabrics, err := ones.GetAllFabrics(ctx)
-//	msg, err := ones.CreateFabric(ctx, "f1", &ones.FabricCreateArgs{Type: ones.Ptr("DNO ASN")})
+//	client, err := ones.InitializeWithCreds("https://host:3002", "user", "pass")
+//	fabrics, err := ones.GetAllFabrics(ctx, client)
+//	msg, err := ones.CreateFabric(ctx, client, "f1", &ones.FabricCreateArgs{Type: ones.Ptr("DNO ASN")})
 //
 // These are Go type aliases, so ones.FabricCreateArgs and
 // resources.FabricCreateArgs are the same type and interchangeable.
@@ -129,9 +128,6 @@ const (
 
 // --- errors -----------------------------------------------------------------
 
-// ErrNotAuthenticated is returned by TokenAuth.Refresh when no token is held.
-var ErrNotAuthenticated = ones_gfx.ErrNotAuthenticated
-
 // --- options and helpers ----------------------------------------------------
 
 var (
@@ -159,18 +155,6 @@ var (
 	// NewJWTAuth builds bearer-token auth for servers using the JWT pair flow.
 	NewJWTAuth = ones_gfx.NewJWTAuth
 
-	// NewTokenAuth builds single-token auth (the flow Init uses).
-	NewTokenAuth = ones_gfx.NewTokenAuth
-
 	// FMBaseURL turns a root base URL into the /api/fm/ resource base.
 	FMBaseURL = ones_gfx.FMBaseURL
-
-	// Authenticated reports whether an auth token is currently held.
-	Authenticated = ones_gfx.Authenticated
-
-	// LoadToken loads the persisted token from the secrets file.
-	LoadToken = ones_gfx.LoadToken
-
-	// SaveToken persists a token to the secrets file.
-	SaveToken = ones_gfx.SaveToken
 )

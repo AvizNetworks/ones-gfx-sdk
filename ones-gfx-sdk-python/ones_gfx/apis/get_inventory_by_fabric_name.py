@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import InventoryRecord
-from ..client import get_client
+from ..client import Client
 
 
-def get_inventory_by_fabric_name(name: str) -> list[InventoryRecord]:
-    client = get_client()
+def get_inventory_by_fabric_name(client: Client, name: str) -> list[InventoryRecord]:
     path = f"getInventoryByFabricName/{name}"
     return client.call_api("GET", path)

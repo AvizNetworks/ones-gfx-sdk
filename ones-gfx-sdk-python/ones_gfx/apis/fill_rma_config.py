@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import RMAInfoItem
-from ..client import get_client
+from ..client import Client
 
 
-def fill_rma_config(*, items: list[RMAInfoItem]) -> bool:
-    client = get_client()
+def fill_rma_config(client: Client, *, items: list[RMAInfoItem]) -> bool:
     path = "fillrmaconfig"
     return client.call_api("POST", path, json_body=items)

@@ -6,10 +6,9 @@ Device facts/versions.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_version(*, payload: list[str]) -> list[object]:
-    client = get_client()
+def get_version(client: Client, *, payload: list[str]) -> list[object]:
     path = "getVersion"
     return client.call_api("POST", path, json_body=payload)

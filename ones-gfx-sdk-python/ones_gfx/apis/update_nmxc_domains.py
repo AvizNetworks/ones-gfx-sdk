@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from .._types import GpuAction, NmxcDomain
-from ..client import get_client
+from ..client import Client
 
 class NmxcDomainsUpdateResult(TypedDict, total=False):
     """PATCH .../nmxc/domains — failure keys present only on partial failure (207)"""
@@ -19,8 +19,7 @@ class NmxcDomainsUpdateResult(TypedDict, total=False):
     notDeregistered: list[dict[str, object]]
 
 
-def update_nmxc_domains(fabricName: str, *, domains: list[NmxcDomain], operation: GpuAction) -> NmxcDomainsUpdateResult:
-    client = get_client()
+def update_nmxc_domains(client: Client, fabricName: str, *, domains: list[NmxcDomain], operation: GpuAction) -> NmxcDomainsUpdateResult:
     path = f"fabrics/{fabricName}/nmxc/domains"
     body: dict[str, Any] = {}
     body["operation"] = operation

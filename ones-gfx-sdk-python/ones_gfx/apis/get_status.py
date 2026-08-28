@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_status(*, fileName: str | None = None) -> list[str] | None:
-    client = get_client()
+def get_status(client: Client, *, fileName: str | None = None) -> list[str] | None:
     path = "status"
     params: dict[str, Any] = {}
     if fileName is not None:

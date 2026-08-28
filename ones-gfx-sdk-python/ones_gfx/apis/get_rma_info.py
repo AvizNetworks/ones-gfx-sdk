@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class RMAInfoRecord(TypedDict, total=False):
     """Models/RMAInfo.java JSON (response)"""
@@ -30,7 +30,6 @@ class RMAInfoRecord(TypedDict, total=False):
     triggertime: str
 
 
-def get_rma_info() -> list[RMAInfoRecord]:
-    client = get_client()
+def get_rma_info(client: Client) -> list[RMAInfoRecord]:
     path = "getrmainfo"
     return client.call_api("GET", path)

@@ -6,10 +6,9 @@ Delete simulation.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def delete_fabric_sim(name: str) -> str:
-    client = get_client()
+def delete_fabric_sim(client: Client, name: str) -> str:
     path = f"delFabricSim/{name}"
     return client.call_api("DELETE", path)

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class WebhookDeliveryStatus(TypedDict, total=False):
     """GET /operations/{operationId}/webhook-status"""
@@ -31,7 +31,6 @@ class WebhookDeliveryAttempt(TypedDict, total=False):
     attemptedAt: str
 
 
-def get_operation_webhook_status(operationId: str) -> WebhookDeliveryStatus:
-    client = get_client()
+def get_operation_webhook_status(client: Client, operationId: str) -> WebhookDeliveryStatus:
     path = f"operations/{operationId}/webhook-status"
     return client.call_api("GET", path)

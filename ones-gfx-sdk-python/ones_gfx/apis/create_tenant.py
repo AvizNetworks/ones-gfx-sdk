@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import OperationAccepted
-from ..client import get_client
+from ..client import Client
 
 
-def create_tenant(fabricName: str, *, tenantName: str, prefer: str | None = None, idempotency_key: str | None = None, description: str | None = None, maxGpusAllowed: int | None = None, shared: bool | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> str | OperationAccepted:
-    client = get_client()
+def create_tenant(client: Client, fabricName: str, *, tenantName: str, prefer: str | None = None, idempotency_key: str | None = None, description: str | None = None, maxGpusAllowed: int | None = None, shared: bool | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> str | OperationAccepted:
     path = f"fabrics/{fabricName}/tenants"
     headers: dict[str, str] = {}
     if prefer is not None:

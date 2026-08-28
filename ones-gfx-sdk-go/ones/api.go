@@ -1,928 +1,826 @@
 package ones
 
 // api.go exposes every Fabric Manager endpoint as a package-level function,
-// mirroring the flat apis surface of the Python SDK. Each function resolves
-// the shared client configured by Configure and enforces the auth guard, so
-// calls fail with ErrNotAuthenticated until Login succeeds.
+// mirroring the flat apis surface of the Python SDK. Each function takes the
+// *Client explicitly — there is no shared global. Calls fail with
+// ErrNotAuthenticated until Login succeeds.
 //
 // Generated from the resource method set — edit the generator, not this file.
 
 import "context"
 
 // AddDeviceFacts calls Devices.AddFacts.
-func AddDeviceFacts(ctx context.Context, items []DeviceDetail) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func AddDeviceFacts(ctx context.Context, client *Client, items []DeviceDetail) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.AddFacts(ctx, items)
+	return client.Devices.AddFacts(ctx, items)
 }
 
 // AddHostTenantData calls HostTenants.Add.
-func AddHostTenantData(ctx context.Context, name, fabricName string, description *string, hostsAllocated *int, vniID *int, configStatus *string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func AddHostTenantData(ctx context.Context, client *Client, name, fabricName string, description *string, hostsAllocated *int, vniID *int, configStatus *string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.HostTenants.Add(ctx, name, fabricName, description, hostsAllocated, vniID, configStatus)
+	return client.HostTenants.Add(ctx, name, fabricName, description, hostsAllocated, vniID, configStatus)
 }
 
 // AddInventoryData calls Inventory.Add.
-func AddInventoryData(ctx context.Context, items []InventoryItem) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func AddInventoryData(ctx context.Context, client *Client, items []InventoryItem) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Inventory.Add(ctx, items)
+	return client.Inventory.Add(ctx, items)
 }
 
 // AssignGpuPorts calls GPU.AssignPorts.
-func AssignGpuPorts(ctx context.Context, fabricName, tenantName string, operation GpuAction, serverNames []string, gpuIds []int, membership *string) (*GpuPortAssignmentResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func AssignGpuPorts(ctx context.Context, client *Client, fabricName, tenantName string, operation GpuAction, serverNames []string, gpuIds []int, membership *string) (*GpuPortAssignmentResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.AssignPorts(ctx, fabricName, tenantName, operation, serverNames, gpuIds, membership)
+	return client.GPU.AssignPorts(ctx, fabricName, tenantName, operation, serverNames, gpuIds, membership)
 }
 
 // AutoAllocateGpusToTenants calls Tenants.AutoAllocate.
-func AutoAllocateGpusToTenants(ctx context.Context, fabricName, tenantName string, autoAllocationDevicesNeed int, suid SuidMap) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func AutoAllocateGpusToTenants(ctx context.Context, client *Client, fabricName, tenantName string, autoAllocationDevicesNeed int, suid SuidMap) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Tenants.AutoAllocate(ctx, fabricName, tenantName, autoAllocationDevicesNeed, suid)
+	return client.Tenants.AutoAllocate(ctx, fabricName, tenantName, autoAllocationDevicesNeed, suid)
 }
 
 // BackupConfig calls ConfigMgmt.Backup.
-func BackupConfig(ctx context.Context, items []DeviceConfigBackup) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func BackupConfig(ctx context.Context, client *Client, items []DeviceConfigBackup) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.ConfigMgmt.Backup(ctx, items)
+	return client.ConfigMgmt.Backup(ctx, items)
 }
 
 // ConfigsListToRestore calls ConfigMgmt.ListToRestore.
-func ConfigsListToRestore(ctx context.Context, devices []string, onlylimited *bool) (*string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ConfigsListToRestore(ctx context.Context, client *Client, devices []string, onlylimited *bool) (*string, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.ConfigMgmt.ListToRestore(ctx, devices, onlylimited)
+	return client.ConfigMgmt.ListToRestore(ctx, devices, onlylimited)
 }
 
 // CreateFabric calls Fabrics.Create.
-func CreateFabric(ctx context.Context, name string, args *FabricCreateArgs) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func CreateFabric(ctx context.Context, client *Client, name string, args *FabricCreateArgs) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabrics.Create(ctx, name, args)
+	return client.Fabrics.Create(ctx, name, args)
 }
 
 // CreateFabricSim calls Fabricsims.Create.
-func CreateFabricSim(ctx context.Context, id *int, fabricName, simulationID, username, token, orgUUID, status, uiLink *string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func CreateFabricSim(ctx context.Context, client *Client, id *int, fabricName, simulationID, username, token, orgUUID, status, uiLink *string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabricsims.Create(ctx, id, fabricName, simulationID, username, token, orgUUID, status, uiLink)
+	return client.Fabricsims.Create(ctx, id, fabricName, simulationID, username, token, orgUUID, status, uiLink)
 }
 
 // CreateTenant calls Tenants.Create.
-func CreateTenant(ctx context.Context, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...CallOption) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func CreateTenant(ctx context.Context, client *Client, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Tenants.Create(ctx, fabricName, tenantName, description, maxGpusAllowed, shared, opts...)
+	return client.Tenants.Create(ctx, fabricName, tenantName, description, maxGpusAllowed, shared, opts...)
 }
 
 // CreateTenantAsync calls Tenants.CreateAsync.
-func CreateTenantAsync(ctx context.Context, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...CallOption) (*OperationAccepted, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func CreateTenantAsync(ctx context.Context, client *Client, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.CreateAsync(ctx, fabricName, tenantName, description, maxGpusAllowed, shared, opts...)
+	return client.Tenants.CreateAsync(ctx, fabricName, tenantName, description, maxGpusAllowed, shared, opts...)
 }
 
 // CreateVpcPeering calls VPCPeering.Create.
-func CreateVpcPeering(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func CreateVpcPeering(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.VPCPeering.Create(ctx, fabricName, name, vpcname, peervpcname, opts...)
+	return client.VPCPeering.Create(ctx, fabricName, name, vpcname, peervpcname, opts...)
 }
 
 // CreateVpcPeeringAsync calls VPCPeering.CreateAsync.
-func CreateVpcPeeringAsync(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (*OperationAccepted, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func CreateVpcPeeringAsync(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.VPCPeering.CreateAsync(ctx, fabricName, name, vpcname, peervpcname, opts...)
+	return client.VPCPeering.CreateAsync(ctx, fabricName, name, vpcname, peervpcname, opts...)
 }
 
 // DeleteFabric calls Fabrics.Delete.
-func DeleteFabric(ctx context.Context, name string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func DeleteFabric(ctx context.Context, client *Client, name string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabrics.Delete(ctx, name)
+	return client.Fabrics.Delete(ctx, name)
 }
 
 // DeleteFabricSim calls Fabricsims.Delete.
-func DeleteFabricSim(ctx context.Context, name string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func DeleteFabricSim(ctx context.Context, client *Client, name string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabricsims.Delete(ctx, name)
+	return client.Fabricsims.Delete(ctx, name)
 }
 
 // DeleteFile calls Files.Delete.
-func DeleteFile(ctx context.Context, id int) (*DeleteFileResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func DeleteFile(ctx context.Context, client *Client, id int) (*DeleteFileResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Files.Delete(ctx, id)
+	return client.Files.Delete(ctx, id)
 }
 
 // DeleteHostTenantData calls HostTenants.Delete.
-func DeleteHostTenantData(ctx context.Context, fabricName, tenantName string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func DeleteHostTenantData(ctx context.Context, client *Client, fabricName, tenantName string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.HostTenants.Delete(ctx, fabricName, tenantName)
+	return client.HostTenants.Delete(ctx, fabricName, tenantName)
 }
 
 // DeleteTenant calls Tenants.Delete.
-func DeleteTenant(ctx context.Context, fabricName, tenantName string, opts ...CallOption) (*ApiResponseMessage, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func DeleteTenant(ctx context.Context, client *Client, fabricName, tenantName string, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.Delete(ctx, fabricName, tenantName, opts...)
+	return client.Tenants.Delete(ctx, fabricName, tenantName, opts...)
 }
 
 // DeleteTenantAsync calls Tenants.DeleteAsync.
-func DeleteTenantAsync(ctx context.Context, fabricName, tenantName string, opts ...CallOption) (*OperationAccepted, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func DeleteTenantAsync(ctx context.Context, client *Client, fabricName, tenantName string, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.DeleteAsync(ctx, fabricName, tenantName, opts...)
+	return client.Tenants.DeleteAsync(ctx, fabricName, tenantName, opts...)
 }
 
 // DeleteVpcPeering calls VPCPeering.Delete.
-func DeleteVpcPeering(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func DeleteVpcPeering(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.VPCPeering.Delete(ctx, fabricName, name, vpcname, peervpcname, opts...)
+	return client.VPCPeering.Delete(ctx, fabricName, name, vpcname, peervpcname, opts...)
 }
 
 // EditFabric calls Fabrics.Update.
-func EditFabric(ctx context.Context, fabricName string, args *FabricCreateArgs) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func EditFabric(ctx context.Context, client *Client, fabricName string, args *FabricCreateArgs) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabrics.Update(ctx, fabricName, args)
+	return client.Fabrics.Update(ctx, fabricName, args)
 }
 
 // EditInventoryData calls Inventory.Edit.
-func EditInventoryData(ctx context.Context, fabricName string, items []InventoryItem) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func EditInventoryData(ctx context.Context, client *Client, fabricName string, items []InventoryItem) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Inventory.Edit(ctx, fabricName, items)
+	return client.Inventory.Edit(ctx, fabricName, items)
 }
 
 // EnableZTPUpgrade calls Devices.EnableZTP.
-func EnableZTPUpgrade(ctx context.Context, devices []string) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func EnableZTPUpgrade(ctx context.Context, client *Client, devices []string) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.EnableZTP(ctx, devices)
+	return client.Devices.EnableZTP(ctx, devices)
 }
 
 // FactoryResetNmxcDomain calls NMXC.FactoryReset.
-func FactoryResetNmxcDomain(ctx context.Context, domainID string) (*NmxcFactoryResetResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func FactoryResetNmxcDomain(ctx context.Context, client *Client, domainID string) (*NmxcFactoryResetResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.NMXC.FactoryReset(ctx, domainID)
+	return client.NMXC.FactoryReset(ctx, domainID)
 }
 
 // FetchDeviceBackupFiles calls ConfigMgmt.FetchBackupFiles.
-func FetchDeviceBackupFiles(ctx context.Context, ip, timestamp *string) (*FetchBackupFilesResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func FetchDeviceBackupFiles(ctx context.Context, client *Client, ip, timestamp *string) (*FetchBackupFilesResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.ConfigMgmt.FetchBackupFiles(ctx, ip, timestamp)
+	return client.ConfigMgmt.FetchBackupFiles(ctx, ip, timestamp)
 }
 
 // FillBootstrapConfig calls Bootstrap.Fill.
-func FillBootstrapConfig(ctx context.Context, batchName, subnet, netmask, gateway *string, bootstrapinfo []BootstrapinfoItem) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func FillBootstrapConfig(ctx context.Context, client *Client, batchName, subnet, netmask, gateway *string, bootstrapinfo []BootstrapinfoItem) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Bootstrap.Fill(ctx, batchName, subnet, netmask, gateway, bootstrapinfo)
+	return client.Bootstrap.Fill(ctx, batchName, subnet, netmask, gateway, bootstrapinfo)
 }
 
 // FillRmaConfig calls RMA.Fill.
-func FillRmaConfig(ctx context.Context, items []RMAInfoItem) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func FillRmaConfig(ctx context.Context, client *Client, items []RMAInfoItem) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.RMA.Fill(ctx, items)
+	return client.RMA.Fill(ctx, items)
 }
 
 // GetAllBootstrapBatches calls Bootstrap.ListBatches.
-func GetAllBootstrapBatches(ctx context.Context) ([]map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAllBootstrapBatches(ctx context.Context, client *Client) ([]map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Bootstrap.ListBatches(ctx)
+	return client.Bootstrap.ListBatches(ctx)
 }
 
 // GetAllFabricSims calls Fabricsims.List.
-func GetAllFabricSims(ctx context.Context) ([]FabricSimItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAllFabricSims(ctx context.Context, client *Client) ([]FabricSimItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabricsims.List(ctx)
+	return client.Fabricsims.List(ctx)
 }
 
 // GetAllFabrics calls Fabrics.List.
-func GetAllFabrics(ctx context.Context) ([]FabricItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAllFabrics(ctx context.Context, client *Client) ([]FabricItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabrics.List(ctx)
+	return client.Fabrics.List(ctx)
 }
 
 // GetAllGpusList calls GPU.List.
-func GetAllGpusList(ctx context.Context, fabricName string) ([]GpuItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAllGpusList(ctx context.Context, client *Client, fabricName string) ([]GpuItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.List(ctx, fabricName)
+	return client.GPU.List(ctx, fabricName)
 }
 
 // GetAllInventory calls Inventory.ListAll.
-func GetAllInventory(ctx context.Context) ([]InventoryRecord, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAllInventory(ctx context.Context, client *Client) ([]InventoryRecord, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Inventory.ListAll(ctx)
+	return client.Inventory.ListAll(ctx)
 }
 
 // GetAvailableServers calls GPU.AvailableServers.
-func GetAvailableServers(ctx context.Context, fabricName string) (*AvailableServerResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetAvailableServers(ctx context.Context, client *Client, fabricName string) (*AvailableServerResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.AvailableServers(ctx, fabricName)
+	return client.GPU.AvailableServers(ctx, fabricName)
 }
 
 // GetBootstrapBatch calls Bootstrap.GetBatch.
-func GetBootstrapBatch(ctx context.Context, batchName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetBootstrapBatch(ctx context.Context, client *Client, batchName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Bootstrap.GetBatch(ctx, batchName)
+	return client.Bootstrap.GetBatch(ctx, batchName)
 }
 
 // GetBootstrapInfo calls Bootstrap.List.
-func GetBootstrapInfo(ctx context.Context) ([]BootstrapinfoRecord, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetBootstrapInfo(ctx context.Context, client *Client) ([]BootstrapinfoRecord, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Bootstrap.List(ctx)
+	return client.Bootstrap.List(ctx)
 }
 
 // GetConfig calls ConfigMgmt.Get.
-func GetConfig(ctx context.Context, deviceIP string) (interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetConfig(ctx context.Context, client *Client, deviceIP string) (interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.ConfigMgmt.Get(ctx, deviceIP)
+	return client.ConfigMgmt.Get(ctx, deviceIP)
 }
 
 // GetConfigDiff calls ConfigMgmt.GetDiff.
-func GetConfigDiff(ctx context.Context, ip string) (interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetConfigDiff(ctx context.Context, client *Client, ip string) (interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.ConfigMgmt.GetDiff(ctx, ip)
+	return client.ConfigMgmt.GetDiff(ctx, ip)
 }
 
 // GetControllerVersion calls System.ControllerVersion.
-func GetControllerVersion(ctx context.Context) (*ControllerVersion, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetControllerVersion(ctx context.Context, client *Client) (*ControllerVersion, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.System.ControllerVersion(ctx)
+	return client.System.ControllerVersion(ctx)
 }
 
 // GetControllerVersionInternal calls System.ControllerVersionInternal.
-func GetControllerVersionInternal(ctx context.Context) (*ControllerVersion, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetControllerVersionInternal(ctx context.Context, client *Client) (*ControllerVersion, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.System.ControllerVersionInternal(ctx)
+	return client.System.ControllerVersionInternal(ctx)
 }
 
 // GetDay1ConfigStatus calls Intents.Day1ConfigStatus.
-func GetDay1ConfigStatus(ctx context.Context, intentName string) ([]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetDay1ConfigStatus(ctx context.Context, client *Client, intentName string) ([]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Intents.Day1ConfigStatus(ctx, intentName)
+	return client.Intents.Day1ConfigStatus(ctx, intentName)
 }
 
 // GetDeviceBootstrapStages calls Bootstrap.DeviceStages.
-func GetDeviceBootstrapStages(ctx context.Context, bootstrapID int) ([]BootstrapStage, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetDeviceBootstrapStages(ctx context.Context, client *Client, bootstrapID int) ([]BootstrapStage, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Bootstrap.DeviceStages(ctx, bootstrapID)
+	return client.Bootstrap.DeviceStages(ctx, bootstrapID)
 }
 
 // GetDevicesByLayer calls Fabrics.DevicesByLayer.
-func GetDevicesByLayer(ctx context.Context, layer string) ([]string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetDevicesByLayer(ctx context.Context, client *Client, layer string) ([]string, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabrics.DevicesByLayer(ctx, layer)
+	return client.Fabrics.DevicesByLayer(ctx, layer)
 }
 
 // GetFabricByName calls Fabrics.Get.
-func GetFabricByName(ctx context.Context, name string) (*FabricItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFabricByName(ctx context.Context, client *Client, name string) (*FabricItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabrics.Get(ctx, name)
+	return client.Fabrics.Get(ctx, name)
 }
 
 // GetFabricDevices calls Fabrics.DeviceIPs.
-func GetFabricDevices(ctx context.Context, fabricName string) ([]string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFabricDevices(ctx context.Context, client *Client, fabricName string) ([]string, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabrics.DeviceIPs(ctx, fabricName)
+	return client.Fabrics.DeviceIPs(ctx, fabricName)
 }
 
 // GetFabricSimByName calls Fabricsims.Get.
-func GetFabricSimByName(ctx context.Context, name string) (*FabricSimItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFabricSimByName(ctx context.Context, client *Client, name string) (*FabricSimItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabricsims.Get(ctx, name)
+	return client.Fabricsims.Get(ctx, name)
 }
 
 // GetFabrics calls Fabrics.ListDTOs.
-func GetFabrics(ctx context.Context) (*FabricsListResponse, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFabrics(ctx context.Context, client *Client) (*FabricsListResponse, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Fabrics.ListDTOs(ctx)
+	return client.Fabrics.ListDTOs(ctx)
 }
 
 // GetFiles calls Files.List.
-func GetFiles(ctx context.Context, filetype string) (*GetFilesResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFiles(ctx context.Context, client *Client, filetype string) (*GetFilesResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Files.List(ctx, filetype)
+	return client.Files.List(ctx, filetype)
 }
 
 // GetFmInventory calls Devices.FMInventory.
-func GetFmInventory(ctx context.Context) ([]DeviceInventoryItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetFmInventory(ctx context.Context, client *Client) ([]DeviceInventoryItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Devices.FMInventory(ctx)
+	return client.Devices.FMInventory(ctx)
 }
 
 // GetGpuAllocationHistory calls GPU.AllocationHistory.
-func GetGpuAllocationHistory(ctx context.Context, fabricName, tenantName string) ([]GpuAllocationHistoryItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetGpuAllocationHistory(ctx context.Context, client *Client, fabricName, tenantName string) ([]GpuAllocationHistoryItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.AllocationHistory(ctx, fabricName, tenantName)
+	return client.GPU.AllocationHistory(ctx, fabricName, tenantName)
 }
 
 // GetGpuTenantMappings calls GPU.TenantMappings.
-func GetGpuTenantMappings(ctx context.Context, fabricName string, tenantName *string) ([]GpuTenantMappingItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetGpuTenantMappings(ctx context.Context, client *Client, fabricName string, tenantName *string) ([]GpuTenantMappingItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.TenantMappings(ctx, fabricName, tenantName)
+	return client.GPU.TenantMappings(ctx, fabricName, tenantName)
 }
 
 // GetGpusByHost calls GPU.ByHost.
-func GetGpusByHost(ctx context.Context, hostName, fabricName string) ([]GpuItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetGpusByHost(ctx context.Context, client *Client, hostName, fabricName string) ([]GpuItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.GPU.ByHost(ctx, hostName, fabricName)
+	return client.GPU.ByHost(ctx, hostName, fabricName)
 }
 
 // GetHostTenantsList calls HostTenants.List.
-func GetHostTenantsList(ctx context.Context, fabricName string) ([]HosttenantsRecord, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetHostTenantsList(ctx context.Context, client *Client, fabricName string) ([]HosttenantsRecord, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.HostTenants.List(ctx, fabricName)
+	return client.HostTenants.List(ctx, fabricName)
 }
 
 // GetHostsList calls HostTenants.ListHosts.
-func GetHostsList(ctx context.Context, fabricName string) ([]HostItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetHostsList(ctx context.Context, client *Client, fabricName string) ([]HostItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.HostTenants.ListHosts(ctx, fabricName)
+	return client.HostTenants.ListHosts(ctx, fabricName)
 }
 
 // GetImgmgmtStatus calls Devices.ImgmgmtStatus.
-func GetImgmgmtStatus(ctx context.Context, devices []string) ([]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetImgmgmtStatus(ctx context.Context, client *Client, devices []string) ([]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Devices.ImgmgmtStatus(ctx, devices)
+	return client.Devices.ImgmgmtStatus(ctx, devices)
 }
 
 // GetIntentDerivationLogs calls Intents.DerivationLogs.
-func GetIntentDerivationLogs(ctx context.Context, device string) ([]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetIntentDerivationLogs(ctx context.Context, client *Client, device string) ([]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Intents.DerivationLogs(ctx, device)
+	return client.Intents.DerivationLogs(ctx, device)
 }
 
 // GetIntentValidation calls Intents.Validation.
-func GetIntentValidation(ctx context.Context, intentName string) ([]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetIntentValidation(ctx context.Context, client *Client, intentName string) ([]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Intents.Validation(ctx, intentName)
+	return client.Intents.Validation(ctx, intentName)
 }
 
 // GetInventoryByFabricName calls Inventory.ByFabric.
-func GetInventoryByFabricName(ctx context.Context, name string) ([]InventoryRecord, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetInventoryByFabricName(ctx context.Context, client *Client, name string) ([]InventoryRecord, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Inventory.ByFabric(ctx, name)
+	return client.Inventory.ByFabric(ctx, name)
 }
 
 // GetInventoryHosts calls Inventory.UFMHosts.
-func GetInventoryHosts(ctx context.Context, fabricName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetInventoryHosts(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Inventory.UFMHosts(ctx, fabricName)
+	return client.Inventory.UFMHosts(ctx, fabricName)
 }
 
 // GetInventoryPorts calls Inventory.Ports.
-func GetInventoryPorts(ctx context.Context, fabricName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetInventoryPorts(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Inventory.Ports(ctx, fabricName)
+	return client.Inventory.Ports(ctx, fabricName)
 }
 
 // GetLastOrchestratedIntentName calls Intents.LastOrchestratedName.
-func GetLastOrchestratedIntentName(ctx context.Context) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func GetLastOrchestratedIntentName(ctx context.Context, client *Client) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Intents.LastOrchestratedName(ctx)
+	return client.Intents.LastOrchestratedName(ctx)
 }
 
 // GetLogLevel calls System.GetLogLevel.
-func GetLogLevel(ctx context.Context) (map[string]string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetLogLevel(ctx context.Context, client *Client) (map[string]string, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.System.GetLogLevel(ctx)
+	return client.System.GetLogLevel(ctx)
 }
 
 // GetNmxcInventory calls NMXC.Inventory.
-func GetNmxcInventory(ctx context.Context, fabricName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetNmxcInventory(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.NMXC.Inventory(ctx, fabricName)
+	return client.NMXC.Inventory(ctx, fabricName)
 }
 
 // GetOperation calls Operations.Get.
-func GetOperation(ctx context.Context, operationID string) (*OperationStatusItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetOperation(ctx context.Context, client *Client, operationID string) (*OperationStatusItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Operations.Get(ctx, operationID)
+	return client.Operations.Get(ctx, operationID)
 }
 
 // GetOperationWebhookStatus calls Operations.WebhookStatus.
-func GetOperationWebhookStatus(ctx context.Context, operationID string) (*WebhookDeliveryStatus, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetOperationWebhookStatus(ctx context.Context, client *Client, operationID string) (*WebhookDeliveryStatus, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Operations.WebhookStatus(ctx, operationID)
+	return client.Operations.WebhookStatus(ctx, operationID)
 }
 
 // GetRmaInfo calls RMA.List.
-func GetRmaInfo(ctx context.Context) ([]RMAInfoRecord, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetRmaInfo(ctx context.Context, client *Client) ([]RMAInfoRecord, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.RMA.List(ctx)
+	return client.RMA.List(ctx)
 }
 
 // GetRmaStatus calls RMA.Status.
-func GetRmaStatus(ctx context.Context, rmaInfoID int) ([]RMAStatusItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetRmaStatus(ctx context.Context, client *Client, rmaInfoID int) ([]RMAStatusItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.RMA.Status(ctx, rmaInfoID)
+	return client.RMA.Status(ctx, rmaInfoID)
 }
 
 // GetStatus calls System.Status.
-func GetStatus(ctx context.Context, fileName *string) ([]string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetStatus(ctx context.Context, client *Client, fileName *string) ([]string, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.System.Status(ctx, fileName)
+	return client.System.Status(ctx, fileName)
 }
 
 // GetTenant calls Tenants.Get.
-func GetTenant(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.Get(ctx, fabricName, tenantName)
+	return client.Tenants.Get(ctx, fabricName, tenantName)
 }
 
 // GetUIObject calls Intents.GetUIObject.
-func GetUIObject(ctx context.Context, name *string) (*IntentItem, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetUIObject(ctx context.Context, client *Client, name *string) (*IntentItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Intents.GetUIObject(ctx, name)
+	return client.Intents.GetUIObject(ctx, name)
 }
 
 // GetUploadStatus calls System.UploadStatus.
-func GetUploadStatus(ctx context.Context) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func GetUploadStatus(ctx context.Context, client *Client) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.System.UploadStatus(ctx)
+	return client.System.UploadStatus(ctx)
 }
 
 // GetVersion calls Devices.Versions.
-func GetVersion(ctx context.Context, devices []string) ([]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func GetVersion(ctx context.Context, client *Client, devices []string) ([]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Devices.Versions(ctx, devices)
+	return client.Devices.Versions(ctx, devices)
 }
 
 // InventorySync calls Inventory.Sync.
-func InventorySync(ctx context.Context, fabricName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func InventorySync(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Inventory.Sync(ctx, fabricName)
+	return client.Inventory.Sync(ctx, fabricName)
 }
 
 // IsDeviceAlive calls Devices.IsAlive.
-func IsDeviceAlive(ctx context.Context, hostIP string) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func IsDeviceAlive(ctx context.Context, client *Client, hostIP string) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.IsAlive(ctx, hostIP)
+	return client.Devices.IsAlive(ctx, hostIP)
 }
 
 // ListTenants calls Tenants.List.
-func ListTenants(ctx context.Context, fabricName string) (map[string]interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ListTenants(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.List(ctx, fabricName)
+	return client.Tenants.List(ctx, fabricName)
 }
 
 // ModifyGpuAllocations calls Tenants.ModifyAllocations.
-func ModifyGpuAllocations(ctx context.Context, fabricName, tenantName string, suid SuidMap, operation *GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...CallOption) (*ApiResponseMessage, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ModifyGpuAllocations(ctx context.Context, client *Client, fabricName, tenantName string, suid SuidMap, operation *GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, operation, configScope, unreachableDevices, opts...)
+	return client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, operation, configScope, unreachableDevices, opts...)
 }
 
 // ModifyGpuAllocationsAsync calls Tenants.ModifyAllocationsAsync.
-func ModifyGpuAllocationsAsync(ctx context.Context, fabricName, tenantName string, suid SuidMap, operation *GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...CallOption) (*OperationAccepted, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ModifyGpuAllocationsAsync(ctx context.Context, client *Client, fabricName, tenantName string, suid SuidMap, operation *GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.ModifyAllocationsAsync(ctx, fabricName, tenantName, suid, operation, configScope, unreachableDevices, opts...)
+	return client.Tenants.ModifyAllocationsAsync(ctx, fabricName, tenantName, suid, operation, configScope, unreachableDevices, opts...)
 }
 
 // NetOpsDevice calls NetOps.Device.
-func NetOpsDevice(ctx context.Context, ipAddress string, action NetOpsAction, params NetOpsParams) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func NetOpsDevice(ctx context.Context, client *Client, ipAddress string, action NetOpsAction, params NetOpsParams) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.NetOps.Device(ctx, ipAddress, action, params)
+	return client.NetOps.Device(ctx, ipAddress, action, params)
 }
 
 // NetOpsFabric calls NetOps.Fabric.
-func NetOpsFabric(ctx context.Context, fabricName string, action NetOpsAction, params NetOpsParams) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func NetOpsFabric(ctx context.Context, client *Client, fabricName string, action NetOpsAction, params NetOpsParams) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.NetOps.Fabric(ctx, fabricName, action, params)
+	return client.NetOps.Fabric(ctx, fabricName, action, params)
 }
 
 // ProbeNmxcDomains calls NMXC.ProbeDomains.
-func ProbeNmxcDomains(ctx context.Context, fabricName string, domains []NmxcDomain) ([]NmxcProbeResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ProbeNmxcDomains(ctx context.Context, client *Client, fabricName string, domains []NmxcDomain) ([]NmxcProbeResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.NMXC.ProbeDomains(ctx, fabricName, domains)
+	return client.NMXC.ProbeDomains(ctx, fabricName, domains)
 }
 
 // RebootRequest calls Devices.Reboot.
-func RebootRequest(ctx context.Context, devices []string) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func RebootRequest(ctx context.Context, client *Client, devices []string) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.Reboot(ctx, devices)
+	return client.Devices.Reboot(ctx, devices)
 }
 
 // RemoveDeviceFacts calls Devices.RemoveFacts.
-func RemoveDeviceFacts(ctx context.Context, devices []string) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func RemoveDeviceFacts(ctx context.Context, client *Client, devices []string) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.RemoveFacts(ctx, devices)
+	return client.Devices.RemoveFacts(ctx, devices)
 }
 
 // ReplaceConfig calls ConfigMgmt.Replace.
-func ReplaceConfig(ctx context.Context, deviceIP, filePath string, onlydiff *bool) (interface{}, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ReplaceConfig(ctx context.Context, client *Client, deviceIP, filePath string, onlydiff *bool) (interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.ConfigMgmt.Replace(ctx, deviceIP, filePath, onlydiff)
+	return client.ConfigMgmt.Replace(ctx, deviceIP, filePath, onlydiff)
 }
 
 // ResetNmxcDomain calls NMXC.Reset.
-func ResetNmxcDomain(ctx context.Context, domainID string) (*NmxcResetResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ResetNmxcDomain(ctx context.Context, client *Client, domainID string) (*NmxcResetResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.NMXC.Reset(ctx, domainID)
+	return client.NMXC.Reset(ctx, domainID)
 }
 
 // RestoreConfig calls ConfigMgmt.Restore.
-func RestoreConfig(ctx context.Context, items []DeviceConfigRestore) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func RestoreConfig(ctx context.Context, client *Client, items []DeviceConfigRestore) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.ConfigMgmt.Restore(ctx, items)
+	return client.ConfigMgmt.Restore(ctx, items)
 }
 
 // SetLogLevel calls System.SetLogLevel.
-func SetLogLevel(ctx context.Context, loggers map[string]string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func SetLogLevel(ctx context.Context, client *Client, loggers map[string]string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.System.SetLogLevel(ctx, loggers)
+	return client.System.SetLogLevel(ctx, loggers)
 }
 
 // StartStreaming calls System.StartStreaming.
-func StartStreaming(ctx context.Context, filename string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func StartStreaming(ctx context.Context, client *Client, filename string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.System.StartStreaming(ctx, filename)
+	return client.System.StartStreaming(ctx, filename)
 }
 
 // StopStreaming calls System.StopStreaming.
-func StopStreaming(ctx context.Context, filename string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func StopStreaming(ctx context.Context, client *Client, filename string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.System.StopStreaming(ctx, filename)
+	return client.System.StopStreaming(ctx, filename)
 }
 
 // TriggerBootstrapConfig calls Bootstrap.Trigger.
-func TriggerBootstrapConfig(ctx context.Context, batchName, subnet, netmask, gateway *string, bootstrapinfo []BootstrapinfoItem) (*TriggerBootstrapResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func TriggerBootstrapConfig(ctx context.Context, client *Client, batchName, subnet, netmask, gateway *string, bootstrapinfo []BootstrapinfoItem) (*TriggerBootstrapResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Bootstrap.Trigger(ctx, batchName, subnet, netmask, gateway, bootstrapinfo)
+	return client.Bootstrap.Trigger(ctx, batchName, subnet, netmask, gateway, bootstrapinfo)
 }
 
 // TriggerRma calls RMA.Trigger.
-func TriggerRma(ctx context.Context, items []RMAInfoItem) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func TriggerRma(ctx context.Context, client *Client, items []RMAInfoItem) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.RMA.Trigger(ctx, items)
+	return client.RMA.Trigger(ctx, items)
 }
 
 // UpdateFabricSimStatus calls Fabricsims.UpdateStatus.
-func UpdateFabricSimStatus(ctx context.Context, name string, status *string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UpdateFabricSimStatus(ctx context.Context, client *Client, name string, status *string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabricsims.UpdateStatus(ctx, name, status)
+	return client.Fabricsims.UpdateStatus(ctx, name, status)
 }
 
 // UpdateFabricStatus calls Fabrics.UpdateStatus.
-func UpdateFabricStatus(ctx context.Context, name string, status, intent, description, deploymentType *string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UpdateFabricStatus(ctx context.Context, client *Client, name string, status, intent, description, deploymentType *string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Fabrics.UpdateStatus(ctx, name, status, intent, description, deploymentType)
+	return client.Fabrics.UpdateStatus(ctx, name, status, intent, description, deploymentType)
 }
 
 // UpdateHosts calls HostTenants.UpdateHosts.
-func UpdateHosts(ctx context.Context, hostnames []string, hostAction HostAction, tenantName, fabricName string) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func UpdateHosts(ctx context.Context, client *Client, hostnames []string, hostAction HostAction, tenantName, fabricName string) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.HostTenants.UpdateHosts(ctx, hostnames, hostAction, tenantName, fabricName)
+	return client.HostTenants.UpdateHosts(ctx, hostnames, hostAction, tenantName, fabricName)
 }
 
 // UpdateInventoryData calls Inventory.Update.
-func UpdateInventoryData(ctx context.Context, items []FabricInventoryUpdateItem) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UpdateInventoryData(ctx context.Context, client *Client, items []FabricInventoryUpdateItem) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Inventory.Update(ctx, items)
+	return client.Inventory.Update(ctx, items)
 }
 
 // UpdateNmxcDomains calls NMXC.UpdateDomains.
-func UpdateNmxcDomains(ctx context.Context, fabricName string, domains []NmxcDomain, operation GpuAction) (*NmxcDomainsUpdateResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func UpdateNmxcDomains(ctx context.Context, client *Client, fabricName string, domains []NmxcDomain, operation GpuAction) (*NmxcDomainsUpdateResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.NMXC.UpdateDomains(ctx, fabricName, domains, operation)
+	return client.NMXC.UpdateDomains(ctx, fabricName, domains, operation)
 }
 
 // UpdateRoleInfo calls System.UpdateRoleInfo.
-func UpdateRoleInfo(ctx context.Context, layer int, currentName string) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UpdateRoleInfo(ctx context.Context, client *Client, layer int, currentName string) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.System.UpdateRoleInfo(ctx, layer, currentName)
+	return client.System.UpdateRoleInfo(ctx, layer, currentName)
 }
 
 // UpdateTenant calls Tenants.Update.
-func UpdateTenant(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*ApiResponseMessage, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func UpdateTenant(ctx context.Context, client *Client, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.Update(ctx, fabricName, tenantName, servers, operation, opts...)
+	return client.Tenants.Update(ctx, fabricName, tenantName, servers, operation, opts...)
 }
 
 // UpdateTenantAsync calls Tenants.UpdateAsync.
-func UpdateTenantAsync(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*OperationAccepted, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func UpdateTenantAsync(ctx context.Context, client *Client, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Tenants.UpdateAsync(ctx, fabricName, tenantName, servers, operation, opts...)
+	return client.Tenants.UpdateAsync(ctx, fabricName, tenantName, servers, operation, opts...)
 }
 
 // UpgradeNOSImage calls Devices.UpgradeNOS.
-func UpgradeNOSImage(ctx context.Context, items []ImageUpgradeDetailsItem) (bool, error) {
-	c, err := requireClient()
-	if err != nil {
-		return false, err
+func UpgradeNOSImage(ctx context.Context, client *Client, items []ImageUpgradeDetailsItem) (bool, error) {
+	if client == nil {
+		return false, ErrNilClient
 	}
-	return c.Devices.UpgradeNOS(ctx, items)
+	return client.Devices.UpgradeNOS(ctx, items)
 }
 
 // UploadDay1Config calls ConfigMgmt.UploadDay1.
-func UploadDay1Config(ctx context.Context, filePath string, opts ...CallOption) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UploadDay1Config(ctx context.Context, client *Client, filePath string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.ConfigMgmt.UploadDay1(ctx, filePath, opts...)
+	return client.ConfigMgmt.UploadDay1(ctx, filePath, opts...)
 }
 
 // UploadFile calls Files.Upload.
-func UploadFile(ctx context.Context, filePath, filetype string, version, vendor, tag *string) (*UploadFileResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func UploadFile(ctx context.Context, client *Client, filePath, filetype string, version, vendor, tag *string) (*UploadFileResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Files.Upload(ctx, filePath, filetype, version, vendor, tag)
+	return client.Files.Upload(ctx, filePath, filetype, version, vendor, tag)
 }
 
 // UploadUIObject calls Intents.UploadUIObject.
-func UploadUIObject(ctx context.Context, args *UploadUIObjectArgs, opts ...CallOption) (string, error) {
-	c, err := requireClient()
-	if err != nil {
-		return "", err
+func UploadUIObject(ctx context.Context, client *Client, args *UploadUIObjectArgs, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
 	}
-	return c.Intents.UploadUIObject(ctx, args, opts...)
+	return client.Intents.UploadUIObject(ctx, args, opts...)
 }
 
 // ValidateUfmCreds calls Devices.ValidateUFMCreds.
-func ValidateUfmCreds(ctx context.Context, ufmURL, username, password string) (*UfmCredsResult, error) {
-	c, err := requireClient()
-	if err != nil {
-		return nil, err
+func ValidateUfmCreds(ctx context.Context, client *Client, ufmURL, username, password string) (*UfmCredsResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
 	}
-	return c.Devices.ValidateUFMCreds(ctx, ufmURL, username, password)
+	return client.Devices.ValidateUFMCreds(ctx, ufmURL, username, password)
 }

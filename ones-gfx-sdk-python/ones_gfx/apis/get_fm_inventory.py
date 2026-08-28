@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class DeviceInventoryItem(TypedDict, total=False):
     """Helper/DeviceInventory.java"""
@@ -19,7 +19,6 @@ class DeviceInventoryItem(TypedDict, total=False):
     fabricName: str
 
 
-def get_fm_inventory() -> list[DeviceInventoryItem]:
-    client = get_client()
+def get_fm_inventory(client: Client) -> list[DeviceInventoryItem]:
     path = "fm-Inventory"
     return client.call_api("GET", path)

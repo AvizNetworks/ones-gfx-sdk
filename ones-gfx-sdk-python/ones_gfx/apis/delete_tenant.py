@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import ApiResponseMessage, OperationAccepted
-from ..client import get_client
+from ..client import Client
 
 
-def delete_tenant(fabricName: str, tenantName: str, *, prefer: str | None = None, idempotency_key: str | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> ApiResponseMessage | OperationAccepted:
-    client = get_client()
+def delete_tenant(client: Client, fabricName: str, tenantName: str, *, prefer: str | None = None, idempotency_key: str | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> ApiResponseMessage | OperationAccepted:
     path = f"fabrics/{fabricName}/tenants/{tenantName}"
     headers: dict[str, str] = {}
     if prefer is not None:

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class GpuAllocationHistoryItem(TypedDict, total=False):
     """Models/GpuAllocationHistory.java JSON"""
@@ -24,7 +24,6 @@ class GpuAllocationHistoryItem(TypedDict, total=False):
     updatedAt: str
 
 
-def get_gpu_allocation_history(fabricName: str, tenantName: str) -> list[GpuAllocationHistoryItem]:
-    client = get_client()
+def get_gpu_allocation_history(client: Client, fabricName: str, tenantName: str) -> list[GpuAllocationHistoryItem]:
     path = f"fabrics/{fabricName}/tenants/{tenantName}/gpuAllocationHistory"
     return client.call_api("GET", path)

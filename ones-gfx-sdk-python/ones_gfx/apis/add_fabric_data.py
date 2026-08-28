@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def add_fabric_data(*, name: str, id: int | None = None, type: str | None = None, status: str | None = None, description: str | None = None, orchestrationStatus: str | None = None, numOfSus: int | None = None, maxNumOfSus: int | None = None, dedicated: bool | None = None, hybrid: bool | None = None, isDPUFabric: bool | None = None, startingSubnetGpu: int | None = None, startingSubnetCpu: str | None = None, startingSubnetTenants: str | None = None, startingSubnetStorage: str | None = None, simulationId: int | None = None, intent: str | None = None, ewTenantAware: bool | None = None, storageTenantAware: bool | None = None, isOnesControlled: bool | None = None, suHostCnt: str | None = None, isVxlanFabric: bool | None = None, nodeType: str | None = None, deploymentType: str | None = None, spineEvpnConfigured: bool | None = None, isimported: bool | None = None, gpuScaleMode: str | None = None, cnpq: str | None = None, ufmUrl: str | None = None, ufmUsername: str | None = None, ufmPasswordEncrypted: str | None = None) -> str:
-    client = get_client()
+def add_fabric_data(client: Client, *, name: str, id: int | None = None, type: str | None = None, status: str | None = None, description: str | None = None, orchestrationStatus: str | None = None, numOfSus: int | None = None, maxNumOfSus: int | None = None, dedicated: bool | None = None, hybrid: bool | None = None, isDPUFabric: bool | None = None, startingSubnetGpu: int | None = None, startingSubnetCpu: str | None = None, startingSubnetTenants: str | None = None, startingSubnetStorage: str | None = None, simulationId: int | None = None, intent: str | None = None, ewTenantAware: bool | None = None, storageTenantAware: bool | None = None, isOnesControlled: bool | None = None, suHostCnt: str | None = None, isVxlanFabric: bool | None = None, nodeType: str | None = None, deploymentType: str | None = None, spineEvpnConfigured: bool | None = None, isimported: bool | None = None, gpuScaleMode: str | None = None, cnpq: str | None = None, ufmUrl: str | None = None, ufmUsername: str | None = None, ufmPasswordEncrypted: str | None = None) -> str:
     path = "addFabricData"
     body: dict[str, Any] = {}
     if id is not None:

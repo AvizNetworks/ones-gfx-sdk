@@ -6,10 +6,9 @@ Map of logger name -> current level.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_log_level() -> dict[str, str]:
-    client = get_client()
+def get_log_level(client: Client) -> dict[str, str]:
     path = "log/level"
     return client.call_api("GET", path)

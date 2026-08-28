@@ -98,7 +98,7 @@ func buildClient() *ones.Client {
 	if err != nil {
 		log.Fatalf("failed to create auth: %v", err)
 	}
-	return ones.NewClient(
+	return ones.NewClientWithAuth(
 		baseURL,
 		auth,
 		ones_gfx.WithTLSVerify(verifyTLS),

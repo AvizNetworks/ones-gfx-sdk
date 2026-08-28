@@ -3,11 +3,11 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ones-gfx-sdk"
-version = "1.0.0"
+name = "ones_gfx"
+dynamic = ["version"]
 description = "Python SDK for the AVIZ ONES Spectrum-X tenant management API"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "AVIZ Networks" },
@@ -20,12 +20,13 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: System :: Networking",
+    "Typing :: Typed",
 ]
 dependencies = [
     "requests>=2.28",
@@ -42,6 +43,13 @@ Homepage = "https://github.com/aviznetworks/ones-gfx-sdk"
 Documentation = "https://github.com/aviznetworks/ones-gfx-sdk"
 Issues = "https://github.com/aviznetworks/ones-gfx-sdk/issues"
 
+[tool.setuptools.dynamic]
+version = { attr = "ones_gfx._version.__version__" }
+
 [tool.setuptools.packages.find]
 include = ["ones_gfx*"]
 exclude = ["examples*", "tests*"]
+
+# Ships the PEP 561 marker so mypy/pyright/IDEs honour our annotations.
+[tool.setuptools.package-data]
+ones_gfx = ["py.typed"]

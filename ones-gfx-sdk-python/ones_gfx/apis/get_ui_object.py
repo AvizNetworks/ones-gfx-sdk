@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from .._types import DeviceItem, ParametersItem, QosItem, QosmappingItem, SchedulerItem
-from ..client import get_client
+from ..client import Client
 
 class IntentItem(TypedDict, total=False):
     """Models/Intent.java JSON (GET /getUIObject)"""
@@ -51,8 +51,7 @@ class IntentItem(TypedDict, total=False):
     updatedAt: str
 
 
-def get_ui_object(*, name: str | None = None) -> IntentItem:
-    client = get_client()
+def get_ui_object(client: Client, *, name: str | None = None) -> IntentItem:
     path = "getUIObject"
     params: dict[str, Any] = {}
     if name is not None:

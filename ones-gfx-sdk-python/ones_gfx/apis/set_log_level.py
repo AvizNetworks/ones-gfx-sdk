@@ -6,10 +6,9 @@ Change log levels at runtime.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def set_log_level(*, loggers: dict[str, str]) -> str:
-    client = get_client()
+def set_log_level(client: Client, *, loggers: dict[str, str]) -> str:
     path = "log/level"
     return client.call_api("POST", path, json_body=loggers)

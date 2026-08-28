@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def add_host_tenant_data(*, name: str, fabricName: str, description: str | None = None, hostsAllocated: int | None = None, vniId: int | None = None, config_status: str | None = None) -> str:
-    client = get_client()
+def add_host_tenant_data(client: Client, *, name: str, fabricName: str, description: str | None = None, hostsAllocated: int | None = None, vniId: int | None = None, config_status: str | None = None) -> str:
     path = "addHostTenantData"
     body: dict[str, Any] = {}
     body["name"] = name

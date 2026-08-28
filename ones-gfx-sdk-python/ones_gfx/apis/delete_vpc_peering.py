@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def delete_vpc_peering(fabricName: str, *, name: str | None = None, vpcname: str | None = None, peervpcname: str | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> str:
-    client = get_client()
+def delete_vpc_peering(client: Client, fabricName: str, *, name: str | None = None, vpcname: str | None = None, peervpcname: str | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> str:
     path = f"fabrics/{fabricName}/vpcpeering"
     body: dict[str, Any] = {}
     if name is not None:

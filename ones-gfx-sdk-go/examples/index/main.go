@@ -29,24 +29,18 @@ const (
 func main() {
 	ctx := context.Background()
 
-	// One setup call: store the root base URL. Init wires the /api/user/ auth
-	// endpoints and the /api/fm/ resource base, and loads any persisted token.
-	ones.Init(baseURL)
-	defer ones.Close()
-
-	fmt.Printf("Token on startup: %q\n", ones.Token())
-
-	fmt.Printf("\nLogging in to %s as %q ...\n", baseURL, username)
-	login, err := ones.Login(username, password)
+	fmt.Printf("Logging in to %s as %q ...\n", baseURL, username)
+	client, err := ones.InitializeWithCreds(baseURL, username, password)
 	if err != nil {
 		fmt.Println("login failed:", err)
 		return
 	}
-	fmt.Printf("Login response: message=%q isPwdResetNeeded=%v\n",
-		login.Data.Message, login.Data.IsPwdResetNeeded)
+	defer client.Close()
+	fmt.Printf("Authenticated: %v (token %d chars)\n",
+		client.IsAuthenticated(), len(client.GetAuthToken()))
 
 	fmt.Println("\nFetching all fabrics ...")
-	fabrics, err := ones.GetAllFabrics(ctx)
+	fabrics, err := ones.GetAllFabrics(ctx, client)
 	if err != nil {
 		fmt.Println("GetAllFabrics failed:", err)
 	} else {
@@ -57,20 +51,20 @@ func main() {
 		}
 	}
 
-	// fmt.Println("\nAdding a fabric ...")
-	// msg, err := ones.CreateFabric(ctx, "CLI ASN Fabric Go", &ones.FabricCreateArgs{
-	// 	Type:        ones.Ptr("DNO ASN"),
-	// 	Description: ones.Ptr("fabric created from go cli"),
-	// 	Status:      ones.Ptr("draft"),
-	// })
-	// if err != nil {
-	// 	fmt.Println("CreateFabric failed:", err)
-	// } else {
-	// 	fmt.Println("Add fabric response:", msg)
-	// }
+	fmt.Println("\nAdding a fabric ...")
+	msg, err := ones.CreateFabric(ctx, client, "CLI ASN Fabric Go", &ones.FabricCreateArgs{
+		Type:        ones.Ptr("DNO ASN"),
+		Description: ones.Ptr("fabric created from go cli"),
+		Status:      ones.Ptr("draft"),
+	})
+	if err != nil {
+		fmt.Println("CreateFabric failed:", err)
+	} else {
+		fmt.Println("Add fabric response:", msg)
+	}
 
 	// fmt.Println("\nDeleting a fabric ...")
-	// delMsg, err := ones.DeleteFabric(ctx, "CLI ASN Fabric")
+	// delMsg, err := ones.DeleteFabric(ctx, client, "CLI ASN Fabric Go")
 	// if err != nil {
 	// 	fmt.Println("DeleteFabric failed:", err)
 	// } else {
@@ -78,15 +72,15 @@ func main() {
 	// }
 
 	// fmt.Println("\nRefreshing auth ...")
-	// refreshed, err := ones.Refresh()
+	// refreshed, err := client.RefreshAuth()
 	// if err != nil {
-	// 	fmt.Println("refresh failed:", err)
+	// 	fmt.Println("refreshAuth failed:", err)
 	// } else {
 	// 	fmt.Printf("Refresh response: message=%q\n", refreshed.Data.Message)
 	// }
 
 	// fmt.Println("\nLogging out ...")
-	// out, err := ones.Logout()
+	// out, err := client.Logout()
 	// if err != nil {
 	// 	fmt.Println("logout failed:", err)
 	// } else if out != nil {

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from ..client import get_client
+from ..client import Client
 
 class UfmCredsResult(TypedDict, total=False):
     """POST /ValidateUfmCreds"""
@@ -17,8 +17,7 @@ class UfmCredsResult(TypedDict, total=False):
     error: str
 
 
-def validate_ufm_creds(*, ufmUrl: str, username: str, password: str) -> UfmCredsResult:
-    client = get_client()
+def validate_ufm_creds(client: Client, *, ufmUrl: str, username: str, password: str) -> UfmCredsResult:
     path = "ValidateUfmCreds"
     body: dict[str, Any] = {}
     body["ufmUrl"] = ufmUrl

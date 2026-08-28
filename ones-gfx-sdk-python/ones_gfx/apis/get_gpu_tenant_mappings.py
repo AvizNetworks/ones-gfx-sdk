@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from ..client import get_client
+from ..client import Client
 
 class GpuTenantMappingItem(TypedDict, total=False):
     """Models/GpuTenantMapping.java JSON"""
@@ -23,8 +23,7 @@ class GpuTenantMappingItem(TypedDict, total=False):
     updatedAt: str
 
 
-def get_gpu_tenant_mappings(fabricName: str, *, tenantName: str | None = None) -> list[GpuTenantMappingItem]:
-    client = get_client()
+def get_gpu_tenant_mappings(client: Client, fabricName: str, *, tenantName: str | None = None) -> list[GpuTenantMappingItem]:
     path = f"fabrics/{fabricName}/gpuTenantMappings"
     params: dict[str, Any] = {}
     if tenantName is not None:

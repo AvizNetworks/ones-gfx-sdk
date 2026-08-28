@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TypedDict
 
 
-from ..client import get_client
+from ..client import Client
 
 class HosttenantsRecord(TypedDict, total=False):
     """Models/Hosttenants.java JSON (response)"""
@@ -24,7 +24,6 @@ class HosttenantsRecord(TypedDict, total=False):
     updatedAt: str
 
 
-def get_host_tenants_list(fabricName: str) -> list[HosttenantsRecord]:
-    client = get_client()
+def get_host_tenants_list(client: Client, fabricName: str) -> list[HosttenantsRecord]:
     path = f"getHostTenantsList/{fabricName}"
     return client.call_api("GET", path)

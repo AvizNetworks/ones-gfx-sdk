@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_config_diff(*, ip: str) -> object:
-    client = get_client()
+def get_config_diff(client: Client, *, ip: str) -> object:
     path = "getConfigDiff"
     body: dict[str, Any] = {}
     body["ip"] = ip

@@ -2,10 +2,10 @@ package ones_gfx
 
 // client.go is the Go twin of the Python SDK's ones_gfx/client.py.
 //
-// Single-token auth model: log in once, persist the token to a local
-// secrets.json, and attach it as a raw `authorization` header on every
-// subsequent request. The token is also exposed as the package-level AuthToken,
-// which is populated from secrets.json when a TokenAuth is constructed.
+// Single-token auth model, held per TokenAuth instance: log in (or supply a
+// token), and it is attached as a raw `authorization` header on every
+// subsequent request. Nothing is stored globally or on disk, so several
+// instances can talk to different hosts as different users.
 //
 // This differs from JWTAuth in auth.go, which uses an access/refresh token pair
 // and sends `Authorization: Bearer <token>`.
@@ -17,28 +17,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
-// SecretsFile is the local file that persists the auth token between runs.
-// Exported as a var so callers can relocate it.
-var SecretsFile = "secrets.json"
-
-// AuthToken is the current auth token, populated from SecretsFile by
-// NewTokenAuth and refreshed by Login/Refresh. Mirrors the module-level
-// auth_token global in client.py. Read it for diagnostics; use TokenAuth's
-// methods to change it.
-var AuthToken string
-
-// tokenMu guards AuthToken and SecretsFile writes. The transport may invoke
-// Refresh concurrently with in-flight requests calling Apply.
-var tokenMu sync.RWMutex
-
 // ErrNotAuthenticated is returned when an authenticated call is attempted
-// before Login has succeeded.
+// without a token.
 var ErrNotAuthenticated = errors.New("not authenticated: call Login before calling Fabric Manager APIs")
 
 // AuthData is the "data" object of POST /api/user/login and
@@ -64,15 +49,16 @@ type AuthResponse struct {
 type TokenAuth struct {
 	baseURL    string
 	httpClient *http.Client
+
+	mu    sync.RWMutex
+	token string
 }
 
-// NewTokenAuth builds a TokenAuth against the root base URL and loads any token
-// already present in SecretsFile.
+// NewTokenAuth builds a TokenAuth against the root base URL.
 func NewTokenAuth(baseURL string, verifyTLS bool, timeout time.Duration) *TokenAuth {
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
-	LoadToken()
 	return &TokenAuth{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		httpClient: &http.Client{
@@ -85,61 +71,52 @@ func NewTokenAuth(baseURL string, verifyTLS bool, timeout time.Duration) *TokenA
 }
 
 // FMBaseURL turns a root base URL into the Fabric Manager base URL expected by
-// sdk.NewClient. The trailing slash matters: resource methods pass bare paths
+// NewClient. The trailing slash matters: resource methods pass bare paths
 // (e.g. "addFabricData") which are resolved against this base, and without the
 // slash net/url replaces the last segment (/api/addFabricData).
 func FMBaseURL(root string) string {
 	return strings.TrimRight(root, "/") + "/api/fm/"
 }
 
-// LoadToken populates AuthToken from SecretsFile, tolerating a missing file or
-// malformed JSON, and returns the resulting token.
-func LoadToken() string {
-	tokenMu.Lock()
-	defer tokenMu.Unlock()
-	raw, err := os.ReadFile(SecretsFile)
-	if err != nil {
-		return AuthToken
-	}
-	var data map[string]interface{}
-	if json.Unmarshal(raw, &data) != nil {
-		return AuthToken
-	}
-	if tok, ok := data["auth_token"].(string); ok {
-		AuthToken = tok
-	}
-	return AuthToken
+// SetBaseURL points this auth at a different host.
+func (a *TokenAuth) SetBaseURL(baseURL string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.baseURL = strings.TrimRight(baseURL, "/")
 }
 
-// SaveToken sets AuthToken and persists it to SecretsFile, preserving any other
-// keys already in the file. Passing "" clears the stored token.
-func SaveToken(token string) error {
-	tokenMu.Lock()
-	defer tokenMu.Unlock()
-	return saveTokenLocked(token)
+// Token returns the held token ("" when not logged in).
+func (a *TokenAuth) Token() string {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.token
 }
 
-func saveTokenLocked(token string) error {
-	AuthToken = token
-	data := map[string]interface{}{}
-	if raw, err := os.ReadFile(SecretsFile); err == nil {
-		_ = json.Unmarshal(raw, &data)
-	}
-	data["auth_token"] = token
-	out, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(SecretsFile, out, 0o600)
+// SetToken replaces the held token without validation.
+func (a *TokenAuth) SetToken(token string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.token = token
 }
+
+// UpdateToken replaces the held token, rejecting an empty value. Prefer this
+// over SetToken when rotating a token.
+func (a *TokenAuth) UpdateToken(token string) error {
+	if token == "" {
+		return errors.New("token is required")
+	}
+	a.SetToken(token)
+	return nil
+}
+
+// Authenticated reports whether a token is held.
+func (a *TokenAuth) Authenticated() bool { return a.Token() != "" }
 
 // Apply attaches the raw token as the `authorization` header. No-op when
 // unauthenticated, so the server returns 401 rather than the SDK panicking.
 func (a *TokenAuth) Apply(headers map[string]string) {
-	tokenMu.RLock()
-	defer tokenMu.RUnlock()
-	if AuthToken != "" {
-		headers["authorization"] = AuthToken
+	if tok := a.Token(); tok != "" {
+		headers["authorization"] = tok
 	}
 }
 
@@ -150,26 +127,10 @@ func (a *TokenAuth) NeedsProactiveRefresh() bool { return false }
 // Close releases nothing; present to satisfy AuthProvider.
 func (a *TokenAuth) Close() error { return nil }
 
-// Token returns the current token.
-func (a *TokenAuth) Token() string {
-	tokenMu.RLock()
-	defer tokenMu.RUnlock()
-	return AuthToken
-}
-
-// Authenticated reports whether a token is currently held, either from a
-// successful Login or loaded from SecretsFile.
-func Authenticated() bool {
-	tokenMu.RLock()
-	defer tokenMu.RUnlock()
-	return AuthToken != ""
-}
-
-// Login authenticates and persists the returned token.
+// Login authenticates and stores the returned token.
 //
 // POST {baseURL}/api/user/login with {"username", "password"}. Returns
-// {"data": {"message", "token", "isPwdResetNeeded"}}; stores data.token and
-// returns the full parsed response.
+// {"data": {"message", "token", "isPwdResetNeeded"}}.
 func (a *TokenAuth) Login(username, password string) (*AuthResponse, error) {
 	out, err := a.postAuth("/api/user/login", map[string]string{
 		"username": username,
@@ -181,59 +142,39 @@ func (a *TokenAuth) Login(username, password string) (*AuthResponse, error) {
 	if out.Data.Token == "" {
 		return nil, errors.New("login response carried no token")
 	}
-	if err := SaveToken(out.Data.Token); err != nil {
-		return nil, fmt.Errorf("persist token: %w", err)
-	}
+	a.SetToken(out.Data.Token)
 	return out, nil
 }
 
-// Refresh exchanges the current token for a new one and persists it.
-//
-// POST {baseURL}/api/user/refresh with the current token in the `authorization`
-// header. Satisfies AuthProvider, so the transport calls this automatically on
-// a 401. Returns ErrNotAuthenticated when no token is held.
+// Refresh exchanges the current token for a new one and stores it. Satisfies
+// AuthProvider, so the transport calls this automatically on a 401.
 func (a *TokenAuth) Refresh() error {
-	if a.Token() == "" {
-		return ErrNotAuthenticated
-	}
-	out, err := a.postAuth("/api/user/refresh", nil, true)
-	if err != nil {
-		return err
-	}
-	if out.Data.Token == "" {
-		return errors.New("refresh response carried no token")
-	}
-	return SaveToken(out.Data.Token)
+	_, err := a.RefreshWithResponse()
+	return err
 }
 
 // RefreshWithResponse is Refresh but returns the parsed body, mirroring the
-// Python client's refresh() which hands back the full response.
+// Python client's refreshAuth() which hands back the full response.
 func (a *TokenAuth) RefreshWithResponse() (*AuthResponse, error) {
-	if a.Token() == "" {
+	if !a.Authenticated() {
 		return nil, ErrNotAuthenticated
 	}
 	out, err := a.postAuth("/api/user/refresh", nil, true)
 	if err != nil {
 		return nil, err
 	}
-	if out.Data.Token != "" {
-		if err := SaveToken(out.Data.Token); err != nil {
-			return nil, fmt.Errorf("persist token: %w", err)
-		}
+	if out.Data.Token == "" {
+		return nil, errors.New("refresh response carried no token")
 	}
+	a.SetToken(out.Data.Token)
 	return out, nil
 }
 
-// Logout invalidates the session server-side, then clears the local token.
-//
-// POST {baseURL}/api/user/logout with the auth header. The local token and the
-// auth_token field in SecretsFile are cleared regardless of the server's
-// response, matching the Python client.
+// Logout invalidates the session server-side, then clears the local token. The
+// token is cleared regardless of the server's response.
 func (a *TokenAuth) Logout() (*AuthResponse, error) {
 	out, err := a.postAuth("/api/user/logout", nil, true)
-	if clearErr := SaveToken(""); clearErr != nil && err == nil {
-		err = fmt.Errorf("clear token: %w", clearErr)
-	}
+	a.SetToken("")
 	return out, err
 }
 
@@ -248,7 +189,11 @@ func (a *TokenAuth) postAuth(path string, body interface{}, withAuth bool) (*Aut
 		}
 		payload = b
 	}
-	req, err := http.NewRequest(http.MethodPost, a.baseURL+path, bytes.NewReader(payload))
+	a.mu.RLock()
+	url := a.baseURL + path
+	a.mu.RUnlock()
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +209,7 @@ func (a *TokenAuth) postAuth(path string, body interface{}, withAuth bool) (*Aut
 
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
-		return nil, &TransportError{Message: fmt.Sprintf("POST %s failed", a.baseURL+path), Cause: err}
+		return nil, &TransportError{Message: fmt.Sprintf("POST %s failed", url), Cause: err}
 	}
 	defer resp.Body.Close()
 

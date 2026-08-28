@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def add_fabric_sim(*, id: int | None = None, fabricName: str | None = None, simulationId: str | None = None, username: str | None = None, token: str | None = None, orgUuid: str | None = None, status: str | None = None, uiLink: str | None = None) -> str:
-    client = get_client()
+def add_fabric_sim(client: Client, *, id: int | None = None, fabricName: str | None = None, simulationId: str | None = None, username: str | None = None, token: str | None = None, orgUuid: str | None = None, status: str | None = None, uiLink: str | None = None) -> str:
     path = "addFabricSim"
     body: dict[str, Any] = {}
     if id is not None:

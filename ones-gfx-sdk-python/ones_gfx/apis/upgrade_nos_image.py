@@ -7,7 +7,7 @@ from __future__ import annotations
 
 
 from .._types import DeviceDetail
-from ..client import get_client
+from ..client import Client
 
 class ImageUpgradeDetailsItem(DeviceDetail):
     """Helper/ImageUpgradeDetails.java (extends DeviceDetail)"""
@@ -15,7 +15,6 @@ class ImageUpgradeDetailsItem(DeviceDetail):
     pathToImage: str
 
 
-def upgrade_nos_image(*, items: list[ImageUpgradeDetailsItem]) -> bool:
-    client = get_client()
+def upgrade_nos_image(client: Client, *, items: list[ImageUpgradeDetailsItem]) -> bool:
     path = "upgradeNOSImage"
     return client.call_api("POST", path, json_body=items)

@@ -7,11 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import get_client
+from ..client import Client
 
 
-def get_devices_by_layer(*, layer: str) -> list[str]:
-    client = get_client()
+def get_devices_by_layer(client: Client, *, layer: str) -> list[str]:
     path = "getDevicesByLayer"
     params: dict[str, Any] = {}
     params["layer"] = layer

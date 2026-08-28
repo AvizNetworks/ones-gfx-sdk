@@ -7,10 +7,9 @@ from __future__ import annotations
 
 
 from .._types import ControllerVersion
-from ..client import get_client
+from ..client import Client
 
 
-def get_controller_version() -> ControllerVersion:
-    client = get_client()
+def get_controller_version(client: Client) -> ControllerVersion:
     path = "getControllerVersion"
     return client.call_api("GET", path)

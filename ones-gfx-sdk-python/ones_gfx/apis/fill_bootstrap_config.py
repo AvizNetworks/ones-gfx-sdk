@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 from .._types import BootstrapsubnetItem
-from ..client import get_client
+from ..client import Client
 
 class BootstrapinfoItem(TypedDict):
     deviceMacAddress: str
@@ -36,8 +36,7 @@ class BootstrapinfoItem(TypedDict):
     bootstrapsubnet: BootstrapsubnetItem
 
 
-def fill_bootstrap_config(*, batchName: str | None = None, subnet: str | None = None, netmask: str | None = None, gateway: str | None = None, bootstrapinfo: list[BootstrapinfoItem] | None = None) -> bool:
-    client = get_client()
+def fill_bootstrap_config(client: Client, *, batchName: str | None = None, subnet: str | None = None, netmask: str | None = None, gateway: str | None = None, bootstrapinfo: list[BootstrapinfoItem] | None = None) -> bool:
     path = "fillbootstrapconfig"
     body: dict[str, Any] = {}
     if batchName is not None:

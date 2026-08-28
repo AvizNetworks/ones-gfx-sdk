@@ -8,11 +8,10 @@ from __future__ import annotations
 from typing import Any
 
 from .._types import UploadFileResult
-from ..client import get_client
+from ..client import Client
 
 
-def upload_file(*, filetype: str, file: str, version: str | None = None, vendor: str | None = None, tag: str | None = None) -> UploadFileResult:
-    client = get_client()
+def upload_file(client: Client, *, filetype: str, file: str, version: str | None = None, vendor: str | None = None, tag: str | None = None) -> UploadFileResult:
     path = "uploadfile"
     params: dict[str, Any] = {}
     params["filetype"] = filetype

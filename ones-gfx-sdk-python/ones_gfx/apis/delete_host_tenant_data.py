@@ -6,10 +6,9 @@ Remove a host-tenant data record.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def delete_host_tenant_data(fabricName: str, tenantName: str) -> str:
-    client = get_client()
+def delete_host_tenant_data(client: Client, fabricName: str, tenantName: str) -> str:
     path = f"delHostTenantData/{fabricName}/{tenantName}"
     return client.call_api("DELETE", path)

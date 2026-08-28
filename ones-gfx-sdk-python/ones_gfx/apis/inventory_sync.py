@@ -6,10 +6,9 @@ Force immediate UFM inventory sync.
 from __future__ import annotations
 
 
-from ..client import get_client
+from ..client import Client
 
 
-def inventory_sync(fabricName: str) -> dict[str, object]:
-    client = get_client()
+def inventory_sync(client: Client, fabricName: str) -> dict[str, object]:
     path = f"fabrics/{fabricName}/inventorySync"
     return client.call_api("POST", path)
