@@ -4,10 +4,13 @@ Go client library for **AVIZ ONES Spectrum-X** tenant management API (v4.2).
 
 ## Status
 
-**Core Library:** ✅ Production-ready (v1.0.0)  
-**CLI Binary:** 🚧 In development (coming in v1.1.0)
+**Core Library:** ✅ Typed surface complete — all 97 Fabric Manager endpoints
+exposed as 102 typed resource methods across 17 resource handles.
+**CLI Binary:** 🚧 Not started.
 
-The core library is fully functional and can be imported into Go applications now. The CLI wrapper (`ones-gfx-sdk-mod`) is under development.
+Typed request params and typed return values throughout; the only untyped
+returns are the 16 documented open-payload leaves (see
+[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)).
 
 ---
 
@@ -34,14 +37,118 @@ git clone https://github.com/aviznetworks/ones-gfx-sdk.git
 cd ones-gfx-sdk/ones-gfx-sdk-go
 
 # Verify the build
-go build ./ones_gfx
-go build ./ones_gfx/resources
-go build ./sdk
+go build ./...
+go vet ./...
 ```
 
 ---
 
-## Quick Start — Library Usage
+## Quick Start — recommended (flat API, one import)
+
+Every endpoint is also a package-level function in `ones`, and every type,
+constant and option is re-exported there — so **`ones` is the only import you
+need**:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // One setup call with the ROOT base URL. This wires the /api/user/ auth
+    // endpoints and the /api/fm/ resource base, and loads any persisted token.
+    // TLS verification is disabled (ONES uses self-signed certs).
+    ones.Init("https://10.4.5.76:8089")
+    defer ones.Close()
+
+    // Log in once; the token is stored and reused on later runs.
+    if _, err := ones.Login("admin", "secret"); err != nil {
+        log.Fatal(err)
+    }
+
+    fabrics, err := ones.GetAllFabrics(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, f := range fabrics {
+        fmt.Printf("%d %s (type=%s status=%s)\n", f.ID, f.Name, f.Type, f.Status)
+    }
+
+    msg, err := ones.CreateFabric(ctx, "gpu-fabric-1", &ones.FabricCreateArgs{
+        Type:        ones.Ptr("DNO ASN"),
+        Description: ones.Ptr("Primary GPU fabric"),
+        Status:      ones.Ptr("draft"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(msg)
+}
+```
+
+`ones.Ptr` is a generic helper for the optional (pointer) arguments.
+
+### Session methods
+
+```go
+ones.Init(baseURL)              // stores the URL; returns nothing, no I/O
+ones.Login(username, password)  // POST /api/user/login,   stores the token
+ones.Refresh()                  // POST /api/user/refresh, rotates it
+ones.Logout()                   // POST /api/user/logout,  clears it
+ones.Token()                    // stored token ("" when logged out)
+ones.Authenticated()            // bool
+ones.Close()                    // release HTTP resources
+```
+
+All state lives in the package — there is no client object to pass around. If
+you do need the underlying client (for the resource-handle style below), call
+`ones.GetClient()`.
+
+The token is persisted to `secrets.json` (see `ones_gfx.SecretsFile`) and
+reloaded by `Init`, so a token from a previous run is reused automatically.
+The transport also refreshes reactively on a 401.
+
+### Flat function names
+
+Names flatten `Resource.Method` — e.g. `Fabrics.Create` → `ones.CreateFabric`,
+`Fabrics.List` → `ones.GetAllFabrics`, `Tenants.ModifyAllocations` →
+`ones.ModifyGpuAllocations`. The full index is in
+[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md).
+
+---
+
+## Conventions
+
+Before the examples, three rules that apply to every resource method:
+
+1. **Path params are positional**; body/query fields are individual typed args.
+2. **Optional fields are pointers** — `nil` omits them from the request. This
+   mirrors the Python SDK's `| None = None`.
+3. **Async-capable endpoints have a separate `...Async` method** returning
+   `*ones_gfx.OperationAccepted`.
+
+A tiny helper makes the pointer args readable (Go 1.19 generics):
+
+```go
+func ptr[T any](v T) *T { return &v }
+```
+
+---
+
+## Quick Start — alternative (resource handles, JWT auth)
+
+The resource handles remain available on the client if you prefer grouping by
+domain, or need `JWTAuth` (access/refresh pair, `Authorization: Bearer`) instead
+of the single-token login flow. This style needs the `ones_gfx` and `resources`
+imports too.
 
 ```go
 package main
@@ -54,8 +161,10 @@ import (
 
     ones_gfx "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
     "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
 )
+
+func ptr[T any](v T) *T { return &v }
 
 func main() {
     // 1. Set up JWT authentication
@@ -73,11 +182,11 @@ func main() {
     }
 
     // 2. Create the client
-    client := sdk.NewClient(
+    client := ones.NewClient(
         "https://10.4.5.76:8089",
         auth,
         ones_gfx.WithClientTimeout(20*time.Minute), // Default 30s, increase for long ops
-        ones_gfx.WithTLSVerify(false),               // Only for dev/lab
+        ones_gfx.WithTLSVerify(false),              // Only for dev/lab
     )
     defer client.Close()
 
@@ -89,87 +198,90 @@ func main() {
         log.Fatal(err)
     }
     for _, fabric := range fabrics {
-        fmt.Printf("Fabric: %s (Storage VPC: %s)\n",
-            fabric.FabricName, fabric.DefaultStorageName)
+        fmt.Printf("Fabric: %s (type=%s status=%s)\n",
+            fabric.Name, fabric.Type, fabric.Status)
     }
 
-    // 4. Create a tenant (synchronous mode)
-    tenant, err := client.Tenants.Create(ctx, "sdk", resources.CreateTenantRequest{
-        Name:           "demo-tenant",
-        Description:    "Created via Go SDK",
-        MaxGPUsAllowed: 8,
-        Shared:         false,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Created tenant ID: %d, VLAN: %d\n", tenant.ID, *tenant.VLANID)
-
-    // 5. Allocate GPUs with timeout override (15 minutes)
-    servers := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
-    err = client.Tenants.AllocateGPUs(ctx, "sdk", "demo-tenant", servers,
-        ones_gfx.WithTimeout(15*time.Minute), // Override client timeout for this call
+    // 4. Create a tenant (synchronous). Returns the server's message string.
+    msg, err := client.Tenants.Create(ctx, "sdk", "demo-tenant",
+        ptr("Created via Go SDK"), // description
+        ptr(8),                    // maxGpusAllowed
+        ptr(false),                // shared
     )
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Println("GPUs allocated successfully")
+    fmt.Println("Create tenant:", msg)
 
-    //Assign specific ports — UFM / NMXC fabrics only (always synchronous mode)
-    req := resources.GpuPortAssignmentRequest{
-        ServerNames: []string{"su00-rack00-node00"},
-        GPUIDs:      []int{1, 2, 3},
-    }
-    err = client.Tenants.AssignPorts(ctx, "sdk", "demo-tenant", req)
+    // 5. Attach GPU servers to the tenant, with a per-call timeout override
+    resp, err := client.Tenants.Update(ctx, "sdk", "demo-tenant",
+        []resources.GpuServerInfo{{ServerName: "hgx-su00-h00"}},
+        ptr(ones_gfx.GpuActionAdd),
+        ones_gfx.WithTimeout(15*time.Minute),
+    )
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Println("Ports assigned successfully")
+    fmt.Println("Servers attached:", resp.Message)
 
-    // 6. Get tenant details
-    updatedTenant, err := client.Tenants.Get(ctx, "sdk", "demo-tenant")
+    // 6. Assign specific GPU ports — UFM / NMXC fabrics only (always sync)
+    ports, err := client.GPU.AssignPorts(ctx, "sdk", "demo-tenant",
+        ones_gfx.GpuActionAdd,
+        []string{"su00-rack00-node00"},
+        []int{1, 2, 3},
+        nil, // membership
+    )
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Printf("Allocated servers: %v\n", updatedTenant.AllotedServers())
+    fmt.Printf("Ports assigned: success=%v %s\n", ports.Success, ports.Message)
 
-    // 7. Deallocate GPUs
-    err = client.Tenants.DeallocateGPUs(ctx, "sdk", "demo-tenant", servers)
+    // 7. Get tenant details (open payload — see the leaves list)
+    detail, err := client.Tenants.Get(ctx, "sdk", "demo-tenant")
     if err != nil {
         log.Fatal(err)
     }
+    fmt.Printf("Tenant detail: %v\n", detail)
 
-    //Unassign ports
-    err = client.Tenants.UnassignPorts(ctx, "sdk", "demo-tenant", req)
+    // 8. Detach the servers again
+    if _, err = client.Tenants.Update(ctx, "sdk", "demo-tenant",
+        []resources.GpuServerInfo{{ServerName: "hgx-su00-h00"}},
+        ptr(ones_gfx.GpuActionDelete),
+    ); err != nil {
+        log.Fatal(err)
+    }
+
+    // 9. Delete the tenant
+    del, err := client.Tenants.Delete(ctx, "sdk", "demo-tenant")
     if err != nil {
         log.Fatal(err)
     }
-    fmt.Println("Ports unassigned successfully")
-
-    // 8. Delete tenant
-    err = client.Tenants.Delete(ctx, "sdk", "demo-tenant")
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println("Tenant deleted successfully")
+    fmt.Println("Tenant deleted:", del.Message)
 }
 ```
 
 ## API Reference
 
+The full resource → method index lives in
+[IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md). Highlights below.
+
 ### Client Construction
 
 ```go
 // Minimal
-client := sdk.NewClient(baseURL, auth)
+client := ones.NewClient(baseURL, auth)
 
 // With options
-client := sdk.NewClient(baseURL, auth,
+client := ones.NewClient(baseURL, auth,
     ones_gfx.WithClientTimeout(20*time.Minute),
     ones_gfx.WithTLSVerify(false),
     ones_gfx.WithTLSConfig(customTLSConfig),
 )
 ```
+
+Resource handles: `Tenants`, `GPU`, `Fabrics`, `Fabricsims`, `Inventory`,
+`Devices`, `ConfigMgmt`, `Bootstrap`, `RMA`, `Files`, `System`, `NetOps`,
+`HostTenants`, `NMXC`, `Intents`, `VPCPeering`, `Operations`.
 
 ### Authentication
 
@@ -190,136 +302,143 @@ if err != nil {
 ### Fabrics
 
 ```go
-// List
-fabrics, err := client.Fabrics.List(ctx)
+// List (full entity form)
+fabrics, err := client.Fabrics.List(ctx)          // []ones_gfx.FabricItem
 
-// Inventory sync — UFM enabled fabrics only
-err := client.Fabrics.InventorySync(ctx, fabricName)
+// Get one
+fabric, err := client.Fabrics.Get(ctx, name)      // *ones_gfx.FabricItem
+
+// Grouped DTO form
+dtos, err := client.Fabrics.ListDTOs(ctx)
+
+// Device IPs
+ips, err := client.Fabrics.DeviceIPs(ctx, fabricName)
+ips, err = client.Fabrics.DevicesByLayer(ctx, "spine")
+
+// Inventory sync — UFM enabled fabrics only (lives on Inventory)
+res, err := client.Inventory.Sync(ctx, fabricName)
 ```
 
 ### Tenants
 
 ```go
-// List
+// List / Get (open payloads)
 tenants, err := client.Tenants.List(ctx, fabricName)
-
-// Get
 tenant, err := client.Tenants.Get(ctx, fabricName, tenantName)
 
-// Available servers
-servers, err := client.Tenants.AvailableServers(ctx, fabricName)
+// Servers with free GPUs (lives on GPU)
+servers, err := client.GPU.AvailableServers(ctx, fabricName)
+fmt.Println(servers.AvailableGPUs)
 
-// Convert hostnames to ServerSpec entries
-serverSpecs := resources.ServerSpecsFromNames([]string{"hgx-su00-h00"})
+// Create (sync / async)
+msg, err := client.Tenants.Create(ctx, fabricName, "tenant1",
+    ptr("description"), ptr(8), ptr(false))
+op, err := client.Tenants.CreateAsync(ctx, fabricName, "tenant1",
+    ptr("description"), ptr(8), ptr(false))
 
-// Request body for Specific Gpus UFM / NMXC fabrics (But for UFM serverNames is {"hgx-su00-h00"} )
-req := resources.GpuPortAssignmentRequest{
-    ServerNames: []string{"su00-rack00-node00"},
-    GPUIDs:      []int{1, 2, 3},
-}
+// Delete (sync / async)
+resp, err := client.Tenants.Delete(ctx, fabricName, tenantName)
+op, err = client.Tenants.DeleteAsync(ctx, fabricName, tenantName)
 
-// Create (sync)
-tenant, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
-    Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
-})
-
-// Create (async)
-op, err := client.Tenants.CreateAsync(ctx, fabricName, resources.CreateTenantRequest{
-    Name: "tenant1", Description: "...", MaxGPUsAllowed: 8, Shared: false,
-})
-
-// Delete (sync)
-err := client.Tenants.Delete(ctx, fabricName, tenantName)
-
-// Delete (async)
-op, err := client.Tenants.DeleteAsync(ctx, fabricName, tenantName)
-
-// Allocate GPUs (sync)
-err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName,
-    serverSpecs,
+// Attach / detach whole servers (replaces the old AllocateGPUs/DeallocateGPUs)
+resp, err = client.Tenants.Update(ctx, fabricName, tenantName,
+    []resources.GpuServerInfo{{ServerName: "hgx-su00-h00"}},
+    ptr(ones_gfx.GpuActionAdd),
     ones_gfx.WithTimeout(15*time.Minute),
 )
+op, err = client.Tenants.UpdateAsync(ctx, fabricName, tenantName,
+    []resources.GpuServerInfo{{ServerName: "hgx-su00-h00"}},
+    ptr(ones_gfx.GpuActionDelete),
+)
 
-// Allocate GPUs (async)
-op, err := client.Tenants.AllocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
+// Share a server between tenants
+servers := []resources.GpuServerInfo{{ServerName: "hgx-su00-h00", Shared: ptr(true)}}
 
-// Deallocate GPUs (sync)
-err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs)
+// Assign / unassign specific ports — UFM / NMXC only, always sync
+ports, err := client.GPU.AssignPorts(ctx, fabricName, tenantName,
+    ones_gfx.GpuActionAdd, []string{"su00-rack00-node00"}, []int{1, 2, 3}, nil)
 
-// Deallocate GPUs (async)
-op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs)
+// Assign all ports on each server — pass nil for gpuIds
+ports, err = client.GPU.AssignPorts(ctx, fabricName, tenantName,
+    ones_gfx.GpuActionAdd, []string{"su00-rack00-node00"}, nil, nil)
 
-// Assign specific ports — UFM / NMXC fabrics only (always sync)
-err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, req)
-
-// Assign all ports on each server (omit GPUIDs)
-err := client.Tenants.AssignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
-
-// Unassign specific ports
-err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, req)
-
-// Unassign all ports on each server (omit GPUIDs)
-err := client.Tenants.UnassignPorts(ctx, fabricName, tenantName, resources.GpuPortAssignmentRequest{ServerNames: req.ServerNames})
+// Unassign — same call with GpuActionDelete
+ports, err = client.GPU.AssignPorts(ctx, fabricName, tenantName,
+    ones_gfx.GpuActionDelete, []string{"su00-rack00-node00"}, []int{1, 2, 3}, nil)
 ```
 
 ### Partial GPU Allocation
 
 Map or unmap specific GPUs to a tenant on a shared server. This is distinct
-from `AllocateGPUs` (which attaches a whole server): `ModifyGPUAllocations`
-gives fine-grained control over which GPU indices a tenant can access.
+from attaching a whole server via `Tenants.Update`: `ModifyAllocations` gives
+fine-grained control over which GPU indices a tenant can access.
 
 ```go
-req := ones_gfx.GPUAllocationRequest{
-    Operation: ones_gfx.OperationAdd, // or ones_gfx.OperationDelete
-    // Suid map: serverIndex → hostname → {GPUs: [...]}
-    Suid: map[string]map[string]ones_gfx.ServerGPUs{
-        "0": {
-            "hgx-su00-h00": {GPUs: []string{"G0", "G1", "G2", "G3"}},
-        },
+// SuidMap is map[serverIndex]map[hostname][]gpuID
+suid := resources.SuidMap{
+    "0": {
+        "hgx-su00-h00": []string{"G0", "G1", "G2", "G3"},
     },
 }
 
-resp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, req)
+resp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName,
+    suid,
+    ptr(ones_gfx.GpuActionAdd), // or ones_gfx.GpuActionDelete
+    nil,                        // configScope (default WHOLE_SERVER)
+    nil,                        // unreachableDevices
+)
 if err != nil {
     log.Fatal(err)
 }
 fmt.Printf("status=%s  msg=%s\n", resp.Status, resp.Message)
+
+// Async variant
+op, err := client.Tenants.ModifyAllocationsAsync(ctx, fabricName, tenantName,
+    suid, ptr(ones_gfx.GpuActionAdd), nil, nil)
 ```
 
+For per-GPU scope, pass `ptr(resources.ConfigScopeParticularGPU)` as
+`configScope`.
+
 **Notes:**
-- The server must already be attached to the tenant via `AllocateGPUs` before mapping individual GPUs.
-- Remove per-GPU mappings with `OperationDelete` before calling `DeallocateGPUs` to detach the server.
+- The server must already be attached to the tenant via `Tenants.Update` before mapping individual GPUs.
+- Remove per-GPU mappings with `GpuActionDelete` before detaching the server.
 - This endpoint is valid only for externally managed fabrics; on ONES-controlled fabrics it returns `409 FABRIC_NOT_EXTERNALLY_MANAGED` (use the tenant-update flow instead).
-- Multiple tenants can share the same physical server (e.g. G0–G3 → tenant-A, G4–G7 → tenant-B) when the server is attached with `Shared: true`.
+- Multiple tenants can share the same physical server (e.g. G0–G3 → tenant-A, G4–G7 → tenant-B) when the server is attached with `Shared: ptr(true)`.
 
 ---
 
 ## Operation Modes
 
-All mutating methods support two execution modes:
+Async-capable endpoints (`Tenants.Create/Delete/Update/ModifyAllocations`,
+`VPCPeering.Create`) come in Sync and Async pairs.
 
 ### Synchronous (Default)
 
-Blocks until the server completes the operation. Returns the result directly.
+Blocks until the server completes the operation and returns the result.
 
 ```go
-// Returns *ones_gfx.Tenant when done
-tenant, err := client.Tenants.Create(ctx, fabricName, req)
+msg, err := client.Tenants.Create(ctx, fabricName, "tenant1", nil, ptr(8), nil)
 ```
 
 ### Asynchronous (Poll)
 
-Returns immediately with an Operation handle. You poll for completion.
+Returns immediately with an `*ones_gfx.OperationAccepted`. You poll for completion.
 
 ```go
-// Returns *ones_gfx.Operation immediately
-op, err := client.Tenants.CreateAsync(ctx, fabricName, req)
+op, err := client.Tenants.CreateAsync(ctx, fabricName, "tenant1", nil, ptr(8), nil)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("operation:", op.OperationID, op.Status)
 
-// Poll until done
 for {
-    current, _ := client.Operations.Get(ctx, op.ID)
-    if current.IsDone() {
-        if current.IsSuccess() {
+    current, err := client.Operations.Get(ctx, op.OperationID)
+    if err != nil {
+        log.Fatal(err)
+    }
+    if ones_gfx.OperationStatus(current.Status).IsTerminal() {
+        if current.Status == string(ones_gfx.OperationStatusSuccess) {
             fmt.Println("Operation succeeded:", current.Result)
         } else {
             fmt.Println("Operation failed:", current.ErrorMessage)
@@ -332,30 +451,42 @@ for {
 
 ### Asynchronous (Webhook)
 
-Returns immediately. Server POSTs result to your webhook URL.
+Returns immediately. Server POSTs the result to your webhook URL.
 
 ```go
-op, err := client.Tenants.CreateAsync(ctx, fabricName, req,
+op, err := client.Tenants.CreateAsync(ctx, fabricName, "tenant1", nil, ptr(8), nil,
     ones_gfx.WithWebhook("http://receiver:8000/hook", []string{"tenant.create"}))
 
-fmt.Printf("Operation submitted: %s (webhook: %v)\n", 
-    op.ID, op.WebhookRegistered)
+fmt.Printf("Operation submitted: %s (webhook: %v)\n",
+    op.OperationID, op.WebhookRegistered)
 // No polling needed — result sent to webhook
+```
+
+### Idempotency
+
+Retrying an async call with the same key replays the original operation instead
+of creating a duplicate:
+
+```go
+op, err := client.Tenants.CreateAsync(ctx, fabricName, "tenant1", nil, ptr(8), nil,
+    ones_gfx.WithIdempotencyKey("ONES-tenant1-CRT-20260828"))
 ```
 
 ---
 
 ## Timeout Override
 
-Long-running operations (GPU allocate/deallocate) can take 10-15 minutes. Override the default timeout:
+Long-running operations (GPU attach/detach) can take 10–15 minutes. Override the
+default timeout:
 
 ```go
 // Client-level default: 20 minutes
-client := sdk.NewClient(baseURL, auth,
+client := ones.NewClient(baseURL, auth,
     ones_gfx.WithClientTimeout(20*time.Minute))
 
-// Per-call override: 15 minutes for this specific allocation
-err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName, servers,
+// Per-call override for this specific operation
+resp, err := client.Tenants.Update(ctx, fabricName, tenantName, servers,
+    ptr(ones_gfx.GpuActionAdd),
     ones_gfx.WithTimeout(15*time.Minute))
 ```
 
@@ -376,20 +507,20 @@ if err != nil {
         fmt.Printf("Tenant not found (HTTP %d)\n", notFound.StatusCode)
         return
     }
-    
+
     var conflict *ones_gfx.ConflictError
     if errors.As(err, &conflict) {
         fmt.Println("Conflict:", conflict.Message)
         return
     }
-    
+
     // Generic ONESError check
     var onesErr ones_gfx.ONESError
     if errors.As(err, &onesErr) {
         fmt.Println("SDK error:", err)
         return
     }
-    
+
     // Non-SDK error
     log.Fatal(err)
 }
@@ -408,33 +539,24 @@ if err != nil {
 
 ## Building the SDK
 
-### Verify the Build
-
 ```bash
 cd ones-gfx-sdk/ones-gfx-sdk-go
 
-# Build core library
-go build ./ones_gfx
-
-# Build resources
-go build ./ones_gfx/resources
-
-# Build client package
-go build ./sdk
-
-# Run go vet (static analysis)
+# Build and vet everything
+go build ./...
 go vet ./...
 
-# Format code
-go fmt ./...
+# Or via make
+make build-lib
+make vet
+
+# Format check
+gofmt -l ones_gfx/ sdk/ examples/
 ```
 
 ### Check for Issues
 
 ```bash
-# Static analysis
-go vet ./...
-
 # Unused code detection (requires staticcheck)
 go install honnef.co/go/tools/cmd/staticcheck@latest
 staticcheck ./...
@@ -444,9 +566,14 @@ staticcheck ./...
 
 ## Testing the SDK
 
-### Manual Testing (Requires ONES Instance)
+A runnable CLI tour lives in `examples/`:
 
-Create a test file `test_sdk.go`:
+```bash
+go run examples/usage_examples.go   # full CLI tour
+go run ./examples/index             # minimal login + fabrics walkthrough
+```
+
+### Manual smoke test (requires a ONES instance)
 
 ```go
 package main
@@ -457,8 +584,7 @@ import (
     "time"
 
     ones_gfx "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
 )
 
 func main() {
@@ -472,7 +598,7 @@ func main() {
         log.Fatal(err)
     }
 
-    client := sdk.NewClient(
+    client := ones.NewClient(
         "https://YOUR_ONES_IP:8089",
         auth,
         ones_gfx.WithTLSVerify(false),
@@ -489,12 +615,11 @@ func main() {
         log.Fatal(err)
     }
     log.Printf("Found %d fabric(s)\n", len(fabrics))
-
     if len(fabrics) == 0 {
         log.Fatal("No fabrics found - cannot proceed with tests")
     }
 
-    fabricName := fabrics[0].FabricName
+    fabricName := fabrics[0].Name
     log.Printf("Using fabric: %s\n", fabricName)
 
     // Test 2: List tenants
@@ -503,37 +628,25 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    log.Printf("Found %d tenant(s)\n", len(tenants))
+    log.Printf("Tenants payload: %v\n", tenants)
 
     // Test 3: Available servers
     log.Println("Test 3: Checking available servers...")
-    servers, err := client.Tenants.AvailableServers(ctx, fabricName)
+    servers, err := client.GPU.AvailableServers(ctx, fabricName)
     if err != nil {
         log.Fatal(err)
     }
-    log.Printf("Available servers: %v\n", servers)
+    log.Printf("Available servers: %v\n", servers.AvailableGPUs)
+
+    // Test 4: Controller version
+    ver, err := client.System.ControllerVersion(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("Controller: %s %s\n", ver.AppName, ver.AppVersion)
 
     log.Println("All tests passed!")
 }
-```
-
-Run it:
-
-```bash
-go run test_sdk.go
-```
-
-### Expected Output
-
-```
-Test 1: Listing fabrics...
-Found 1 fabric(s)
-Using fabric: sdk
-Test 2: Listing tenants...
-Found 3 tenant(s)
-Test 3: Checking available servers...
-Available servers: [hgx-su00-h00 hgx-su00-h01 hgx-su00-h02]
-All tests passed!
 ```
 
 ---
@@ -543,26 +656,50 @@ All tests passed!
 ```
 ones-gfx-sdk/ones-gfx-sdk-go/
 ├── go.mod                      # Module definition
+├── Makefile                    # build-lib / vet / fmt / check targets
 ├── README.md                   # This file
-├── IMPLEMENTATION_STATUS.md    # Build status
-├── ones_gfx/                   # Core library (importable)
-│   ├── auth.go                 # JWT authentication
-│   ├── transport.go            # HTTP client
+├── IMPLEMENTATION_STATUS.md    # Typed surface + method index
+├── api_reference.txt           # Language-agnostic curl reference
+├── ones/                       # ★ Public API — the only package you import
+│   ├── api.go                  # 102 flat functions (generated), auth-guarded
+│   ├── types.go                # Re-exported types/consts/options (generated)
+│   ├── session.go              # Init / GetClient / Login / Refresh / Logout
+│   └── client.go               # Client struct + resource handles
+├── ones_gfx/                   # Internals: transport, auth, shared types
+│   ├── auth.go                 # JWTAuth (bearer access/refresh pair)
+│   ├── client.go               # TokenAuth — single-token login flow
+│   ├── transport.go            # HTTP client + Call[T]/CallMultipart[T]
+│   ├── apitypes.go             # Types shared by >1 resource
 │   ├── enums.go                # Operation modes, statuses
 │   ├── errors.go               # Typed errors
-│   ├── models.go               # Fabric, Tenant, Operation structs
-│   ├── options.go              # Functional options
-│   └── resources/
+│   ├── gpu_allocation.go       # GPUOperation ADD/DELETE enum
+│   ├── models.go               # Operation struct + timestamp parsing
+│   ├── options.go              # Functional call options
+│   └── resources/              # One file per API domain (97 endpoints)
+│       ├── bootstrap.go
+│       ├── configmgmt.go
+│       ├── devices.go
 │       ├── fabrics.go
-│       ├── tenants.go
+│       ├── fabricsims.go
+│       ├── files.go
+│       ├── gpu.go
+│       ├── hosttenants.go
+│       ├── intents.go
+│       ├── inventory.go
+│       ├── netops.go
+│       ├── nmxc.go
 │       ├── operations.go
-│       └── peering.go
-├── sdk/                        # Client entry point
-│   └── client.go               # Client struct
-└── cmd/                        # CLI (coming in v1.1.0)
-    └── ones-gfx-sdk-mod/
-        └── main.go (WIP)
+│       ├── rma.go
+│       ├── system.go
+│       ├── tenants.go
+│       └── vpcpeering.go
+└── examples/
+    ├── usage_examples.go       # Runnable CLI tour
+    └── index/main.go           # Minimal login + fabrics walkthrough
 ```
+
+Note the module root holds no Go package, so `go get` fetches a library rather
+than installing a binary.
 
 ---
 
@@ -573,7 +710,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 **Solution:** Disable TLS verification for dev/lab (self-signed certs):
 
 ```go
-client := sdk.NewClient(baseURL, auth,
+client := ones.NewClient(baseURL, auth,
     ones_gfx.WithTLSVerify(false))
 ```
 
@@ -591,7 +728,7 @@ tlsConfig := &tls.Config{
     RootCAs: caCertPool,
 }
 
-client := sdk.NewClient(baseURL, auth,
+client := ones.NewClient(baseURL, auth,
     ones_gfx.WithTLSConfig(tlsConfig))
 ```
 
@@ -601,11 +738,12 @@ client := sdk.NewClient(baseURL, auth,
 
 ```go
 // Client-level
-client := sdk.NewClient(baseURL, auth,
+client := ones.NewClient(baseURL, auth,
     ones_gfx.WithClientTimeout(20*time.Minute))
 
 // Per-call
-err := client.Tenants.AllocateGPUs(ctx, ...,
+resp, err := client.Tenants.Update(ctx, fabricName, tenantName, servers,
+    ptr(ones_gfx.GpuActionAdd),
     ones_gfx.WithTimeout(15*time.Minute))
 ```
 
@@ -615,19 +753,21 @@ err := client.Tenants.AllocateGPUs(ctx, ...,
 
 ---
 
-## Known Limitations (v1.0.0)
+## Known Limitations
 
-- **No login endpoint** — Partners supply tokens obtained out-of-band. Login support planned for v1.1.
-- **CLI not yet complete** — Core library is fully functional. CLI wrapper coming in v1.1.
-
-
----
-
+- **No login endpoint** — partners supply tokens obtained out-of-band.
+- **No CLI binary** — the core library is the deliverable.
+- **16 open-payload leaves** — a handful of responses are returned as
+  `interface{}` / `map[string]interface{}` because the upstream Java service
+  returns `Object` / `Map<String,Object>` on those paths. The full list is in
+  [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md).
+- **Legacy transport verbs** — `Transport.Get/Post/Patch/Delete` remain for
+  back-compat but are unused by the resources; prefer the typed resource methods.
 
 ---
 
 ## Support
 
-- **Documentation:** This README
+- **Documentation:** This README and [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)
 - **Issues:** [GitHub Issues](https://github.com/aviznetworks/ones-gfx-sdk/issues)
 - **API Reference:** [api_reference.txt](./api_reference.txt) (language-agnostic curl examples)

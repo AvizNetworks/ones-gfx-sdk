@@ -4,24 +4,25 @@ End-to-end usage examples for the ONES Spectrum-X Go SDK.
 This file is intended to be read top-to-bottom by partners as a tour of
 the SDK's surface. It covers:
 
-    1. Constructing the client with JWT auth.
-    2. Reading fabrics and tenants.
-    3. Running a full tenant lifecycle in a single mode (sync/async-poll/async-webhook).
-    4. Error handling.
+ 1. Constructing the client with JWT auth.
+ 2. Reading fabrics and tenants.
+ 3. Running a full tenant lifecycle in a single mode (sync/async-poll/async-webhook).
+ 4. Error handling.
 
 How to run
 ----------
-1. Edit the CONFIG section below with your ONES base URL, JWT tokens,
-   and a fabric name that exists in your environment.
 
-2. Choose which mode to run by passing --mode (sync, async-poll,
-   async-webhook). The default is sync.
+ 1. Edit the CONFIG section below with your ONES base URL, JWT tokens,
+    and a fabric name that exists in your environment.
+
+ 2. Choose which mode to run by passing --mode (sync, async-poll,
+    async-webhook). The default is sync.
 
 3. Run the program:
 
-       go run examples/usage_examples.go                    # from module root
-       go run examples/usage_examples.go --mode async-poll  # async polling
-       go run examples/usage_examples.go --action read-only # just list fabrics/tenants
+	go run examples/usage_examples.go                    # from module root
+	go run examples/usage_examples.go --mode async-poll  # async polling
+	go run examples/usage_examples.go --action read-only # just list fabrics/tenants
 */
 package main
 
@@ -39,9 +40,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
-	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
 )
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,6 @@ const (
 // A couple of sample server hostnames you expect to be available in the
 // fabric. The example will try to allocate then deallocate these.
 var sampleServers = []string{"hgx-su00-h00"}
-var nmxcSampleServers = []string{"su00-rack00-node00", "su00-rack01-node18"}
 
 // ---------------------------------------------------------------------------
 // Auth callback (optional) — persist rotated tokens so they survive a
@@ -85,12 +85,9 @@ var nmxcSampleServers = []string{"su00-rack00-node00", "su00-rack01-node18"}
 
 func onTokenRefresh(access, refresh string, expiresIn int) {
 	fmt.Printf("[auth] tokens rotated; new access expires in %ds\n", expiresIn)
-	// Example:
-	//   keyring.Set("ones_gfx", "access_token", access)
-	//   keyring.Set("ones_gfx", "refresh_token", refresh)
 }
 
-func buildClient() *sdk.Client {
+func buildClient() *ones.Client {
 	auth, err := ones_gfx.NewJWTAuth(
 		accessToken,
 		refreshToken,
@@ -101,7 +98,7 @@ func buildClient() *sdk.Client {
 	if err != nil {
 		log.Fatalf("failed to create auth: %v", err)
 	}
-	return sdk.NewClient(
+	return ones.NewClient(
 		baseURL,
 		auth,
 		ones_gfx.WithTLSVerify(verifyTLS),
@@ -113,7 +110,7 @@ func buildClient() *sdk.Client {
 // Scenario 1: list fabrics and tenants.
 // ---------------------------------------------------------------------------
 
-func scenarioReadOnly(client *sdk.Client) {
+func scenarioReadOnly(client *ones.Client) {
 	fmt.Println("\n--- Scenario: read-only ---")
 	ctx := context.Background()
 
@@ -124,8 +121,7 @@ func scenarioReadOnly(client *sdk.Client) {
 	}
 	fmt.Printf("Found %d fabric(s):\n", len(fabrics))
 	for _, fab := range fabrics {
-		fmt.Printf("  - %s (SUs=%d/%d, default storage=%s)\n",
-			fab.FabricName, fab.NumOfSUs, fab.MaxNumOfSUs, fab.DefaultStorageName)
+		fmt.Printf("  - %s (SUs=%d/%d)\n", fab.Name, fab.NumOfSus, fab.MaxNumOfSus)
 	}
 
 	tenants, err := client.Tenants.List(ctx, fabricName)
@@ -133,21 +129,14 @@ func scenarioReadOnly(client *sdk.Client) {
 		fmt.Printf("Error listing tenants: %v\n", err)
 		return
 	}
-	fmt.Printf("\nTenants in %s: %d\n", fabricName, len(tenants))
-	for _, t := range tenants {
-		gpuSummary := fmt.Sprintf("%d/%d", t.GPUsAllocated, t.MaxGPUsAllowed)
-		if t.IsUnlimitedGPUs() {
-			gpuSummary = "unlimited"
-		}
-		fmt.Printf("  - %s | gpus=%s | status=%s\n", t.Name, gpuSummary, t.ConfigStatus)
-	}
+	fmt.Printf("\nTenants in %s: %v\n", fabricName, tenants)
 
-	available, err := client.Tenants.AvailableServers(ctx, fabricName)
+	available, err := client.GPU.AvailableServers(ctx, fabricName)
 	if err != nil {
 		fmt.Printf("Error listing available servers: %v\n", err)
 		return
 	}
-	fmt.Printf("\nAvailable servers in %s: %v\n", fabricName, available)
+	fmt.Printf("\nAvailable servers in %s: %v\n", fabricName, available.AvailableGPUs)
 }
 
 func scenarioLogin(username, password string) {
@@ -196,7 +185,7 @@ func scenarioLogin(username, password string) {
 // Scenario 2: tenant lifecycle in a single mode.
 // ---------------------------------------------------------------------------
 
-func pollOperation(client *sdk.Client, operationID, label string, maxAttempts, pollIntervalS int) bool {
+func pollOperation(client *ones.Client, operationID, label string, maxAttempts, pollIntervalS int) bool {
 	fmt.Printf("  -> polling %s operation: %s\n", label, operationID)
 	ctx := context.Background()
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
@@ -205,16 +194,17 @@ func pollOperation(client *sdk.Client, operationID, label string, maxAttempts, p
 			fmt.Printf("\n  [poll %d] error: %v\n", attempt, err)
 			return false
 		}
-		if current.Status == ones_gfx.OperationStatusRunning || current.Status == ones_gfx.OperationStatusPending {
+		switch current.Status {
+		case "PENDING", "RUNNING":
 			fmt.Print(".")
-		} else {
+		default:
 			fmt.Printf("\n  [poll %d] status=%s\n", attempt, current.Status)
 		}
-		if current.IsDone() {
+		if current.Status == "SUCCESS" {
 			fmt.Println()
-			if current.IsSuccess() {
-				return true
-			}
+			return true
+		}
+		if current.Status != "PENDING" && current.Status != "RUNNING" {
 			fmt.Printf("  -> FAILED: %s\n", current.ErrorMessage)
 			return false
 		}
@@ -224,23 +214,18 @@ func pollOperation(client *sdk.Client, operationID, label string, maxAttempts, p
 	return false
 }
 
-func pollWebhookStatus(client *sdk.Client, operationID, label string, maxAttempts, pollIntervalS int) bool {
-	path := fmt.Sprintf("operations/%s/webhook-status", operationID)
+func pollWebhookStatus(client *ones.Client, operationID, label string, maxAttempts, pollIntervalS int) bool {
 	fmt.Printf("  -> polling %s webhook delivery: %s\n", label, operationID)
 	ctx := context.Background()
-	_ = ctx // used conceptually; transport.Get doesn't take context yet
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		// Access the transport's Get method directly for webhook status
-		result, err := client.GetTransport().Get(path, nil)
+		ws, err := client.Operations.WebhookStatus(ctx, operationID)
 		if err != nil {
 			fmt.Printf("\n  [poll %d] error: %v\n", attempt, err)
 			return false
 		}
 		status := "PENDING"
-		if obj, ok := result.(map[string]interface{}); ok {
-			if ds, ok := obj["deliveryStatus"].(string); ok {
-				status = ds
-			}
+		if ws != nil && ws.DeliveryStatus != "" {
+			status = ws.DeliveryStatus
 		}
 		if status == "SUCCESS" {
 			fmt.Printf("\n  [poll %d] webhook deliveryStatus=%s\n", attempt, status)
@@ -288,18 +273,6 @@ func defaultPeerVPCName() string {
 	return fmt.Sprintf("%s-Storage-VPC", fabricName)
 }
 
-// operationMode maps CLI mode string to ones_gfx.OperationMode.
-func operationMode(mode string) ones_gfx.OperationMode {
-	switch mode {
-	case "sync":
-		return ones_gfx.OperationModeSynchronous
-	case "async-poll":
-		return ones_gfx.OperationModeAsyncPoll
-	default:
-		return ones_gfx.OperationModeAsyncWebhook
-	}
-}
-
 // isAsync returns true if the mode uses async operations.
 func isAsync(mode string) bool {
 	return mode == "async-poll" || mode == "async-webhook"
@@ -311,66 +284,67 @@ func isWebhook(mode string) bool {
 }
 
 // pollFn selects the appropriate poller based on mode.
-func pollFn(mode string) func(*sdk.Client, string, string, int, int) bool {
+func pollFn(mode string) func(*ones.Client, string, string, int, int) bool {
 	if isWebhook(mode) {
 		return pollWebhookStatus
 	}
 	return pollOperation
 }
 
-func scenarioTenantLifecycle(client *sdk.Client, mode string) {
+// serverSpecs converts hostnames into GpuServerInfo with the given sharing mode.
+func serverSpecs(names []string, shared bool) []resources.GpuServerInfo {
+	specs := make([]resources.GpuServerInfo, 0, len(names))
+	for _, n := range names {
+		specs = append(specs, resources.GpuServerInfo{ServerName: n, Shared: &shared})
+	}
+	return specs
+}
+
+func scenarioTenantLifecycle(client *ones.Client, mode string) {
 	label := modeLabel(mode)
 	ctx := context.Background()
 
 	fmt.Printf("\n--- Scenario: tenant lifecycle (%s) ---\n", label)
 
 	tenantName := tenantNameForMode(mode)
+	description := fmt.Sprintf("Created by SDK example (%s mode)", label)
+	maxGPUs := 8
+	shared := false
 
 	// --- Create ---
 	fmt.Printf("Creating tenant %q (%s)...\n", tenantName, label)
-	createReq := resources.CreateTenantRequest{
-		Name:           tenantName,
-		Description:    fmt.Sprintf("Created by SDK example (%s mode)", label),
-		MaxGPUsAllowed: 8,
-	}
 
 	if isAsync(mode) {
 		var opts []ones_gfx.CallOption
 		if isWebhook(mode) {
 			opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.create"}))
 		}
-		op, err := client.Tenants.CreateAsync(ctx, fabricName, createReq, opts...)
+		op, err := client.Tenants.CreateAsync(ctx, fabricName, tenantName, &description, &maxGPUs, &shared, opts...)
 		if err != nil {
 			fmt.Printf("  -> create error: %v\n", err)
 			return
 		}
-		fmt.Printf("  -> operation id: %s\n", op.ID)
+		fmt.Printf("  -> operation id: %s\n", op.OperationID)
 		if isWebhook(mode) {
 			fmt.Printf("  -> webhook registered: %v\n", op.WebhookRegistered)
 		}
-		if !pollFn(mode)(client, op.ID, "create", 360, 5) {
+		if !pollFn(mode)(client, op.OperationID, "create", 360, 5) {
 			return
 		}
 	} else {
-		tenant, err := client.Tenants.Create(ctx, fabricName, createReq)
+		details, err := client.Tenants.Create(ctx, fabricName, tenantName, &description, &maxGPUs, &shared)
 		if err != nil {
 			fmt.Printf("  -> create error: %v\n", err)
 			return
 		}
-		vlanID, vniID := 0, 0
-		if tenant.VLANID != nil {
-			vlanID = *tenant.VLANID
-		}
-		if tenant.VNIID != nil {
-			vniID = *tenant.VNIID
-		}
-		fmt.Printf("  -> id=%d, vlan=%d, vni=%d\n", tenant.ID, vlanID, vniID)
+		fmt.Printf("  -> created: %s\n", details)
 	}
 
 	// --- Allocate GPUs ---
 	if len(sampleServers) > 0 {
 		fmt.Printf("Allocating GPUs %v to %s (%s)...\n", sampleServers, tenantName, label)
-		serverSpecs := resources.ServerSpecsFromNames(sampleServers)
+		specs := serverSpecs(sampleServers, false)
+		opAdd := ones_gfx.GpuActionAdd
 		timeout500 := 500 * time.Second
 
 		if isAsync(mode) {
@@ -379,18 +353,17 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 			if isWebhook(mode) {
 				opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.allocate"}))
 			}
-			op, err := client.Tenants.AllocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs, opts...)
+			op, err := client.Tenants.UpdateAsync(ctx, fabricName, tenantName, specs, &opAdd, opts...)
 			if err != nil {
 				fmt.Printf("  -> allocate error: %v\n", err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
-			if !pollFn(mode)(client, op.ID, "allocate", 360, 5) {
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
+			if !pollFn(mode)(client, op.OperationID, "allocate", 360, 5) {
 				return
 			}
 		} else {
-			err := client.Tenants.AllocateGPUs(ctx, fabricName, tenantName, serverSpecs, ones_gfx.WithTimeout(timeout500))
-			if err != nil {
+			if _, err := client.Tenants.Update(ctx, fabricName, tenantName, specs, &opAdd, ones_gfx.WithTimeout(timeout500)); err != nil {
 				fmt.Printf("  -> allocate error: %v\n", err)
 				return
 			}
@@ -401,35 +374,18 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 		if err != nil {
 			fmt.Printf("  -> error fetching tenant: %v\n", err)
 		} else {
-			fmt.Printf("  Tenant now has servers: %v\n", refreshed.AllotedServers())
+			fmt.Printf("  Tenant details: %v\n", refreshed)
 		}
 
 		// --- Modify GPU Allocations (fine-grained, partial GPU allocation) ---
 		fmt.Printf("Modifying GPU allocations (ADD) on %s (%s)...\n", tenantName, label)
+		suid := resources.SuidMap{"0": {sampleServers[0]: {"G0", "G1", "G2", "G3"}}}
 
-		// Example: allocate specific GPUs (G0, G1, G2, G3) to a specific server.
-		// This is more granular than AllocateGPUs which allocates all GPUs on a server.
-		addReq := ones_gfx.GPUAllocationRequest{
-			Operation: ones_gfx.OperationAdd,
-			Suid: map[string]map[string]ones_gfx.ServerGPUs{
-				"0": {
-					sampleServers[0]: {GPUs: []string{"G0", "G1", "G2", "G3"}},
-				},
-			},
-		}
-
-		addResp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, addReq)
+		addResp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &opAdd, nil, nil)
 		if err != nil {
 			fmt.Printf("  -> modify GPU allocations (ADD) error: %v\n", err)
 		} else {
-			fmt.Printf("  -> status: %s\n", addResp.Status)
-			if addResp.OperationID != "" {
-				fmt.Printf("  -> operation id: %s (async)\n", addResp.OperationID)
-				// In real usage, poll the operation to completion if needed
-			}
-			if addResp.Message != "" {
-				fmt.Printf("  -> message: %s\n", addResp.Message)
-			}
+			fmt.Printf("  -> status: %s, message: %s\n", addResp.Status, addResp.Message)
 		}
 
 		// --- VPC Peering (sync only): after allocate so tenant VPC is live with GPUs ---
@@ -438,35 +394,19 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 		peerVPCName := defaultPeerVPCName()
 		fmt.Printf("Creating VPC peering %q between %q and %q (sync-only)...\n",
 			peeringName, vpcName, peerVPCName)
-		peeringResult, err := client.Peering.Create(ctx, fabricName, peeringName, vpcName, peerVPCName)
-		if err != nil {
+		if peeringResult, err := client.VPCPeering.Create(ctx, fabricName, peeringName, vpcName, peerVPCName); err != nil {
 			fmt.Printf("  -> peering error: %v\n", err)
 		} else {
 			fmt.Printf("  -> response: %v\n", peeringResult)
 		}
 
 		fmt.Printf("Modifying GPU allocations (DELETE) on %s (%s)...\n", tenantName, label)
-		delReq := ones_gfx.GPUAllocationRequest{
-			Operation: ones_gfx.OperationDelete,
-			Suid: map[string]map[string]ones_gfx.ServerGPUs{
-				"0": {
-					sampleServers[0]: {GPUs: []string{"G0", "G1", "G2", "G3"}},
-				},
-			},
-		}
-
-		delResp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, delReq)
+		opDelete := ones_gfx.GpuActionDelete
+		delResp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &opDelete, nil, nil)
 		if err != nil {
 			fmt.Printf("  -> modify GPU allocations (DELETE) error: %v\n", err)
 		} else {
-			fmt.Printf("  -> status: %s\n", delResp.Status)
-			if delResp.OperationID != "" {
-				fmt.Printf("  -> operation id: %s (async)\n", delResp.OperationID)
-				// In real usage, poll the operation to completion if needed
-			}
-			if delResp.Message != "" {
-				fmt.Printf("  -> message: %s\n", delResp.Message)
-			}
+			fmt.Printf("  -> status: %s, message: %s\n", delResp.Status, delResp.Message)
 		}
 
 		// --- Deallocate GPUs ---
@@ -478,18 +418,17 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 			if isWebhook(mode) {
 				opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.deallocate"}))
 			}
-			op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tenantName, serverSpecs, opts...)
+			op, err := client.Tenants.UpdateAsync(ctx, fabricName, tenantName, specs, &opDelete, opts...)
 			if err != nil {
 				fmt.Printf("  -> deallocate error: %v\n", err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
-			if !pollFn(mode)(client, op.ID, "deallocate", 360, 5) {
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
+			if !pollFn(mode)(client, op.OperationID, "deallocate", 360, 5) {
 				return
 			}
 		} else {
-			err := client.Tenants.DeallocateGPUs(ctx, fabricName, tenantName, serverSpecs, ones_gfx.WithTimeout(timeout500))
-			if err != nil {
+			if _, err := client.Tenants.Update(ctx, fabricName, tenantName, specs, &opDelete, ones_gfx.WithTimeout(timeout500)); err != nil {
 				fmt.Printf("  -> deallocate error: %v\n", err)
 				return
 			}
@@ -510,11 +449,10 @@ func scenarioTenantLifecycle(client *sdk.Client, mode string) {
 			fmt.Printf("  -> delete error: %v\n", err)
 			return
 		}
-		fmt.Printf("  -> operation id: %s\n", op.ID)
-		pollFn(mode)(client, op.ID, "delete", 360, 5)
+		fmt.Printf("  -> operation id: %s\n", op.OperationID)
+		pollFn(mode)(client, op.OperationID, "delete", 360, 5)
 	} else {
-		err := client.Tenants.Delete(ctx, fabricName, tenantName)
-		if err != nil {
+		if _, err := client.Tenants.Delete(ctx, fabricName, tenantName); err != nil {
 			fmt.Printf("  -> delete error: %v\n", err)
 			return
 		}
@@ -565,7 +503,7 @@ func reportSDKError(err error) {
 }
 
 func scenarioTenantAction(
-	client *sdk.Client,
+	client *ones.Client,
 	mode string,
 	action string,
 	tenantNameOverride string,
@@ -594,45 +532,35 @@ func scenarioTenantAction(
 	}
 
 	fmt.Printf("\n--- Scenario: tenant %s (%s) ---\n", action, label)
+	description := fmt.Sprintf("Created by SDK example (%s mode)", label)
+	maxGPUs := 8
 
 	switch action {
 	case "create":
 		fmt.Printf("Creating tenant %q (%s)...\n", tName, label)
-		createReq := resources.CreateTenantRequest{
-			Name:           tName,
-			Description:    fmt.Sprintf("Created by SDK example (%s mode)", label),
-			MaxGPUsAllowed: 8,
-		}
 
 		if isAsync(mode) {
 			var opts []ones_gfx.CallOption
 			if isWebhook(mode) {
 				opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.create"}))
 			}
-			op, err := client.Tenants.CreateAsync(ctx, fabricName, createReq, opts...)
+			op, err := client.Tenants.CreateAsync(ctx, fabricName, tName, &description, &maxGPUs, &shared, opts...)
 			if err != nil {
 				reportSDKError(err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
 			if isWebhook(mode) {
 				fmt.Printf("  -> webhook registered: %v\n", op.WebhookRegistered)
 			}
-			pollFn(mode)(client, op.ID, "create", 360, 5)
+			pollFn(mode)(client, op.OperationID, "create", 360, 5)
 		} else {
-			tenant, err := client.Tenants.Create(ctx, fabricName, createReq)
+			details, err := client.Tenants.Create(ctx, fabricName, tName, &description, &maxGPUs, &shared)
 			if err != nil {
 				reportSDKError(err)
 				return
 			}
-			vlanID, vniID := 0, 0
-			if tenant.VLANID != nil {
-				vlanID = *tenant.VLANID
-			}
-			if tenant.VNIID != nil {
-				vniID = *tenant.VNIID
-			}
-			fmt.Printf("  -> id=%d, vlan=%d, vni=%d\n", tenant.ID, vlanID, vniID)
+			fmt.Printf("  -> created: %s\n", details)
 		}
 
 	case "allocate":
@@ -641,10 +569,8 @@ func scenarioTenantAction(
 			return
 		}
 		fmt.Printf("Allocating GPUs %v to %s (%s, shared=%v)...\n", srvs, tName, label, shared)
-		serverSpecs := make([]resources.ServerSpec, 0, len(srvs))
-		for _, serverName := range srvs {
-			serverSpecs = append(serverSpecs, resources.ServerSpec{ServerName: serverName, Shared: shared})
-		}
+		specs := serverSpecs(srvs, shared)
+		opAdd := ones_gfx.GpuActionAdd
 		timeout500 := 500 * time.Second
 
 		if isAsync(mode) {
@@ -653,16 +579,15 @@ func scenarioTenantAction(
 			if isWebhook(mode) {
 				opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.allocate"}))
 			}
-			op, err := client.Tenants.AllocateGPUsAsync(ctx, fabricName, tName, serverSpecs, opts...)
+			op, err := client.Tenants.UpdateAsync(ctx, fabricName, tName, specs, &opAdd, opts...)
 			if err != nil {
 				reportSDKError(err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
-			pollFn(mode)(client, op.ID, "allocate", 360, 5)
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
+			pollFn(mode)(client, op.OperationID, "allocate", 360, 5)
 		} else {
-			err := client.Tenants.AllocateGPUs(ctx, fabricName, tName, serverSpecs, ones_gfx.WithTimeout(timeout500))
-			if err != nil {
+			if _, err := client.Tenants.Update(ctx, fabricName, tName, specs, &opAdd, ones_gfx.WithTimeout(timeout500)); err != nil {
 				reportSDKError(err)
 				return
 			}
@@ -675,10 +600,8 @@ func scenarioTenantAction(
 			return
 		}
 		fmt.Printf("Deallocating GPUs %v (%s, shared=%v)...\n", srvs, label, shared)
-		serverSpecs := make([]resources.ServerSpec, 0, len(srvs))
-		for _, serverName := range srvs {
-			serverSpecs = append(serverSpecs, resources.ServerSpec{ServerName: serverName, Shared: shared})
-		}
+		specs := serverSpecs(srvs, shared)
+		opDelete := ones_gfx.GpuActionDelete
 		timeout500 := 500 * time.Second
 
 		if isAsync(mode) {
@@ -687,16 +610,15 @@ func scenarioTenantAction(
 			if isWebhook(mode) {
 				opts = append(opts, ones_gfx.WithWebhook(webhookURL, []string{"tenant.deallocate"}))
 			}
-			op, err := client.Tenants.DeallocateGPUsAsync(ctx, fabricName, tName, serverSpecs, opts...)
+			op, err := client.Tenants.UpdateAsync(ctx, fabricName, tName, specs, &opDelete, opts...)
 			if err != nil {
 				reportSDKError(err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
-			pollFn(mode)(client, op.ID, "deallocate", 360, 5)
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
+			pollFn(mode)(client, op.OperationID, "deallocate", 360, 5)
 		} else {
-			err := client.Tenants.DeallocateGPUs(ctx, fabricName, tName, serverSpecs, ones_gfx.WithTimeout(timeout500))
-			if err != nil {
+			if _, err := client.Tenants.Update(ctx, fabricName, tName, specs, &opDelete, ones_gfx.WithTimeout(timeout500)); err != nil {
 				reportSDKError(err)
 				return
 			}
@@ -716,11 +638,10 @@ func scenarioTenantAction(
 				reportSDKError(err)
 				return
 			}
-			fmt.Printf("  -> operation id: %s\n", op.ID)
-			pollFn(mode)(client, op.ID, "delete", 360, 5)
+			fmt.Printf("  -> operation id: %s\n", op.OperationID)
+			pollFn(mode)(client, op.OperationID, "delete", 360, 5)
 		} else {
-			err := client.Tenants.Delete(ctx, fabricName, tName)
-			if err != nil {
+			if _, err := client.Tenants.Delete(ctx, fabricName, tName); err != nil {
 				reportSDKError(err)
 				return
 			}
@@ -745,7 +666,7 @@ func scenarioTenantAction(
 			pName = fmt.Sprintf("%s-storage-route-leak", tName)
 		}
 		fmt.Printf("Creating VPC peering %q between %q and %q...\n", pName, vName, pvName)
-		result, err := client.Peering.Create(ctx, fabricName, pName, vName, pvName)
+		result, err := client.VPCPeering.Create(ctx, fabricName, pName, vName, pvName)
 		if err != nil {
 			reportSDKError(err)
 			return
@@ -758,7 +679,8 @@ func scenarioTenantAction(
 			return
 		}
 		fmt.Printf("AssignPorts %v ports=%v to %q on %q...\n", servers, portIDs, tName, fabricName)
-		if err := client.Tenants.AssignPorts(ctx, fabricName, tName, resources.GpuPortAssignmentRequest{ServerNames: servers, GPUIDs: portIDs}); err != nil {
+		opAdd := ones_gfx.GpuActionAdd
+		if _, err := client.GPU.AssignPorts(ctx, fabricName, tName, opAdd, servers, portIDs, nil); err != nil {
 			reportSDKError(err)
 			return
 		}
@@ -770,7 +692,8 @@ func scenarioTenantAction(
 			return
 		}
 		fmt.Printf("UnassignPorts %v ports=%v from %q on %q...\n", servers, portIDs, tName, fabricName)
-		if err := client.Tenants.UnassignPorts(ctx, fabricName, tName, resources.GpuPortAssignmentRequest{ServerNames: servers, GPUIDs: portIDs}); err != nil {
+		opDelete := ones_gfx.GpuActionDelete
+		if _, err := client.GPU.AssignPorts(ctx, fabricName, tName, opDelete, servers, portIDs, nil); err != nil {
 			reportSDKError(err)
 			return
 		}
@@ -778,7 +701,7 @@ func scenarioTenantAction(
 
 	case "inventory-sync":
 		fmt.Printf("InventorySync on fabric %q...\n", fabricName)
-		if err := client.Fabrics.InventorySync(ctx, fabricName); err != nil {
+		if _, err := client.Inventory.Sync(ctx, fabricName); err != nil {
 			reportSDKError(err)
 			return
 		}
@@ -793,33 +716,18 @@ func scenarioTenantAction(
 // Scenario 5: error handling.
 // ---------------------------------------------------------------------------
 
-func scenarioErrorHandling(client *sdk.Client) {
+func scenarioErrorHandling(client *ones.Client) {
 	fmt.Println("\n--- Scenario: error handling ---")
 	ctx := context.Background()
 
-	// Invalid input — caught client-side before any HTTP call.
-	_, err := client.Tenants.Create(ctx, fabricName, resources.CreateTenantRequest{
-		Name:           "bad_quota_demo",
-		Description:    "will not be sent",
-		MaxGPUsAllowed: 0, // disallowed: must be -1 or >= 1
-	})
-	if err != nil {
-		fmt.Printf("[client-side validation] %v\n", err)
-	}
-
 	// Server-side 404 — looking up a tenant that doesn't exist.
-	_, err = client.Tenants.Get(ctx, fabricName, "this_tenant_does_not_exist_xyz")
+	_, err := client.Tenants.Get(ctx, fabricName, "this_tenant_does_not_exist_xyz")
 	if err != nil {
 		var notFoundErr *ones_gfx.NotFoundError
 		if errors.As(err, &notFoundErr) {
 			fmt.Printf("[NotFoundError] %v (status=%d)\n", notFoundErr, notFoundErr.StatusCode)
 		} else {
-			var onesErr ones_gfx.ONESError
-			if errors.As(err, &onesErr) {
-				fmt.Printf("[ONESError] %v\n", onesErr)
-			} else {
-				fmt.Printf("[error] %v\n", err)
-			}
+			fmt.Printf("[error] %v\n", err)
 		}
 	}
 }
@@ -829,12 +737,8 @@ func scenarioErrorHandling(client *sdk.Client) {
 // ---------------------------------------------------------------------------
 
 func main() {
-	// Turn on debug logging if you want to see the SDK's internal HTTP
-	// activity (token refreshes, retry-on-401, etc.).
-	// log.SetFlags(log.LstdFlags | log.Lshortfile)
-
 	mode := flag.String("mode", "sync", "Tenant lifecycle mode: sync, async-poll, async-webhook")
-	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete,  gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering")
+	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete, gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering")
 	tenantNameFlag := flag.String("tenant-name", "", "Override tenant name")
 	username := flag.String("username", "", "Username for login action (default: loginUsername)")
 	password := flag.String("password", "", "Password for login action (default: loginPassword)")
@@ -923,14 +827,7 @@ func main() {
 // This endpoint performs fine-grained GPU mapping on a shared server:
 // operation ADD allocates the listed GPU IDs to the tenant, while DELETE
 // removes those GPU assignments.
-//
-// Parameters:
-//   - tenantName: target tenant that receives or releases GPUs.
-//   - operation: ADD to allocate GPUs, DELETE to deallocate.
-//   - serverIndex: suid map key (for example "0").
-//   - hostname: compute node hostname under the selected server index.
-//   - gpuIDs: explicit GPU IDs to map (for example []string{"G0", "G1"}).
-func scenarioGPUAllocations(client *sdk.Client, tenantName, operation, serverIndex, hostname string, gpuIDs []string) {
+func scenarioGPUAllocations(client *ones.Client, tenantName, operation, serverIndex, hostname string, gpuIDs []string) {
 	fmt.Printf("\n--- Scenario: gpu-allocations ---\n")
 	fmt.Printf("  fabric:   %s\n", fabricName)
 	fmt.Printf("  tenant:   %s\n", tenantName)
@@ -938,24 +835,18 @@ func scenarioGPUAllocations(client *sdk.Client, tenantName, operation, serverInd
 	fmt.Printf("  suid[%s][%s].gpus: %v\n", serverIndex, hostname, gpuIDs)
 
 	ctx := context.Background()
-	req := ones_gfx.GPUAllocationRequest{
-		Operation: ones_gfx.GPUOperation(operation),
-		Suid: map[string]map[string]ones_gfx.ServerGPUs{
-			serverIndex: {
-				hostname: {GPUs: gpuIDs},
-			},
-		},
+	op := ones_gfx.GpuActionAdd
+	if operation == "DELETE" {
+		op = ones_gfx.GpuActionDelete
 	}
+	suid := resources.SuidMap{serverIndex: {hostname: gpuIDs}}
 
-	resp, err := client.Fabrics.ModifyGPUAllocations(ctx, fabricName, tenantName, req)
+	resp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &op, nil, nil)
 	if err != nil {
 		reportSDKError(err)
 		return
 	}
 	fmt.Printf("  -> status: %s\n", resp.Status)
-	if resp.OperationID != "" {
-		fmt.Printf("  -> operation id: %s\n", resp.OperationID)
-	}
 	if resp.Message != "" {
 		fmt.Printf("  -> message: %s\n", resp.Message)
 	}

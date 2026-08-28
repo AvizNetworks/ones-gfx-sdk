@@ -23,8 +23,8 @@ help: ## Show this help message
 
 build-lib: ## Build the core library
 	@echo "Building core library..."
-	$(GOBUILD) ./ones
-	$(GOBUILD) ./ones/resources
+	$(GOBUILD) ./ones_gfx
+	$(GOBUILD) ./ones_gfx/resources
 	@echo "✓ Library built successfully"
 
 vet: ## Run go vet on all packages
