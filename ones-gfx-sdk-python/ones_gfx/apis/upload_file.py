@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..client import ONESClient
+from .._types import UploadFileResult
+from ..client import get_client
 
 
-def upload_file(client: ONESClient, *, file, filetype, version=None, vendor=None, tag=None) -> Any:
+def upload_file(*, filetype: str, file: str, version: str | None = None, vendor: str | None = None, tag: str | None = None) -> UploadFileResult:
+    client = get_client()
     path = "uploadfile"
     params: dict[str, Any] = {}
     params["filetype"] = filetype

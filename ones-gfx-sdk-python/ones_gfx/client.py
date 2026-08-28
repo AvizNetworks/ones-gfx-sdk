@@ -10,10 +10,13 @@ subsequent request. The token is also exposed as the module-level global
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import requests
+
+from ._types import AuthResponse
 
 # Local file that persists the auth token between runs. Defined as a module
 # constant so the location is easy to change.
@@ -86,7 +89,7 @@ class ONESClient:
         method: str,
         path: str,
         *,
-        params: dict[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
         json_body: Any = None,
         files: dict[str, Any] | None = None,
         data: dict[str, Any] | None = None,
@@ -142,16 +145,37 @@ class ONESClient:
             return body["data"]
         return body
 
-    def login(self, username: str, password: str) -> dict[str, Any]:
+    def login(self, username: str, password: str) -> AuthResponse:
         """Authenticate and persist the returned token.
 
-        POST {base_url}/api/login with {"username", "password"}. Expects
-        ``{"data": {"message", "token", "isPwdResetNeeded"}}`` back; stores
+        POST {base_url}/api/user/login with {"username", "password"}. Returns
+        ``{"data": {"message", "token", "isPwdResetNeeded"}}``; stores
         ``data.token`` and returns the full parsed response.
         """
         response = self._session.post(
             f"{self.base_url}/api/user/login",
             json={"username": username, "password": password},
+            verify=self.verify_tls,
+        )
+        response.raise_for_status()
+        body = response.json()
+        token = body.get("data", {}).get("token")
+        if token:
+            _save_token(token)
+        return body
+
+    def refresh(self) -> AuthResponse:
+        """Refresh the auth token and persist it.
+
+        POST {base_url}/api/user/refresh with the current token in the
+        ``authorization`` header. Returns ``{"data": {"message", "token"}}`` —
+        the same shape as login, but with message "Token refreshed" and no
+        ``isPwdResetNeeded``. Stores the new ``data.token`` in the same place as
+        login (global + secrets.json) and returns the full parsed response.
+        """
+        response = self._session.post(
+            f"{self.base_url}/api/user/refresh",
+            headers=self._auth_headers(),
             verify=self.verify_tls,
         )
         response.raise_for_status()
@@ -194,3 +218,24 @@ class ONESClient:
         if isinstance(body, dict) and "data" in body:
             return body["data"]
         return body
+
+
+# Shared client used by the ones_gfx.apis functions. Configure it once at
+# startup with configure(); the api modules import get_client() and use it.
+_client: ONESClient | None = None
+
+
+def configure(base_url: str, verify_tls: bool | str = True) -> ONESClient:
+    """Create and register the shared client used by ones_gfx.apis."""
+    global _client
+    _client = ONESClient(base_url, verify_tls=verify_tls)
+    return _client
+
+
+def get_client() -> ONESClient:
+    """Return the shared client, or raise if configure() was never called."""
+    if _client is None:
+        raise RuntimeError(
+            "Client not configured: call ones_gfx.client.configure(base_url) first."
+        )
+    return _client

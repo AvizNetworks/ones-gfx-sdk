@@ -1,7 +1,7 @@
 """
-GET /getAllFabrics  ->  /api/fm/getAllFabrics
+GET /getFabricByName/{name}  ->  /api/fm/getFabricByName/{name}
 
-All fabrics as Fabrics[].
+Single fabric.
 """
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from .._types import FabricItem
 from ..client import get_client
 
 
-def get_all_fabrics() -> list[FabricItem]:
+def get_fabric_by_name(name: str) -> FabricItem:
     client = get_client()
-    path = "getAllFabrics"
+    path = f"getFabricByName/{name}"
     return client.call_api("GET", path)

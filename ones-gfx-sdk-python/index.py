@@ -15,8 +15,8 @@ import sys
 # Make sure we import the local ones_gfx package (no install required).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from ones_gfx.client import ONESClient
-from ones_gfx.apis import get_all_fabrics
+from ones_gfx.client import configure
+from ones_gfx.apis import get_all_fabrics, add_fabric_data
 import ones_gfx.client as client_module
 
 # # --- configuration -----------------------------------------------------------
@@ -32,7 +32,7 @@ PASSWORD = 'Admin@123456'
 def main() -> None:
     # print(f"Token on startup (from secrets.json): {client_module.auth_token!r}")
 
-    client = ONESClient(base_url=BASE_URL, verify_tls=False)
+    client = configure(base_url=BASE_URL, verify_tls=False)
 
     print(f"\nLogging in to {BASE_URL} as {USERNAME!r} ...")
     # result = client.login(USERNAME, PASSWORD)
@@ -46,12 +46,32 @@ def main() -> None:
     # except Exception as exc:  # noqa: BLE001 - manual test script
     #     print("getTeleDevices failed:", exc)
 
-    # print("\nFetching all fabrics ...")
+    print("\nFetching all fabrics ...")
     try:
-        fabrics = get_all_fabrics(client)
+        fabrics = get_all_fabrics()
         print("Fabrics:", fabrics)
     except Exception as exc:  # noqa: BLE001 - manual test script
         print("get_all_fabrics failed:", exc)
+
+    # print("\nAdding a fabric ...")
+    # try:
+    #     new_fabric = add_fabric_data(
+    #         name="CLI ASN Fabric2",
+    #         type="DNO ASN 2",
+    #         description="second fabric created fromcli",
+    #         status="draft",
+    #     )
+    #     print("Add fabric response:", new_fabric)
+    # except Exception as exc:  # noqa: BLE001 - manual test script
+    #     print("add_fabric_data failed:", exc)
+
+    # print("\nRefreshing auth ...")
+    # try:
+    #     refreshed = client.refresh()
+    #     print("Refresh response:", refreshed)
+    #     print("Global auth_token now:", client_module.auth_token)
+    # except Exception as exc:  # noqa: BLE001 - manual test script
+    #     print("refresh failed:", exc)
 
     # print("\nLogging out ...")
     # try:
@@ -64,3 +84,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+{"name":"Demo ASN Fabric","description":"Demo asn fabric","type":"DNO ASN","status":"draft","instance":"10.4.5.126"}
