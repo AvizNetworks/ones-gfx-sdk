@@ -57,6 +57,7 @@ All flags:
     --gpu-ids          comma-separated GPU port ids
     --gpus             comma-separated GPU names (G0,G1,...)
     --su-id            SU index for --action gpu-allocations  (default: 0)
+    --peering-name     peering name for --action vpcpeering
     --vpc-name         VPC name for --action vpcpeering
     --peer-vpc-name    peer VPC name for --action vpcpeering
     --webhook-url      receiver URL, required for --mode async-webhook
@@ -298,11 +299,12 @@ def scenario_vpcpeering(client: Client, args: argparse.Namespace) -> bool:
     name = args.tenant_name or default_tenant_name(args.mode)
     vpc = args.vpc_name or f"{name}-{args.fabric}-north-south"
     peer = args.peer_vpc_name or f"{args.fabric}-Storage-VPC"
-    print(f"Creating VPC peering {vpc!r} <-> {peer!r} ({args.mode})...")
+    peering = args.peering_name or f"{name}-storage-route-leak"
+    print(f"Creating VPC peering {peering!r}: {vpc!r} <-> {peer!r} ({args.mode})...")
     result = create_vpc_peering(
         client,
         args.fabric,
-        name=f"{name}-peering",
+        name=peering,
         vpcname=vpc,
         peervpcname=peer,
         **mode_kwargs(args.mode, args.webhook_url, ["vpcpeering.create"]),
@@ -399,6 +401,7 @@ def parse_args() -> argparse.Namespace:
                         default=[], help="GPU port ids")
     tenant.add_argument("--gpus", type=csv_list, default=[], help="GPU names, G0,G1,...")
     tenant.add_argument("--su-id", type=int, default=0, help="SU index")
+    tenant.add_argument("--peering-name", help="peering name for vpcpeering")
     tenant.add_argument("--vpc-name", help="VPC name for vpcpeering")
     tenant.add_argument("--peer-vpc-name", help="peer VPC name for vpcpeering")
 
