@@ -59,21 +59,37 @@ type Client struct {
 
 // NewClient builds a Client for the given root base URL.
 //
-// TLS certificate verification is disabled — ONES deployments normally use
-// self-signed certificates. Do not point this at an untrusted host: a
-// man-in-the-middle can read and alter the traffic, including the credentials
-// sent to /api/user/login.
-func NewClient(baseUrl string) (*Client, error) {
+// TLS certificate verification defaults to **off**, because ONES deployments
+// normally use self-signed certificates. Turn it on with
+// ones.WithTLSVerify(true), or pin a CA bundle with ones.WithTLSConfig(...):
+//
+//	client, err := ones.NewClient(url)                          // verifyTls = false
+//	client, err := ones.NewClient(url, ones.WithTLSVerify(true)) // strict
+//
+// With verification off, a man-in-the-middle can read and alter the traffic,
+// including the credentials sent to /api/user/login.
+func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 	if baseUrl == "" {
 		return nil, errors.New("baseUrl is required")
 	}
 	baseUrl = strings.TrimRight(baseUrl, "/")
-	auth := ones_gfx.NewTokenAuth(baseUrl, false, DefaultTimeout)
+
+	// Defaults first so a caller-supplied option of the same kind wins:
+	// options are applied in order, so later entries override earlier ones.
+	all := append([]ones_gfx.ClientOption{
+		ones_gfx.WithTLSVerify(false),
+		ones_gfx.WithClientTimeout(DefaultTimeout),
+	}, opts...)
+
+	// The auth client builds its own http.Client, so it needs the resolved
+	// value rather than the option list.
+	resolved := ones_gfx.ResolveClientOptions(all...)
+
+	auth := ones_gfx.NewTokenAuth(baseUrl, resolved.VerifyTLS, resolved.Timeout)
 	transport := ones_gfx.NewTransportWithOptions(
 		ones_gfx.FMBaseURL(baseUrl),
 		auth,
-		ones_gfx.WithTLSVerify(false),
-		ones_gfx.WithClientTimeout(DefaultTimeout),
+		all...,
 	)
 	return &Client{
 		baseUrl:     baseUrl,
@@ -143,8 +159,11 @@ var ErrNoTokenAuth = errors.New("client has no TokenAuth: build it with Initiali
 
 // InitializeWithCreds builds a client, logs in, and stores the returned token.
 // A returned client is always usable.
-func InitializeWithCreds(baseUrl, username, password string) (*Client, error) {
-	c, err := NewClient(baseUrl)
+//
+// TLS verification defaults to off; pass ones.WithTLSVerify(true) for strict
+// certificate checking.
+func InitializeWithCreds(baseUrl, username, password string, opts ...ones_gfx.ClientOption) (*Client, error) {
+	c, err := NewClient(baseUrl, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -159,12 +178,15 @@ func InitializeWithCreds(baseUrl, username, password string) (*Client, error) {
 // InitializeWithToken builds a client from an existing token. The token is sent
 // as the `authorization` header on every call.
 //
+// TLS verification defaults to off; pass ones.WithTLSVerify(true) for strict
+// certificate checking.
+//
 // Returns an error when token is empty.
-func InitializeWithToken(baseUrl, token string) (*Client, error) {
+func InitializeWithToken(baseUrl, token string, opts ...ones_gfx.ClientOption) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("token is required when initializing with a token")
 	}
-	c, err := NewClient(baseUrl)
+	c, err := NewClient(baseUrl, opts...)
 	if err != nil {
 		return nil, err
 	}

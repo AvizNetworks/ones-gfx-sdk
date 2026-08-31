@@ -9,22 +9,22 @@ Read-only tour (fabrics, tenants, available servers):
 
     python examples/usage_examples.py \
         -u https://localhost:3002 -U superadmin -P 'Admin@123456' \
-        -f my-fabric --action read-only --insecure
+        -f my-fabric --action read-only --verify-tls
 
 Full tenant lifecycle in each of the three execution modes:
 
     # blocks until the server finishes each step
     python examples/usage_examples.py -u ... -U ... -P ... -f my-fabric \
-        --action lifecycle --mode sync --insecure
+        --action lifecycle --mode sync --verify-tls
 
     # returns an operationId per step, then polls GET /operations/{id}
     python examples/usage_examples.py -u ... -U ... -P ... -f my-fabric \
-        --action lifecycle --mode async-poll --insecure
+        --action lifecycle --mode async-poll --verify-tls
 
     # returns an operationId, server POSTs the result to --webhook-url
     python examples/usage_examples.py -u ... -U ... -P ... -f my-fabric \
         --action lifecycle --mode async-webhook \
-        --webhook-url http://my-host:8000/hook --insecure
+        --webhook-url http://my-host:8000/hook --verify-tls
 
 Single actions (each honours --mode where the endpoint supports it):
 
@@ -40,7 +40,7 @@ Single actions (each honours --mode where the endpoint supports it):
     --action error-handling   deliberately trigger and catch SDK errors
 
     python examples/usage_examples.py -u ... -U ... -P ... -f my-fabric \
-        --action allocate --tenant-name demo --servers hgx-su00-h00 --insecure
+        --action allocate --tenant-name demo --servers hgx-su00-h00 --verify-tls
 
 All flags:
 
@@ -63,7 +63,7 @@ All flags:
     --webhook-url      receiver URL, required for --mode async-webhook
     --poll-interval    seconds between polls              (default: 5)
     --poll-attempts    max poll attempts                  (default: 60)
-    --insecure         skip TLS certificate verification
+            skip TLS certificate verification
 """
 
 from __future__ import annotations
@@ -324,7 +324,7 @@ def scenario_error_handling(client: Client, args: argparse.Namespace) -> None:
 
     print("2. Calling an API with a token-less client:")
     try:
-        get_all_fabrics(Client(args.url, verify_tls=not args.insecure))
+        get_all_fabrics(Client(args.url, verify_tls=args.verify_tls))
     except NotAuthenticatedError as exc:
         print(f"   NotAuthenticatedError: {exc}")
 
@@ -378,7 +378,8 @@ def parse_args() -> argparse.Namespace:
     conn.add_argument("-U", "--username", required=True, help="login username")
     conn.add_argument("-P", "--password", required=True, help="login password")
     conn.add_argument("-f", "--fabric", required=True, help="fabric name")
-    conn.add_argument("--insecure", action="store_true", help="skip TLS verification")
+    conn.add_argument("--verify-tls", action="store_true",
+                      help="enforce strict TLS checking (default: off)")
 
     p.add_argument(
         "--action",
@@ -421,7 +422,7 @@ def main() -> int:
     args = parse_args()
 
     client = Client.initialize_with_creds(
-        args.url, args.username, args.password, verify_tls=not args.insecure
+        args.url, args.username, args.password, verify_tls=args.verify_tls
     )
     try:
         if args.action == "read-only":

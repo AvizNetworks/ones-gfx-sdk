@@ -161,6 +161,30 @@ func WithTLSVerify(verify bool) ClientOption {
 	}
 }
 
+// ResolvedClient is the client-wide configuration after applying ClientOptions.
+// It lets callers outside this package read a resolved value — the auth client
+// needs VerifyTLS because it builds its own http.Client separately from the
+// transport.
+type ResolvedClient struct {
+	Timeout   time.Duration
+	TLSConfig *tls.Config
+	VerifyTLS bool
+}
+
+// ResolveClientOptions applies opts over the defaults and returns the result,
+// mirroring ResolveCallOptions.
+func ResolveClientOptions(opts ...ClientOption) ResolvedClient {
+	cfg := defaultClientConfig()
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+	return ResolvedClient{
+		Timeout:   cfg.timeout,
+		TLSConfig: cfg.tlsConfig,
+		VerifyTLS: cfg.verifyTLS,
+	}
+}
+
 // AuthOption configures optional parameters for authentication.
 type AuthOption func(*authConfig)
 

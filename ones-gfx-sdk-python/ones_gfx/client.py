@@ -35,6 +35,12 @@ class Client:
     Holds the base URL, the auth token, and (optionally) the credentials used to
     obtain it. Prefer the :meth:`initialize_with_creds` / :meth:`initialize_with_token`
     factories over the constructor.
+
+    Args:
+        verify_tls: strictness of TLS certificate checking. ``False`` (the
+            default) accepts self-signed certificates, which is how ONES is
+            normally deployed. ``True`` enforces strict verification. A string
+            is treated as a path to a CA bundle to verify against.
     """
 
     def __init__(
@@ -43,7 +49,7 @@ class Client:
         authToken: str | None = None,
         username: str | None = None,
         password: str | None = None,
-        verify_tls: bool | str = True,
+        verify_tls: bool | str = False,
     ) -> None:
         if not baseUrl:
             raise ValueError("baseUrl is required.")
@@ -69,12 +75,15 @@ class Client:
         baseUrl: str,
         username: str,
         password: str,
-        verify_tls: bool | str = True,
+        verify_tls: bool | str = False,
     ) -> "Client":
         """Build a client, log in, and store the returned token.
 
         Raises whatever ``login`` raises if authentication fails, so a returned
         client is always usable.
+
+        ``verify_tls`` defaults to ``False`` (self-signed certificates
+        accepted); pass ``True`` for strict checking or a CA-bundle path.
         """
         client = cls(
             baseUrl=baseUrl,
@@ -90,9 +99,12 @@ class Client:
         cls,
         baseUrl: str,
         token: str,
-        verify_tls: bool | str = True,
+        verify_tls: bool | str = False,
     ) -> "Client":
         """Build a client from an existing token.
+
+        ``verify_tls`` defaults to ``False`` (self-signed certificates
+        accepted); pass ``True`` for strict checking or a CA-bundle path.
 
         Raises:
             ValueError: if ``token`` is missing or empty.

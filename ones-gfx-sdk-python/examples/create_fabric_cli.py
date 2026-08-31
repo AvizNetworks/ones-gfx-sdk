@@ -11,19 +11,19 @@ Usage
         --type "DNO ASN" \
         --description "Primary GPU fabric" \
         --status draft \
-        --insecure
+        --verify-tls
 
 Minimal (only the connection details and a fabric name are required):
 
     python examples/create_fabric_cli.py \
         -u https://localhost:3002 -U superadmin -P 'Admin@123456' \
-        -n "gpu-fabric-1" --insecure
+        -n "gpu-fabric-1" --verify-tls
 
 List the fabrics afterwards instead of creating one:
 
     python examples/create_fabric_cli.py \
         -u https://localhost:3002 -U superadmin -P 'Admin@123456' \
-        -n unused --list --insecure
+        -n unused --list --verify-tls
 
 All flags:
 
@@ -38,7 +38,7 @@ All flags:
     --max-sus         maximum number of SUs                     (int)
     --dedicated       mark the fabric dedicated                 (flag)
     --list            list fabrics instead of creating one
-    --insecure        skip TLS certificate verification
+           skip TLS certificate verification
 """
 
 import argparse
@@ -62,7 +62,8 @@ def parse_args() -> argparse.Namespace:
     conn.add_argument("-U", "--username", required=True, help="login username")
     conn.add_argument("-P", "--password", required=True, help="login password")
     conn.add_argument(
-        "--insecure", action="store_true", help="skip TLS certificate verification"
+        "--verify-tls", action="store_true",
+        help="enforce strict TLS certificate checking (default: off, self-signed OK)"
     )
 
     fab = p.add_argument_group("fabric")
@@ -104,7 +105,7 @@ def main() -> int:
     args = parse_args()
 
     client = Client.initialize_with_creds(
-        args.url, args.username, args.password, verify_tls=not args.insecure
+        args.url, args.username, args.password, verify_tls=args.verify_tls
     )
     try:
         if args.list:
