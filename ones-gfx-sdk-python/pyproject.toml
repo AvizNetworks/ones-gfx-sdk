@@ -7,7 +7,9 @@ name = "ones-gfx-sdk"
 version="1.0.0"
 description = "Python SDK for the AVIZ ONES Spectrum-X tenant management API"
 readme = "README.md"
-requires-python = ">=3.8"
+# 3.9 minimum: ones_gfx/_types.py evaluates `dict[...]` at runtime (SuidMap),
+# and PEP 585 builtin generics are only subscriptable from 3.9 onward.
+requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "AVIZ Networks" },
@@ -20,7 +22,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -44,10 +45,14 @@ Documentation = "https://github.com/aviznetworks/ones-gfx-sdk"
 Issues = "https://github.com/aviznetworks/ones-gfx-sdk/issues"
 
 
+# NOTE: these two keys take the *import package* name (the directory, ones_gfx),
+# not the distribution name above (ones-gfx-sdk). Python identifiers cannot
+# contain hyphens, so "ones-gfx-sdk" can never be an importable package — using
+# it here matches nothing and produces a wheel with no code in it.
 [tool.setuptools.packages.find]
-include = ["ones-gfx-sdk*"]
+include = ["ones_gfx*"]
 exclude = ["examples*", "tests*"]
 
 # Ships the PEP 561 marker so mypy/pyright/IDEs honour our annotations.
 [tool.setuptools.package-data]
-ones-gfx-sdk = ["py.typed"]
+ones_gfx = ["py.typed"]

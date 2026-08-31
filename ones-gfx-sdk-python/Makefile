@@ -46,7 +46,7 @@ install-dev:  ## Editable install plus dev extras (pytest, ruff)
 	$(PIP) install -e ".[dev]"
 
 uninstall:  ## Remove the SDK from the current Python environment
-	$(PIP) uninstall -y ones_gfx
+	$(PIP) uninstall -y ones-gfx-sdk
 
 reinstall: uninstall install  ## Uninstall then install (useful after big changes)
 
