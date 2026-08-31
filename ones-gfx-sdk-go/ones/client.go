@@ -106,10 +106,11 @@ func NewClient(baseUrl string) (*Client, error) {
 // Login/RefreshAuth/Logout and the token getters/setters only work when auth is
 // a *ones_gfx.TokenAuth; with any other provider they return ErrNoTokenAuth.
 func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_gfx.ClientOption) *Client {
-	transport := ones_gfx.NewTransportWithOptions(baseUrl, auth, opts...)
+	root := strings.TrimRight(baseUrl, "/")
+	transport := ones_gfx.NewTransportWithOptions(ones_gfx.FMBaseURL(root), auth, opts...)
 	tokenAuth, _ := auth.(*ones_gfx.TokenAuth)
 	c := &Client{
-		baseUrl:     baseUrl,
+		baseUrl:     root,
 		auth:        tokenAuth,
 		transport:   transport,
 		Tenants:     resources.NewTenantsResource(transport),
