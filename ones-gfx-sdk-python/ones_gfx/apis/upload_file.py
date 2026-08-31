@@ -21,6 +21,6 @@ def upload_file(client: Client, *, filetype: str, file: str, version: str | None
         params["vendor"] = vendor
     if tag is not None:
         params["tag"] = tag
-    files: dict[str, Any] = {}
-    files["file"] = open(file, "rb")
-    return client.call_api("POST", path, params=params or None, files=files or None)
+    with open(file, "rb") as fh:
+        files: dict[str, Any] = {"file": fh}
+        return client.call_api("POST", path, params=params or None, files=files or None)

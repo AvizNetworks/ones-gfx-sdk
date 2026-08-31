@@ -16,6 +16,6 @@ def replace_config(client: Client, *, deviceip: str, file: str, onlydiff: bool |
     params["deviceip"] = deviceip
     if onlydiff is not None:
         params["onlydiff"] = onlydiff
-    files: dict[str, Any] = {}
-    files["file"] = open(file, "rb")
-    return client.call_api("POST", path, params=params or None, files=files or None)
+    with open(file, "rb") as fh:
+        files: dict[str, Any] = {"file": fh}
+        return client.call_api("POST", path, params=params or None, files=files or None)

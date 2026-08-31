@@ -15,6 +15,6 @@ def upload_day1_config(client: Client, *, file: str, x_request_origin: str | Non
     headers: dict[str, str] = {}
     if x_request_origin is not None:
         headers["x-request-origin"] = x_request_origin
-    files: dict[str, Any] = {}
-    files["file"] = open(file, "rb")
-    return client.call_api("POST", path, files=files or None, extra_headers=headers or None)
+    with open(file, "rb") as fh:
+        files: dict[str, Any] = {"file": fh}
+        return client.call_api("POST", path, files=files or None, extra_headers=headers or None)
