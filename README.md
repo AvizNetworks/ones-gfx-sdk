@@ -1,239 +1,274 @@
 # ONES GFX SDK
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
+Python and Go implementations expose the **same 97 Fabric Manager endpoints**
+through the same `Client` shape, so code translates almost line-for-line between
+them.
 
-Provides programmatic access to:
-- Tenant lifecycle management (create, read, update, delete)
-- GPU server allocation and deallocation
-- For specific GPUs assignment and unassignment
-- Fabric discovery and configuration
-- VPC peering setup
-- Asynchronous operation tracking (sync / async-poll / async-webhook)
+Covers tenant lifecycle, GPU allocation and per-port assignment, fabric
+discovery and configuration, inventory, bootstrap/ZTP, RMA, config
+backup/restore, NMX-C and UFM integration, VPC peering, and async operation
+tracking.
 
 ---
 
-## Choose Your Language
+## Install
 
-### [📘 Python SDK](./ones-gfx-sdk-python/)
-**Status:** Production-ready (v1.0.0)
+Neither SDK is published to a registry — install both from this checkout.
 
-- **Requirements:** Python 3.9+
-- **Installation:** `pip install ./ones-gfx-sdk-python`
-- **Use Case:** Data science workflows, Jupyter notebooks, automation scripts, rapid prototyping
-- **Features:** Full API coverage, JWT auto-refresh, timeout override, async modes
+**Python** (3.9+) — editable install from the local directory:
 
-**Quick Start:**
-```python
-from ones_gfx import ONESClient, JWTAuth
-
-auth = JWTAuth(access_token, refresh_token, refresh_url)
-client = ONESClient(base_url, auth)
-tenant = client.tenants.create(fabric, "tenant1", "desc", max_gpus=8)
+```bash
+pip install -e ./ones-gfx-sdk-python
 ```
 
-[📖 Python Documentation →](./ones-gfx-sdk-python/README.md)
+**Go** (1.19+, zero dependencies) — the module lives in this repo, so point at
+it with a `replace` directive in your own `go.mod`:
+
+```
+require github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go v0.0.0
+
+replace github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go => /path/to/ones-gfx-sdk/ones-gfx-sdk-go
+```
+
+The import path stays `github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones`;
+only resolution is local.
 
 ---
 
-### [📗 Go SDK](./ones-gfx-sdk-go/)
-**Status:** Core library production-ready (v1.0.0), CLI in development
+## The `Client` API
 
-- **Requirements:** Go 1.19+
-- **Installation:** `go get github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go`
-- **Use Case:** Kubernetes operators, controllers, high-performance integrations, compiled binaries
-- **Features:** Type-safe, zero dependencies, compile-time error checking, single binary deployment
+A `Client` is a connection to **one** ONES instance. It holds the base URL, the
+auth token, and optionally the credentials used to obtain it — all per instance.
+Nothing is global and nothing is written to disk, so you can hold several
+clients for different hosts or users at once.
 
-**Quick Start:**
+You then **pass the client into every API function**.
+
+### Creating a client
+
+| | Python | Go |
+|---|---|---|
+| From credentials | `Client.initialize_with_creds(baseUrl, username, password)` | `ones.InitializeWithCreds(baseUrl, username, password)` |
+| From an existing token | `Client.initialize_with_token(baseUrl, token)` | `ones.InitializeWithToken(baseUrl, token)` |
+| Empty, log in later | `Client(baseUrl)` | `ones.NewClient(baseUrl)` |
+
+`initialize_with_creds` logs in immediately, so a returned client is always ready.
+`initialize_with_token` **errors if the token is empty** (`ValueError` in Python,
+an `error` in Go).
+
+Pass the **root** base URL, e.g. `https://10.4.5.76:8089`. Both SDKs derive the
+auth endpoints (`/api/user/...`) and the Fabric Manager base (`/api/fm/...`)
+from it, and strip any trailing slash.
+
+### Options
+
+| Option | Python | Go |
+|---|---|---|
+| Request timeout | `requests` default | `ones.DefaultTimeout` = 20 min |
+| Custom auth / transport options | build `Client(...)` directly | `ones.NewClientWithAuth(baseUrl, auth, opts...)` |
+
+### Methods
+
+Identical on both sides — Python is snake_case, Go is exported PascalCase.
+
+| Purpose | Python | Go |
+|---|---|---|
+| Base URL | `get_base_url()` / `set_base_url(v)` | `GetBaseUrl()` / `SetBaseUrl(v) error` |
+| Token | `get_auth_token()` / `set_auth_token(v)` | `GetAuthToken()` / `SetAuthToken(v)` |
+| Username | `get_username()` / `set_username(v)` | `GetUsername()` / `SetUsername(v)` |
+| Password | `get_password()` / `set_password(v)` | `GetPassword()` / `SetPassword(v)` |
+| Rotate token (rejects empty) | `update_token(token)` | `UpdateToken(token) error` |
+| Is a token held? | `is_authenticated()` | `IsAuthenticated()` |
+| Log in (falls back to stored creds) | `login(username=None, password=None)` | `Login(username, password)` |
+| Exchange token for a new one | `refresh_auth()` | `RefreshAuth()` |
+| Log out, clear token | `logout()` | `Logout()` |
+| Release HTTP resources | `close()` (or `with`) | `Close()` |
+| Raw call for uncovered routes | `call_api(method, path, ...)` | `GetTransport()` |
+
+### Calling the API
+
+Every endpoint is a flat function taking the client. Go additionally takes a
+`context.Context` first, and offers `...Async` variants for the 5 async-capable
+endpoints (102 functions vs Python's 97; Python selects async with the `prefer`
+argument on the same function).
+
+```python
+from ones_gfx.apis import get_all_fabrics
+fabrics = get_all_fabrics(client)
+```
+
 ```go
+fabrics, err := ones.GetAllFabrics(ctx, client)
+```
+
+Names differ only in case convention: `get_all_fabrics` ↔ `GetAllFabrics`,
+`add_fabric_data` ↔ `CreateFabric`, `modify_gpu_allocations` ↔
+`ModifyGpuAllocations`. Optional fields are keyword args defaulting to `None` in
+Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
+
+### Errors
+
+| Condition | Python | Go |
+|---|---|---|
+| Call with no token | raises `NotAuthenticatedError` | `ErrNotAuthenticated` |
+| Nil/missing client | n/a | `ErrNilClient` |
+| Session method on a non-token client | n/a | `ErrNoTokenAuth` |
+| HTTP 4xx/5xx | `requests.HTTPError` | typed: `*AuthenticationError`, `*NotFoundError`, `*ConflictError`, `*ServerError`, … (use `errors.As`) |
+
+---
+
+## Example — Python
+
+```python
+from ones_gfx import Client
+from ones_gfx.apis import add_fabric_data, get_all_fabrics
+
+client = Client.initialize_with_creds("https://10.4.5.76:8089", "admin", "secret")
+print("authenticated:", client.is_authenticated())
+
+for f in get_all_fabrics(client):
+    print(f"  {f.get('id')} {f.get('name')} type={f.get('type')}")
+
+print(add_fabric_data(
+    client,
+    name="gpu-fabric-1",
+    type="DNO ASN",
+    description="Primary GPU fabric",
+    status="draft",
+))
+
+client.close()
+```
+
+## Example — Go
+
+```go
+package main
+
 import (
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
-    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/sdk"
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones"
 )
 
-auth, err := ones_gfx.NewJWTAuth(accessToken, refreshToken, refreshURL)
-if err != nil {
-    panic(err)
+func main() {
+    ctx := context.Background()
+
+    client, err := ones.InitializeWithCreds("https://10.4.5.76:8089", "admin", "secret")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer client.Close()
+    fmt.Println("authenticated:", client.IsAuthenticated())
+
+    fabrics, err := ones.GetAllFabrics(ctx, client)
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, f := range fabrics {
+        fmt.Printf("  %d %s type=%s\n", f.ID, f.Name, f.Type)
+    }
+
+    msg, err := ones.CreateFabric(ctx, client, "gpu-fabric-1", &ones.FabricCreateArgs{
+        Type:        ones.Ptr("DNO ASN"),
+        Description: ones.Ptr("Primary GPU fabric"),
+        Status:      ones.Ptr("draft"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println(msg)
 }
-client := sdk.NewClient(baseURL, auth)
-tenant, err := client.Tenants.Create(ctx, fabricName, req)
 ```
 
-[📖 Go Documentation →](./ones-gfx-sdk-go/README.md)
+`ones` is the only import you need — every type, constant and option is
+re-exported there (`ones.FabricCreateArgs`, `ones.GpuActionAdd`, `ones.Ptr`, …).
 
----
+Runnable versions of both live at
+[`ones-gfx-sdk-python/index.py`](./ones-gfx-sdk-python/index.py) and
+[`ones-gfx-sdk-go/examples/index`](./ones-gfx-sdk-go/examples/index):
 
-## Feature Comparison
-
-| Feature | Python | Go | Notes |
-|---------|--------|-----|-------|
-| **Tenant CRUD** | ✅ | ✅ | Full parity |
-| **GPU allocation/deallocation** | ✅ | ✅ | Timeout override supported |
-| **Specific GPUs assign/unassign** | ✅ | ✅ | UFM / NMXC fabrics only |
-| **Async modes** | ✅ | ✅ | sync / async-poll / async-webhook |
-| **JWT auto-refresh** | ✅ | ✅ | Proactive + reactive |
-| **Timeout override** | ✅ | ✅ | Per-call override for long operations |
-| **Library import** | ✅ | ✅ | Use as dependency |
-| **Type safety** | Runtime | Compile-time | Go catches errors before deployment |
-
----
-
-## Installation Quick Reference
-
-### Python
 ```bash
-# From PyPI (when published)
-pip install ones-gfx-sdk
-
-# From source
-cd ones-gfx-sdk/ones-gfx-sdk-python
-pip install -e .
-
-# CLI usage
-python examples/usage_examples.py --mode sync --action lifecycle
-```
-
-### Go
-```bash
-# As library
-go get github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go
-
-# From source
-cd ones-gfx-sdk/ones-gfx-sdk-go
-make build-lib
-
-# CLI usage (coming in v1.1)
-# ones-gfx-sdk-mod lifecycle --mode sync --fabric sdk
+cd ones-gfx-sdk-python && python3 index.py
+cd ones-gfx-sdk-go     && go run ./examples/index
 ```
 
 ---
 
-## Controller Integration Examples
+## Language notes
 
-### Python Controller (Subprocess)
-```python
-import subprocess
-import json
+| | Python | Go |
+|---|---|---|
+| Endpoint coverage | 97 | 97 (+5 async variants = 102 functions) |
+| Errors | exceptions | returned `error` values, typed taxonomy |
+| Type checking | TypedDicts, checked by mypy/pyright | compile-time |
+| Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |
+| Import surface | `ones_gfx` + `ones_gfx.apis` | single `ones` package |
 
-result = subprocess.run([
-    "python", "examples/usage_examples.py",
-    "--action", "create",
-    "--tenant-name", "controller-tenant",
-    "--fabric", "sdk",
-    "--output", "json"
-], capture_output=True, text=True)
-
-tenant = json.loads(result.stdout)
-print(f"Created tenant ID: {tenant['tenant']['id']}")
-```
-
-### Go Controller (Library Import)
-```go
-import "github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
-
-client := sdk.NewClient(baseURL, auth)
-tenant, err := client.Tenants.Create(ctx, "sdk", ones_gfx.CreateTenantRequest{
-    Name: "controller-tenant", MaxGPUsAllowed: 8,
-})
-```
+Per-SDK detail: [Python README](./ones-gfx-sdk-python/README.md) ·
+[Go README](./ones-gfx-sdk-go/README.md) ·
+[Go implementation status](./ones-gfx-sdk-go/IMPLEMENTATION_STATUS.md)
 
 ---
 
-## Repository Structure
+## Repository structure
 
 ```
 ones-gfx-sdk/
-├── README.md                    # This file (language picker)
-├── LICENSE                      # Apache 2.0
-├── CONTRIBUTING.md              # Contribution guidelines
-├── .github/ISSUE_TEMPLATE/      # Bug report / feature request templates
-├── ones-gfx-sdk-python/         # Python implementation
-│   ├── ones_gfx/                # Core library package
-│   ├── examples/                # CLI with 8 commands
-│   ├── pyproject.toml
-│   └── README.md
-└── ones-gfx-sdk-go/             # Go implementation
-    ├── ones_gfx/                # Core library (importable)
-    ├── cmd/                     # CLI binary (v1.1)
-    ├── go.mod
-    └── README.md
+├── README.md                    # This file
+├── CONTRIBUTING.md
+├── ones-gfx-sdk-python/
+│   ├── ones_gfx/
+│   │   ├── client.py            # Client class
+│   │   ├── apis/                # 97 endpoint functions
+│   │   └── _types.py            # TypedDicts
+│   ├── index.py                 # Runnable walkthrough
+│   └── pyproject.toml
+└── ones-gfx-sdk-go/
+    ├── ones/                    # Public package: client.go, api.go, types.go
+    ├── ones_gfx/                # Internals: transport, auth, resources/
+    ├── examples/index/          # Runnable walkthrough
+    └── go.mod
 ```
-
----
-
-## Common Workflows
-
-### Full Tenant Lifecycle (Python)
-```bash
-cd ones-gfx-sdk-python
-python examples/usage_examples.py --mode sync --action lifecycle --fabric sdk
-```
-
-### Full Tenant Lifecycle (Go — Library)
-```go
-// See ones-gfx-sdk-go/README.md for complete example
-tenant, _ := client.Tenants.Create(ctx, fabricName, req)
-_ = client.Tenants.AllocateGPUs(ctx, fabricName, name, servers)
-_ = client.Tenants.AssignPorts(ctx, fabricName, name, reqGpus)
-_ = client.Tenants.UnassignPorts(ctx, fabricName, name, reqGpus)
-_ = client.Tenants.DeallocateGPUs(ctx, fabricName, name, servers)
-_ = client.Tenants.Delete(ctx, fabricName, name)
-```
-
----
-
-## API Reference
-
-Both SDKs wrap the same ONES Spectrum-X API. For raw curl examples, see:
-
-📄 [api_reference.txt](./ones-gfx-sdk-python/api_reference.txt) — Language-agnostic API examples
-
-**Endpoints covered:**
-- `POST /fabrics/{fabricName}/tenants` — Create tenant
-- `GET /fabrics/{fabricName}/tenants` — List tenants
-- `GET /fabrics/{fabricName}/tenants/{name}` — Get tenant
-- `DELETE /fabrics/{fabricName}/tenants/{name}` — Delete tenant
-- `PATCH /fabrics/{fabricName}/tenants/{name}` — Allocate/deallocate GPUs (all fabric types)
-- `POST /fabrics/{fabricName}/tenants/{name}/gpus` — Assign/unassign Specific GPUs (UFM / NMXC only)
-- `GET /fabrics` — List fabrics
-- `POST /fabrics/{fabricName}/inventorySync` — Trigger UFM inventory sync (UFM enabled fabrics only, no body)
-- `GET /operations/{id}` — Poll async operation
-- `POST /fabrics/{fabricName}/vpcpeering` — VPC peering
 
 ---
 
 ## Versioning Policy
 
-This repository's version follows [Semantic Versioning (SemVer)](https://semver.org/) (`MAJOR.MINOR.PATCH`) and is maintained **independently** of AVIZ ONES Spectrum-X platform releases — a version bump here does not imply a corresponding change in the ONES platform version, and vice versa.
-- MAJOR: Incremented for breaking, backward-incompatible changes (e.g., 2.0.0)
-- MINOR: Incremented when adding new, backward-compatible features or functionality (e.g., 2.1.0)
-- PATCH: Incremented for backward-compatible bug fixes and small corrections (e.g., 2.1.1)
+This repository follows [Semantic Versioning](https://semver.org/)
+(`MAJOR.MINOR.PATCH`) and is maintained **independently** of AVIZ ONES
+Spectrum-X platform releases — a version bump here does not imply a
+corresponding change in the ONES platform version, and vice versa.
+
+- **MAJOR:** breaking, backward-incompatible changes
+- **MINOR:** new backward-compatible features
+- **PATCH:** backward-compatible fixes
 
 ### Compatibility Matrix
 
 | Go SDK | Python SDK | Supported ONES Version |
 |--------|------------|------------------------|
-| v1.0.0 | v1.0.0     |      4.2.1             |  
-
+| v1.0.0 | v1.0.0     | 4.2.1                  |
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, coding conventions, and the PR workflow.
-
----
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup, coding
+conventions, and the PR workflow.
 
 ## Support
 
-- **Documentation:** See language-specific READMEs
-- **Issues:** [Open an issue](https://github.com/aviznetworks/ones-gfx-sdk/issues/new/choose) — pick the bug report or feature request template
-- **Security:** Report vulnerabilities to security@aviznetworks.com
-
----
+- **Issues:** [Open an issue](https://github.com/aviznetworks/ones-gfx-sdk/issues/new/choose)
+- **Security:** report vulnerabilities to security@aviznetworks.com
 
 ## License
 
+Apache 2.0 — see [LICENSE](./LICENSE).
+
 ---
 
-**Developed by AVIZ Networks**  
-For questions or support, visit https://aviznetworks.com
+**Developed by AVIZ Networks** — https://aviznetworks.com
