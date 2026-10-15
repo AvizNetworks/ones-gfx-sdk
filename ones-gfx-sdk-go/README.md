@@ -17,7 +17,7 @@ returns are the 16 documented open-payload leaves (see
 ## Requirements
 
 - **Go 1.19** or newer
-- **Zero external dependencies** (stdlib only)
+- One external dependency: `gopkg.in/yaml.v3`, used by `DeployFabric` to read the generated fabric YAML
 
 ---
 
@@ -319,6 +319,38 @@ ips, err = client.Fabrics.DevicesByLayer(ctx, "spine")
 res, err := client.Inventory.Sync(ctx, fabricName)
 ```
 
+### Fabric creation and deployment
+
+`CreateFabricConfig`, `DeployFabric` and `DeleteFabricConfig` create, deploy
+and delete a fabric through the ONES UI config service — the same calls the
+ONES UI makes (`client.FabricConfig` holds the resource form). See
+[Fabric creation and deployment](../README.md#fabric-creation-and-deployment)
+in the root README for the device list format and caveats.
+
+```go
+_, err := ones.CreateFabricConfig(ctx, client, "gpu-fabric-1", ones.FabricConfigArgs{
+    Type:              "Aviz RA 1.0", // or "NVIDIA SpX RA 1.3", "NVIDIA SpX RA 2.1"
+    HostsPerSU:        "{0:2}",       // SU index -> host count
+    EnableEW:          true,
+    StartingSubnetGPU: "192",
+})
+
+yamlText, err := ones.GetFabricYaml(ctx, client, "gpu-fabric-1")
+
+var devices []ones.FabricDevice // devices.json: hostname, ip, username, password, device_role
+raw, _ := os.ReadFile("devices.json")
+_ = json.Unmarshal(raw, &devices)
+
+result, err := ones.DeployFabric(ctx, client, "gpu-fabric-1", devices,
+    &ones.FabricDeployOptions{Description: "first deploy"})
+var verr *ones.FabricValidationError
+if errors.As(err, &verr) {
+    fmt.Println(verr.Kind, "validation failed:", verr.Failures) // nothing was configured
+}
+
+// ones.DeleteFabricConfig(ctx, client, "gpu-fabric-1") // removes the record; no undeploy
+```
+
 ### Tenants
 
 ```go
@@ -374,10 +406,10 @@ from attaching a whole server via `Tenants.Update`: `ModifyAllocations` gives
 fine-grained control over which GPU indices a tenant can access.
 
 ```go
-// SuidMap is map[serverIndex]map[hostname][]gpuID
+// SuidMap is map[serverIndex]map[hostname]DeviceGpus
 suid := resources.SuidMap{
     "0": {
-        "hgx-su00-h00": []string{"G0", "G1", "G2", "G3"},
+        "hgx-su00-h00": {Gpus: []string{"G0", "G1", "G2", "G3"}},
     },
 }
 

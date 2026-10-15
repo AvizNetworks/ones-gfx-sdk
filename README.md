@@ -8,7 +8,8 @@ them.
 Covers tenant lifecycle, GPU allocation and per-port assignment, fabric
 discovery and configuration, inventory, bootstrap/ZTP, RMA, config
 backup/restore, NMX-C and UFM integration, VPC peering, and async operation
-tracking.
+tracking — plus fabric creation and deployment through the ONES UI config
+service (see [Fabric creation and deployment](#fabric-creation-and-deployment)).
 
 ---
 
@@ -22,7 +23,7 @@ Neither SDK is published to a registry — install both from this checkout.
 pip install -e ./ones-gfx-sdk-python
 ```
 
-**Go** (1.19+, zero dependencies) — the module lives in this repo, so point at
+**Go** (1.19+; one dependency, `gopkg.in/yaml.v3`, for fabric deploy) — the module lives in this repo, so point at
 it with a `replace` directive in your own `go.mod`:
 
 ```
@@ -198,11 +199,84 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## Fabric creation and deployment
+
+Creating and deploying a fabric goes through the **ONES UI config service**
+(`/api/config/...` and `/fabrics/{name}` on the same host), the same calls the
+ONES UI and `terraform-provider-fabricapi` make. This is separate from the
+Fabric Manager `add_fabric_data` / `CreateFabric`, which only stores a fabric
+record without generating its topology.
+
+| Step | Python | Go | Endpoint |
+|---|---|---|---|
+| Create (Draft; generates topology, YAML, inventory) | `create_fabric_config` | `CreateFabricConfig` | `POST /api/config/addFabricData` |
+| Generated YAML | `get_fabric_yaml` | `GetFabricYaml` | `GET /fabrics/{name}` |
+| **Deploy** (runs the six steps below) | `deploy_fabric` | `DeployFabric` | |
+| 1. Record device IPs and credentials | `upload_fabric_device_ips` | `UploadFabricDeviceIPs` | `POST /api/config/uploadip` |
+| 2. SSH-check switches | `validate_fabric_switches` | `ValidateFabricSwitches` | `POST /api/config/validateswitch` |
+| 3. SSH-check hosts/DPUs | `validate_fabric_servers` | `ValidateFabricServers` | `POST /api/config/validateserver` |
+| 4. Update FM inventory | `update_fabric_inventory` | `UpdateFabricInventory` | `POST /api/config/updateinventory` |
+| 5. Push the config (YAML with credentials filled in) | `push_fabric_config` | `PushFabricConfig` | `POST /api/config` |
+| 6. Mark Deployed | `update_fabric_config_status` | `UpdateFabricConfigStatus` | `POST /api/config/updatefabricstatus` |
+| Delete (404 is not an error) | `delete_fabric_config` | `DeleteFabricConfig` | `DELETE /api/config/deletefabricbyname/{name}` |
+
+Deploy needs every device in the fabric, in the `devices.json` format used by
+the terraform provider — the hostnames are the ones in the generated YAML
+(`spine-sNN`, `leaf-suNN-rN`, `hgx-suNN-hNN`):
+
+```json
+[{"hostname": "spine-s00",    "ip": "10.0.0.1", "username": "cumulus", "password": "...", "device_role": "spine"},
+ {"hostname": "leaf-su00-r0", "ip": "10.0.0.2", "username": "cumulus", "password": "...", "device_role": "leaf"},
+ {"hostname": "hgx-su00-h00", "ip": "10.0.0.3", "username": "root",    "password": "...", "device_role": "host"}]
+```
+
+`device_type` (`switch`, `server`, `dpu`, `host`) can stand in for
+`device_role`; `apply_config: false` leaves a device unconfigured and skips its
+switch validation. If any device fails validation, deploy stops before pushing
+anything (`FabricValidationError` in both SDKs).
+
+```python
+import json
+from ones_gfx import Client
+from ones_gfx.apis import create_fabric_config, deploy_fabric
+
+client = Client.initialize_with_creds("https://localhost", "superadmin", "secret")
+create_fabric_config(client, name="gpu-fabric-1", type="Aviz RA 1.0",
+                     hostsPerSu="{0:2}", enableEW=True, startingSubnetGpu="192")
+result = deploy_fabric(client, "gpu-fabric-1", json.load(open("devices.json")))
+```
+
+```go
+var devices []ones.FabricDevice
+raw, _ := os.ReadFile("devices.json")
+_ = json.Unmarshal(raw, &devices)
+
+_, err := ones.CreateFabricConfig(ctx, client, "gpu-fabric-1", ones.FabricConfigArgs{
+    Type: "Aviz RA 1.0", HostsPerSU: "{0:2}", EnableEW: true, StartingSubnetGPU: "192",
+})
+result, err := ones.DeployFabric(ctx, client, "gpu-fabric-1", devices, nil)
+```
+
+Things to know:
+
+- **Deploy pushes real configuration** to the switches and servers listed.
+- **There is no undeploy.** Deleting a Deployed fabric removes the record, not
+  the configuration already on the devices.
+- Delete leaves the fabric's inventory rows behind, so recreating a fabric with
+  the same device IPs can produce duplicate inventory entries.
+- `nsOperatingSystem` / `NSOperatingSystem` (`cumulus` or `sonic`) must match
+  the real front-end and storage switches, or switch validation fails.
+- Deploy fills in each device's IP and credentials in the generated YAML and
+  sends it with its keys in the original order.
+
+---
+
 ## Language notes
 
 | | Python | Go |
 |---|---|---|
 | Endpoint coverage | 97 | 97 (+5 async variants = 102 functions) |
+| Fabric create/deploy (config service) | 10 functions | 10 functions |
 | Errors | exceptions | returned `error` values, typed taxonomy |
 | Type checking | TypedDicts, checked by mypy/pyright | compile-time |
 | Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |

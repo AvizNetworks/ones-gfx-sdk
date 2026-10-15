@@ -265,7 +265,7 @@ def scenario_gpu_allocations(client: Client, args: argparse.Namespace) -> bool:
     if not args.servers or not args.gpus:
         print("  -> --servers and --gpus are both required for gpu-allocations")
         return False
-    suid = {str(args.su_id): {args.servers[0]: args.gpus}}
+    suid = {str(args.su_id): {args.servers[0]: {"gpus": args.gpus}}}
     print(f"Mapping {args.gpus} on {args.servers[0]} to {name!r} ({args.mode})...")
     result = modify_gpu_allocations(
         client,

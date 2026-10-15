@@ -20,7 +20,7 @@ Public API:
     Exceptions:
         ONESError (base), AuthenticationError, BadRequestError,
         NotFoundError, ConflictError, ServerError, TransportError,
-        OperationFailedError, APIError
+        OperationFailedError, FabricValidationError, APIError
 """
 
 from ._version import __version__
@@ -38,6 +38,7 @@ from .exceptions import (
     BadRequestError,
     ConfigurationFailedError,
     ConflictError,
+    FabricValidationError,
     NotFoundError,
     ONESError,
     OperationFailedError,
@@ -143,6 +144,18 @@ from .apis import (
     get_hosts_list,
     reset_nmxc_domain,
     factory_reset_nmxc_domain,
+    create_fabric_config,
+    get_fabric_yaml,
+    delete_fabric_config,
+    upload_fabric_device_ips,
+    validate_fabric_switches,
+    validate_fabric_servers,
+    update_fabric_inventory,
+    push_fabric_config,
+    update_fabric_config_status,
+    deploy_fabric,
+    fabric_yaml_to_document,
+    host_map_from_hosts_per_su,
 )
 
 __all__ = [
@@ -171,6 +184,7 @@ __all__ = [
     "TransportError",
     "OperationFailedError",
     "ConfigurationFailedError",
+    "FabricValidationError",
     "create_tenant",
     "list_tenants",
     "get_tenant",
@@ -268,4 +282,16 @@ __all__ = [
     "get_hosts_list",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    "create_fabric_config",
+    "get_fabric_yaml",
+    "delete_fabric_config",
+    "upload_fabric_device_ips",
+    "validate_fabric_switches",
+    "validate_fabric_servers",
+    "update_fabric_inventory",
+    "push_fabric_config",
+    "update_fabric_config_status",
+    "deploy_fabric",
+    "fabric_yaml_to_document",
+    "host_map_from_hosts_per_su",
 ]

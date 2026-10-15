@@ -78,6 +78,12 @@ func FMBaseURL(root string) string {
 	return strings.TrimRight(root, "/") + "/api/fm/"
 }
 
+// ConfigBaseURL is the base for the ONES UI config service, which serves
+// /api/config/... and /fabrics/{name} from the root of the host.
+func ConfigBaseURL(root string) string {
+	return strings.TrimRight(root, "/") + "/"
+}
+
 // SetBaseURL points this auth at a different host.
 func (a *TokenAuth) SetBaseURL(baseURL string) {
 	a.mu.Lock()

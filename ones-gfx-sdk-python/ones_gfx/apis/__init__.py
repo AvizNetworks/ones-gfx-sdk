@@ -93,6 +93,18 @@ from .start_streaming import start_streaming
 from .stop_streaming import stop_streaming
 from .get_controller_version import get_controller_version
 from .get_controller_version_internal import get_controller_version_internal
+# ONES UI config service: fabric generation, deployment and deletion
+from .create_fabric_config import create_fabric_config
+from .get_fabric_yaml import get_fabric_yaml
+from .delete_fabric_config import delete_fabric_config
+from .upload_fabric_device_ips import upload_fabric_device_ips
+from .validate_fabric_switches import validate_fabric_switches
+from .validate_fabric_servers import validate_fabric_servers
+from .update_fabric_inventory import update_fabric_inventory
+from .push_fabric_config import push_fabric_config
+from .update_fabric_config_status import update_fabric_config_status
+from .deploy_fabric import deploy_fabric
+from ._fabric_config import fabric_yaml_to_document, host_map_from_hosts_per_su
 from .netops_fabric import netops_fabric
 from .netops_device import netops_device
 from .add_host_tenant_data import add_host_tenant_data
@@ -201,4 +213,16 @@ __all__ = [
     "get_hosts_list",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    "create_fabric_config",
+    "get_fabric_yaml",
+    "delete_fabric_config",
+    "upload_fabric_device_ips",
+    "validate_fabric_switches",
+    "validate_fabric_servers",
+    "update_fabric_inventory",
+    "push_fabric_config",
+    "update_fabric_config_status",
+    "deploy_fabric",
+    "fabric_yaml_to_document",
+    "host_map_from_hosts_per_su",
 ]

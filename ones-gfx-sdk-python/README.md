@@ -24,8 +24,10 @@ From a local checkout (editable, picks up your code edits live):
 pip install -e .
 ```
 
-Requires Python 3.9 or newer. The only runtime dependency is
-[`requests`](https://requests.readthedocs.io/).
+Requires Python 3.9 or newer. Runtime dependencies are
+[`requests`](https://requests.readthedocs.io/) and
+[`PyYAML`](https://pyyaml.org/) (used by `deploy_fabric` to read the generated
+fabric YAML).
 
 ### Using the Makefile
 
@@ -216,6 +218,46 @@ with ONESClient(base_url=..., auth=auth) as client:
 - Remove per-GPU mappings with `operation="DELETE"` before calling `deallocate_gpus` to detach the server.
 - This endpoint is valid only for externally managed fabrics; on ONES-controlled fabrics it returns `409 FABRIC_NOT_EXTERNALLY_MANAGED` (use the tenant-update flow instead).
 - Multiple tenants can share the same physical server (e.g. G0–G3 → tenant-A, G4–G7 → tenant-B) when the server is attached with `shared=True`.
+
+---
+
+## Fabric creation and deployment
+
+`create_fabric_config`, `deploy_fabric` and `delete_fabric_config` create,
+deploy and delete a fabric through the ONES UI config service — the same calls
+the ONES UI makes. The individual deploy steps are exported too
+(`upload_fabric_device_ips`, `validate_fabric_switches`,
+`validate_fabric_servers`, `update_fabric_inventory`, `push_fabric_config`,
+`update_fabric_config_status`). See
+[Fabric creation and deployment](../README.md#fabric-creation-and-deployment)
+in the root README for the device list format and caveats.
+
+```python
+import json
+from ones_gfx import Client, FabricValidationError
+from ones_gfx.apis import create_fabric_config, deploy_fabric, delete_fabric_config, get_fabric_yaml
+
+client = Client.initialize_with_creds("https://localhost", "superadmin", "secret")
+
+create_fabric_config(
+    client,
+    name="gpu-fabric-1",
+    type="Aviz RA 1.0",            # or "NVIDIA SpX RA 1.3", "NVIDIA SpX RA 2.1"
+    hostsPerSu="{0:2}",            # SU index -> host count
+    enableEW=True, startingSubnetGpu="192",
+    # enableNS=True, startingSubnetCpu="10.3", nsOperatingSystem="cumulus",
+)
+print(get_fabric_yaml(client, "gpu-fabric-1")[:200])
+
+devices = json.load(open("devices.json"))
+try:
+    result = deploy_fabric(client, "gpu-fabric-1", devices, description="first deploy")
+    print(result["configPushed"], result["status"])
+except FabricValidationError as exc:
+    print(f"{exc.kind} validation failed:", exc.failures)   # nothing was configured
+
+# delete_fabric_config(client, "gpu-fabric-1")   # removes the record; no undeploy
+```
 
 ---
 

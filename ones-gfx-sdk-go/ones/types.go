@@ -96,6 +96,13 @@ type (
 	RMAInfoRecord             = resources.RMAInfoRecord
 	RMAStatusItem             = resources.RMAStatusItem
 	SuidMap                   = resources.SuidMap
+	DeviceGpus                = resources.DeviceGpus
+	FabricConfigArgs          = resources.FabricConfigArgs
+	FabricDevice              = resources.FabricDevice
+	FabricDeployOptions       = resources.FabricDeployOptions
+	FabricDeployResult        = resources.FabricDeployResult
+	FabricValidationError     = resources.FabricValidationError
+	ValidateDeviceResult      = resources.ValidateDeviceResult
 	TriggerBootstrapResult    = resources.TriggerBootstrapResult
 	UfmCredsResult            = resources.UfmCredsResult
 	UploadFileResult          = resources.UploadFileResult

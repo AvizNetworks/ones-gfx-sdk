@@ -327,6 +327,9 @@ type ReqOpts struct {
 	RequestOrigin string
 	// Query holds URL query parameters (nil values are dropped).
 	Query url.Values
+	// Accept overrides the default "application/json" Accept header (e.g. for
+	// endpoints that return YAML or plain text).
+	Accept string
 }
 
 // Call executes an HTTP request with a JSON body and decodes the response
@@ -484,6 +487,9 @@ func (t *Transport) sendRaw(method, fullURL, contentType string, payload []byte,
 		return nil, &TransportError{Message: "failed to build request", Cause: err}
 	}
 	authHeaders := map[string]string{"Content-Type": contentType, "Accept": "application/json"}
+	if ro != nil && ro.Accept != "" {
+		authHeaders["Accept"] = ro.Accept
+	}
 	t.auth.Apply(authHeaders)
 	for k, v := range authHeaders {
 		req.Header.Set(k, v)

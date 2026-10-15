@@ -4,7 +4,7 @@ End-to-end usage examples for the ONES Spectrum-X Go SDK.
 This file is intended to be read top-to-bottom by partners as a tour of
 the SDK's surface. It covers:
 
- 1. Constructing the client with JWT auth.
+ 1. Logging in with username/password.
  2. Reading fabrics and tenants.
  3. Running a full tenant lifecycle in a single mode (sync/async-poll/async-webhook).
  4. Error handling.
@@ -12,8 +12,11 @@ the SDK's surface. It covers:
 How to run
 ----------
 
- 1. Edit the CONFIG section below with your ONES base URL, JWT tokens,
-    and a fabric name that exists in your environment.
+ 1. Point it at your ONES instance with environment variables (or edit the
+    defaults in the CONFIG section below):
+
+    export ONES_URL=https://localhost ONES_USERNAME=superadmin ONES_PASSWORD='Admin@123'
+    export ONES_FABRIC=my-fabric
 
  2. Choose which mode to run by passing --mode (sync, async-poll,
     async-webhook). The default is sync.
@@ -27,16 +30,12 @@ How to run
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -49,18 +48,21 @@ import (
 // CONFIG — fill these in for your environment.
 // ---------------------------------------------------------------------------
 
+var (
+	baseURL       = envOr("ONES_URL", "https://localhost")
+	loginUsername = envOr("ONES_USERNAME", "superadmin")
+	loginPassword = envOr("ONES_PASSWORD", "Admin@123")
+	fabricName    = envOr("ONES_FABRIC", "fabric-ew-only-customyaml")
+)
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 const (
-	baseURL    = "https://10.4.5.71:8089"
-	refreshURL = "https://10.4.5.71:8089/refresh"
-
-	accessToken  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJyb2xlIjoiU1VQRVJfQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJXUklURSIsIlJFQUQiXSwidHlwIjoiYWNjZXNzIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiNGEzZDM3MWItNTQ5Ni00MGQyLTk4OWUtMTQ0MWQyNGExMDY0IiwiaWF0IjoxNzg0MTg0OTgzLCJleHAiOjE3ODQxOTIxODN9._5fZBpXdGk8fpbqjl2rlXTWDr4XxikckFLGETDemYVM"
-	refreshToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InN1cGVyYWRtaW4iLCJ0eXAiOiJyZWZyZXNoIiwiaXNzIjoib25lcy1mbSIsImF1ZCI6Im9uZXMtZm0tY2xpZW50IiwianRpIjoiZjE5NmQ1M2QtNGMzYi00MTBiLWI5YzMtYzBjMGZlZmQ1MjI0IiwiaWF0IjoxNzg0MTg0OTgzLCJleHAiOjE3ODQyNzEzODN9.BcQ__f0fBr574LcthvIuijmKWnyvhZ-93KwT98vB4VE"
-
-	loginUsername = "superadmin"
-	loginPassword = "Admin@123456"
-
-	fabricName = "NMXC"
-
 	// Webhook receiver URL for the async-webhook example. The SDK does not
 	// implement the receiver — point this at an HTTP endpoint you control.
 	webhookURL = "http://10.4.5.124:5000/test/webhook-receiver"
@@ -77,33 +79,16 @@ const (
 // fabric. The example will try to allocate then deallocate these.
 var sampleServers = []string{"hgx-su00-h00"}
 
-// ---------------------------------------------------------------------------
-// Auth callback (optional) — persist rotated tokens so they survive a
-// process restart. Replace the print with whatever your secret store
-// requires.
-// ---------------------------------------------------------------------------
-
-func onTokenRefresh(access, refresh string, expiresIn int) {
-	fmt.Printf("[auth] tokens rotated; new access expires in %ds\n", expiresIn)
-}
-
 func buildClient() *ones.Client {
-	auth, err := ones_gfx.NewJWTAuth(
-		accessToken,
-		refreshToken,
-		refreshURL,
-		ones_gfx.WithTokenRefreshCallback(onTokenRefresh),
-		ones_gfx.WithAuthTLSVerify(verifyTLS),
-	)
-	if err != nil {
-		log.Fatalf("failed to create auth: %v", err)
-	}
-	return ones.NewClientWithAuth(
-		baseURL,
-		auth,
+	client, err := ones.InitializeWithCreds(
+		baseURL, loginUsername, loginPassword,
 		ones_gfx.WithTLSVerify(verifyTLS),
 		ones_gfx.WithClientTimeout(time.Duration(defaultTimeoutS)*time.Second),
 	)
+	if err != nil {
+		log.Fatalf("login to %s as %s failed: %v", baseURL, loginUsername, err)
+	}
+	return client
 }
 
 // ---------------------------------------------------------------------------
@@ -141,44 +126,24 @@ func scenarioReadOnly(client *ones.Client) {
 
 func scenarioLogin(username, password string) {
 	fmt.Println("\n--- Scenario: login ---")
-	payload := map[string]string{
-		"username": username,
-		"password": password,
-	}
-	body, err := json.Marshal(payload)
+	client, err := ones.InitializeWithCreds(baseURL, username, password, ones_gfx.WithTLSVerify(verifyTLS))
 	if err != nil {
-		fmt.Printf("Error marshaling login payload: %v\n", err)
+		reportSDKError(err)
 		return
 	}
+	defer client.Close()
+	fmt.Printf("Authenticated: %v (token %d chars)\n", client.IsAuthenticated(), len(client.GetAuthToken()))
 
-	loginURL := strings.TrimRight(baseURL, "/") + "/login"
-	httpClient := &http.Client{
-		Timeout: time.Duration(defaultTimeoutS) * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: !verifyTLS,
-			},
-		},
+	if _, err := client.RefreshAuth(); err != nil {
+		fmt.Printf("Refresh failed: %v\n", err)
+	} else {
+		fmt.Println("Token refreshed")
 	}
-	resp, err := httpClient.Post(loginURL, "application/json", bytes.NewReader(body))
-	if err != nil {
-		fmt.Printf("Login request failed: %v\n", err)
-		return
+	if _, err := client.Logout(); err != nil {
+		fmt.Printf("Logout failed: %v\n", err)
+	} else {
+		fmt.Printf("Logged out, authenticated: %v\n", client.IsAuthenticated())
 	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Error reading login response: %v\n", err)
-		return
-	}
-
-	var result interface{}
-	if err := json.Unmarshal(respBody, &result); err != nil {
-		fmt.Printf("Error parsing login response: %v\n", err)
-		return
-	}
-	fmt.Println(result)
 }
 
 // ---------------------------------------------------------------------------
@@ -379,7 +344,7 @@ func scenarioTenantLifecycle(client *ones.Client, mode string) {
 
 		// --- Modify GPU Allocations (fine-grained, partial GPU allocation) ---
 		fmt.Printf("Modifying GPU allocations (ADD) on %s (%s)...\n", tenantName, label)
-		suid := resources.SuidMap{"0": {sampleServers[0]: {"G0", "G1", "G2", "G3"}}}
+		suid := resources.SuidMap{"0": {sampleServers[0]: {Gpus: []string{"G0", "G1", "G2", "G3"}}}}
 
 		addResp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &opAdd, nil, nil)
 		if err != nil {
@@ -839,7 +804,7 @@ func scenarioGPUAllocations(client *ones.Client, tenantName, operation, serverIn
 	if operation == "DELETE" {
 		op = ones_gfx.GpuActionDelete
 	}
-	suid := resources.SuidMap{serverIndex: {hostname: gpuIDs}}
+	suid := resources.SuidMap{serverIndex: {hostname: {Gpus: gpuIDs}}}
 
 	resp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &op, nil, nil)
 	if err != nil {

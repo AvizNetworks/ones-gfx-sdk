@@ -31,6 +31,8 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.28",
+    # deploy_fabric parses the generated fabric YAML.
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]

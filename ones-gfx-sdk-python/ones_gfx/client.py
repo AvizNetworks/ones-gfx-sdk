@@ -304,6 +304,48 @@ class Client:
             return body["data"]
         return body
 
+    def call_config_api(
+        self,
+        method: str,
+        path: str,
+        *,
+        json_body: Any = None,
+        accept: str | None = None,
+    ) -> Any:
+        """Call the ONES UI config service at ``{baseUrl}/{path}``.
+
+        The config service (fabric generation and deployment) is mounted at
+        the root of the host — ``/api/config/...`` and ``/fabrics/{name}`` —
+        rather than under ``/api/fm/``. Same auth guard and raw
+        ``authorization`` header as :meth:`call_api`. Returns the decoded JSON
+        body, or the body text when it is not JSON. No envelope unwrapping.
+
+        Raises:
+            NotAuthenticatedError: if no auth token is set.
+            requests.HTTPError: on a 4xx/5xx response.
+        """
+        if not self.authToken:
+            raise NotAuthenticatedError(
+                "Not authenticated: call login() before calling config service APIs."
+            )
+        headers = self._auth_headers()
+        if accept:
+            headers["Accept"] = accept
+        response = self._session.request(
+            method=method.upper(),
+            url=f"{self.baseUrl}/{path.lstrip('/')}",
+            json=json_body,
+            headers=headers,
+            verify=self.verify_tls,
+        )
+        response.raise_for_status()
+        if not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return response.text
+
     def get_tele_devices(self) -> Any:
         """Fetch the inventory devices list.
 

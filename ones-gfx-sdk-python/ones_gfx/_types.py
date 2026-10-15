@@ -7,7 +7,7 @@ the API ignores them on input.
 """
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 __all__ = [
     "ApiResponseMessage",
@@ -18,8 +18,11 @@ __all__ = [
     "ControllerVersion",
     "DeviceConfigRestore",
     "DeviceDetail",
+    "DeviceGpus",
     "DeviceItem",
     "DevicefactsItem",
+    "FabricDeployResult",
+    "FabricDevice",
     "FabricInventoryUpdateItem",
     "FabricItem",
     "FabricSimItem",
@@ -40,6 +43,7 @@ __all__ = [
     "SuidMap",
     "SvimapperItem",
     "UploadFileResult",
+    "ValidateDeviceResult",
     "VlanvnimapperItem",
 ]
 
@@ -47,6 +51,46 @@ __all__ = [
 
 GpuAction = Literal["ADD", "DELETE"]
 NetOpsAction = Literal["vlan", "portchange", "vlanmember"]
+
+# ── Fabric deployment (ONES UI config service, /api/config/...) ──────────────
+
+
+class _FabricDeviceRequired(TypedDict):
+    hostname: str
+    ip: str
+    username: str
+    password: str
+
+
+class FabricDevice(_FabricDeviceRequired, total=False):
+    """One switch, server or DPU in a fabric deploy (devices.json format)."""
+
+    device_type: str  # switch, server, dpu, host
+    device_role: str  # spine, leaf, host
+    apply_config: bool  # default True
+
+
+class ValidateDeviceResult(TypedDict, total=False):
+    """validateswitch/validateserver result: build (switch) or os (server) on success."""
+
+    hostname: str
+    ip: str
+    username: str
+    build: str
+    os: str
+    error: str
+
+
+class FabricDeployResult(TypedDict, total=False):
+    """Response of every step of deploy_fabric."""
+
+    uploadIps: Any
+    switchResults: list[ValidateDeviceResult]
+    serverResults: list[ValidateDeviceResult]
+    inventory: Any
+    configPushed: Any
+    status: Any
+
 
 # ── GPU allocation (Helper/GpuServerInfo.java, GpuStatusUpdate.suid) ────────
 
@@ -56,9 +100,14 @@ class GpuServerInfo(TypedDict):
     shared: bool | None
 
 
+class DeviceGpus(TypedDict):
+    gpus: list[str]
+
+
 # Java: TreeMap<Integer, Map<String, DeviceGpus{gpus: List<String>}>>
 # JSON object keys are strings; Jackson coerces them to Integer server-side.
-SuidMap = dict[str, dict[str, list[str]]]
+# e.g. {"0": {"hgx-su00-h00": {"gpus": ["G0", "G1"]}}}
+SuidMap = dict[str, dict[str, DeviceGpus]]
 
 # ── Device facts & inventory ────────────────────────────────────────────────
 

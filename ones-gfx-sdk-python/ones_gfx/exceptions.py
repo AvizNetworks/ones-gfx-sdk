@@ -47,3 +47,18 @@ class OperationFailedError(ONESError):
 
 class ConfigurationFailedError(ONESError):
     pass
+
+
+class FabricValidationError(ONESError):
+    """deploy_fabric: switch or server validation reported a failed device.
+
+    Raised before anything is configured. ``kind`` is "switch" or "server";
+    ``failures`` holds one "hostname (ip): reason" line per failed device and
+    ``results`` the full validation response.
+    """
+
+    def __init__(self, kind: str, failures: list[str], results: list[dict]):
+        super().__init__(f"{kind} validation failed:\n- " + "\n- ".join(failures))
+        self.kind = kind
+        self.failures = failures
+        self.results = results

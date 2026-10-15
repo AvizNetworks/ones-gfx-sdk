@@ -35,8 +35,9 @@ type Client struct {
 	username string
 	password string
 
-	auth      *ones_gfx.TokenAuth
-	transport *ones_gfx.Transport
+	auth            *ones_gfx.TokenAuth
+	transport       *ones_gfx.Transport
+	configTransport *ones_gfx.Transport
 
 	Tenants     *resources.TenantsResource
 	GPU         *resources.GPUResource
@@ -55,6 +56,10 @@ type Client struct {
 	Intents     *resources.IntentsResource
 	VPCPeering  *resources.VPCPeeringResource
 	Operations  *resources.OperationsResource
+
+	// FabricConfig covers the ONES UI config service used to generate,
+	// deploy and delete fabrics (/api/config/..., /fabrics/{name}).
+	FabricConfig *resources.FabricConfigResource
 }
 
 // NewClient builds a Client for the given root base URL.
@@ -91,27 +96,30 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		auth,
 		all...,
 	)
+	configTransport := ones_gfx.NewTransportWithOptions(ones_gfx.ConfigBaseURL(baseUrl), auth, all...)
 	return &Client{
-		baseUrl:     baseUrl,
-		auth:        auth,
-		transport:   transport,
-		Tenants:     resources.NewTenantsResource(transport),
-		GPU:         resources.NewGPUResource(transport),
-		Fabrics:     resources.NewFabricsResource(transport),
-		Fabricsims:  resources.NewFabricsimsResource(transport),
-		Inventory:   resources.NewInventoryResource(transport),
-		Devices:     resources.NewDevicesResource(transport),
-		ConfigMgmt:  resources.NewConfigMgmtResource(transport),
-		Bootstrap:   resources.NewBootstrapResource(transport),
-		RMA:         resources.NewRMAResource(transport),
-		Files:       resources.NewFilesResource(transport),
-		System:      resources.NewSystemResource(transport),
-		NetOps:      resources.NewNetOpsResource(transport),
-		HostTenants: resources.NewHostTenantsResource(transport),
-		NMXC:        resources.NewNMXCResource(transport),
-		Intents:     resources.NewIntentsResource(transport),
-		VPCPeering:  resources.NewVPCPeeringResource(transport),
-		Operations:  resources.NewOperationsResource(transport),
+		baseUrl:         baseUrl,
+		auth:            auth,
+		transport:       transport,
+		configTransport: configTransport,
+		FabricConfig:    resources.NewFabricConfigResource(configTransport),
+		Tenants:         resources.NewTenantsResource(transport),
+		GPU:             resources.NewGPUResource(transport),
+		Fabrics:         resources.NewFabricsResource(transport),
+		Fabricsims:      resources.NewFabricsimsResource(transport),
+		Inventory:       resources.NewInventoryResource(transport),
+		Devices:         resources.NewDevicesResource(transport),
+		ConfigMgmt:      resources.NewConfigMgmtResource(transport),
+		Bootstrap:       resources.NewBootstrapResource(transport),
+		RMA:             resources.NewRMAResource(transport),
+		Files:           resources.NewFilesResource(transport),
+		System:          resources.NewSystemResource(transport),
+		NetOps:          resources.NewNetOpsResource(transport),
+		HostTenants:     resources.NewHostTenantsResource(transport),
+		NMXC:            resources.NewNMXCResource(transport),
+		Intents:         resources.NewIntentsResource(transport),
+		VPCPeering:      resources.NewVPCPeeringResource(transport),
+		Operations:      resources.NewOperationsResource(transport),
 	}, nil
 }
 
@@ -124,28 +132,31 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_gfx.ClientOption) *Client {
 	root := strings.TrimRight(baseUrl, "/")
 	transport := ones_gfx.NewTransportWithOptions(ones_gfx.FMBaseURL(root), auth, opts...)
+	configTransport := ones_gfx.NewTransportWithOptions(ones_gfx.ConfigBaseURL(root), auth, opts...)
 	tokenAuth, _ := auth.(*ones_gfx.TokenAuth)
 	c := &Client{
-		baseUrl:     root,
-		auth:        tokenAuth,
-		transport:   transport,
-		Tenants:     resources.NewTenantsResource(transport),
-		GPU:         resources.NewGPUResource(transport),
-		Fabrics:     resources.NewFabricsResource(transport),
-		Fabricsims:  resources.NewFabricsimsResource(transport),
-		Inventory:   resources.NewInventoryResource(transport),
-		Devices:     resources.NewDevicesResource(transport),
-		ConfigMgmt:  resources.NewConfigMgmtResource(transport),
-		Bootstrap:   resources.NewBootstrapResource(transport),
-		RMA:         resources.NewRMAResource(transport),
-		Files:       resources.NewFilesResource(transport),
-		System:      resources.NewSystemResource(transport),
-		NetOps:      resources.NewNetOpsResource(transport),
-		HostTenants: resources.NewHostTenantsResource(transport),
-		NMXC:        resources.NewNMXCResource(transport),
-		Intents:     resources.NewIntentsResource(transport),
-		VPCPeering:  resources.NewVPCPeeringResource(transport),
-		Operations:  resources.NewOperationsResource(transport),
+		baseUrl:         root,
+		auth:            tokenAuth,
+		transport:       transport,
+		configTransport: configTransport,
+		FabricConfig:    resources.NewFabricConfigResource(configTransport),
+		Tenants:         resources.NewTenantsResource(transport),
+		GPU:             resources.NewGPUResource(transport),
+		Fabrics:         resources.NewFabricsResource(transport),
+		Fabricsims:      resources.NewFabricsimsResource(transport),
+		Inventory:       resources.NewInventoryResource(transport),
+		Devices:         resources.NewDevicesResource(transport),
+		ConfigMgmt:      resources.NewConfigMgmtResource(transport),
+		Bootstrap:       resources.NewBootstrapResource(transport),
+		RMA:             resources.NewRMAResource(transport),
+		Files:           resources.NewFilesResource(transport),
+		System:          resources.NewSystemResource(transport),
+		NetOps:          resources.NewNetOpsResource(transport),
+		HostTenants:     resources.NewHostTenantsResource(transport),
+		NMXC:            resources.NewNMXCResource(transport),
+		Intents:         resources.NewIntentsResource(transport),
+		VPCPeering:      resources.NewVPCPeeringResource(transport),
+		Operations:      resources.NewOperationsResource(transport),
 	}
 	return c
 }
@@ -213,6 +224,7 @@ func (c *Client) SetBaseUrl(baseUrl string) error {
 		c.auth.SetBaseURL(baseUrl)
 	}
 	c.transport.SetBaseURL(ones_gfx.FMBaseURL(baseUrl))
+	c.configTransport.SetBaseURL(ones_gfx.ConfigBaseURL(baseUrl))
 	return nil
 }
 
@@ -312,4 +324,7 @@ func (c *Client) Logout() (*ones_gfx.AuthResponse, error) {
 func (c *Client) GetTransport() *ones_gfx.Transport { return c.transport }
 
 // Close releases HTTP resources. Safe to call multiple times.
-func (c *Client) Close() error { return c.transport.Close() }
+func (c *Client) Close() error {
+	_ = c.configTransport.Close()
+	return c.transport.Close()
+}

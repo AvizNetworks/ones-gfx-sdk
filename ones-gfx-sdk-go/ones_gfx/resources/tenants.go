@@ -17,9 +17,15 @@ func NewTenantsResource(transport *ones_gfx.Transport) *TenantsResource {
 	return &TenantsResource{transport: transport}
 }
 
+// DeviceGpus mirrors the Java AutoAllocateGpuRequest.DeviceGpus: the GPU names
+// on one host.
+type DeviceGpus struct {
+	Gpus []string `json:"gpus"`
+}
+
 // SuidMap mirrors the Java GpuStatusUpdate.suid / AutoAllocateGpuRequest.suid:
 // server index (as string; Jackson coerces to Integer) → hostname → GPU names.
-type SuidMap = map[string]map[string][]string
+type SuidMap = map[string]map[string]DeviceGpus
 
 // GpuServerInfo is one entry of the UpdateTenant.servers list
 // (Helper/GpuServerInfo.java). Shared nil keeps the existing sharing mode.
