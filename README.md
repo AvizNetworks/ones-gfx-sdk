@@ -251,7 +251,7 @@ corresponding change in the ONES platform version, and vice versa.
 
 | Go SDK | Python SDK | Supported ONES Version |
 |--------|------------|------------------------|
-| v1.0.0 | v1.0.0     | 4.2.1                  |
+| v1.0.0 | v1.0.0     | 4.2.1, 4.3             |
 
 ---
 
