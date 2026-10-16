@@ -45,6 +45,7 @@ from .exceptions import (
     TransportError,
 )
 from .models import Fabric, NMXCPartition, Operation, Tenant, VNetInfo
+from .workflows import CleanUpResult, clean_up_tenant
 from .apis import (
     create_tenant,
     list_tenants,
@@ -143,9 +144,24 @@ from .apis import (
     get_hosts_list,
     reset_nmxc_domain,
     factory_reset_nmxc_domain,
+    create_shared_services,
+    get_shared_services,
+    delete_shared_services,
+    list_vf_interfaces,
+    assign_vf_interface,
+    unassign_vf_interface,
 )
 
 __all__ = [
+    "create_shared_services",
+    "get_shared_services",
+    "delete_shared_services",
+    "list_vf_interfaces",
+    "assign_vf_interface",
+    "unassign_vf_interface",
+    "clean_up_tenant",
+    "CleanUpResult",
+
     "__version__",
     "Client",
     "NotAuthenticatedError",

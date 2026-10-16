@@ -379,7 +379,7 @@ func scenarioTenantLifecycle(client *ones.Client, mode string) {
 
 		// --- Modify GPU Allocations (fine-grained, partial GPU allocation) ---
 		fmt.Printf("Modifying GPU allocations (ADD) on %s (%s)...\n", tenantName, label)
-		suid := resources.SuidMap{"0": {sampleServers[0]: {"G0", "G1", "G2", "G3"}}}
+		suid := resources.SuidMap{"0": {sampleServers[0]: {Gpus: []string{"G0", "G1", "G2", "G3"}}}}
 
 		addResp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &opAdd, nil, nil)
 		if err != nil {
@@ -839,7 +839,7 @@ func scenarioGPUAllocations(client *ones.Client, tenantName, operation, serverIn
 	if operation == "DELETE" {
 		op = ones_gfx.GpuActionDelete
 	}
-	suid := resources.SuidMap{serverIndex: {hostname: gpuIDs}}
+	suid := resources.SuidMap{serverIndex: {hostname: {Gpus: gpuIDs}}}
 
 	resp, err := client.Tenants.ModifyAllocations(ctx, fabricName, tenantName, suid, &op, nil, nil)
 	if err != nil {

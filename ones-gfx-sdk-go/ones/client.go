@@ -55,6 +55,13 @@ type Client struct {
 	Intents     *resources.IntentsResource
 	VPCPeering  *resources.VPCPeeringResource
 	Operations  *resources.OperationsResource
+
+	// SharedServices and VFs are the GFX-5709 shared-services tenant and the
+	// DPU VF interfaces it is joined through. Workflows holds the multi-call
+	// sequences whose order the FM enforces (see CleanUpTenant).
+	SharedServices *resources.SharedServicesResource
+	VFs            *resources.VFInterfacesResource
+	Workflows      *resources.WorkflowsResource
 }
 
 // NewClient builds a Client for the given root base URL.
@@ -92,26 +99,29 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		all...,
 	)
 	return &Client{
-		baseUrl:     baseUrl,
-		auth:        auth,
-		transport:   transport,
-		Tenants:     resources.NewTenantsResource(transport),
-		GPU:         resources.NewGPUResource(transport),
-		Fabrics:     resources.NewFabricsResource(transport),
-		Fabricsims:  resources.NewFabricsimsResource(transport),
-		Inventory:   resources.NewInventoryResource(transport),
-		Devices:     resources.NewDevicesResource(transport),
-		ConfigMgmt:  resources.NewConfigMgmtResource(transport),
-		Bootstrap:   resources.NewBootstrapResource(transport),
-		RMA:         resources.NewRMAResource(transport),
-		Files:       resources.NewFilesResource(transport),
-		System:      resources.NewSystemResource(transport),
-		NetOps:      resources.NewNetOpsResource(transport),
-		HostTenants: resources.NewHostTenantsResource(transport),
-		NMXC:        resources.NewNMXCResource(transport),
-		Intents:     resources.NewIntentsResource(transport),
-		VPCPeering:  resources.NewVPCPeeringResource(transport),
-		Operations:  resources.NewOperationsResource(transport),
+		baseUrl:        baseUrl,
+		auth:           auth,
+		transport:      transport,
+		Tenants:        resources.NewTenantsResource(transport),
+		GPU:            resources.NewGPUResource(transport),
+		SharedServices: resources.NewSharedServicesResource(transport),
+		VFs:            resources.NewVFInterfacesResource(transport),
+		Workflows:      resources.NewWorkflowsResource(transport),
+		Fabrics:        resources.NewFabricsResource(transport),
+		Fabricsims:     resources.NewFabricsimsResource(transport),
+		Inventory:      resources.NewInventoryResource(transport),
+		Devices:        resources.NewDevicesResource(transport),
+		ConfigMgmt:     resources.NewConfigMgmtResource(transport),
+		Bootstrap:      resources.NewBootstrapResource(transport),
+		RMA:            resources.NewRMAResource(transport),
+		Files:          resources.NewFilesResource(transport),
+		System:         resources.NewSystemResource(transport),
+		NetOps:         resources.NewNetOpsResource(transport),
+		HostTenants:    resources.NewHostTenantsResource(transport),
+		NMXC:           resources.NewNMXCResource(transport),
+		Intents:        resources.NewIntentsResource(transport),
+		VPCPeering:     resources.NewVPCPeeringResource(transport),
+		Operations:     resources.NewOperationsResource(transport),
 	}, nil
 }
 
@@ -126,26 +136,29 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 	transport := ones_gfx.NewTransportWithOptions(ones_gfx.FMBaseURL(root), auth, opts...)
 	tokenAuth, _ := auth.(*ones_gfx.TokenAuth)
 	c := &Client{
-		baseUrl:     root,
-		auth:        tokenAuth,
-		transport:   transport,
-		Tenants:     resources.NewTenantsResource(transport),
-		GPU:         resources.NewGPUResource(transport),
-		Fabrics:     resources.NewFabricsResource(transport),
-		Fabricsims:  resources.NewFabricsimsResource(transport),
-		Inventory:   resources.NewInventoryResource(transport),
-		Devices:     resources.NewDevicesResource(transport),
-		ConfigMgmt:  resources.NewConfigMgmtResource(transport),
-		Bootstrap:   resources.NewBootstrapResource(transport),
-		RMA:         resources.NewRMAResource(transport),
-		Files:       resources.NewFilesResource(transport),
-		System:      resources.NewSystemResource(transport),
-		NetOps:      resources.NewNetOpsResource(transport),
-		HostTenants: resources.NewHostTenantsResource(transport),
-		NMXC:        resources.NewNMXCResource(transport),
-		Intents:     resources.NewIntentsResource(transport),
-		VPCPeering:  resources.NewVPCPeeringResource(transport),
-		Operations:  resources.NewOperationsResource(transport),
+		baseUrl:        root,
+		auth:           tokenAuth,
+		transport:      transport,
+		Tenants:        resources.NewTenantsResource(transport),
+		GPU:            resources.NewGPUResource(transport),
+		SharedServices: resources.NewSharedServicesResource(transport),
+		VFs:            resources.NewVFInterfacesResource(transport),
+		Workflows:      resources.NewWorkflowsResource(transport),
+		Fabrics:        resources.NewFabricsResource(transport),
+		Fabricsims:     resources.NewFabricsimsResource(transport),
+		Inventory:      resources.NewInventoryResource(transport),
+		Devices:        resources.NewDevicesResource(transport),
+		ConfigMgmt:     resources.NewConfigMgmtResource(transport),
+		Bootstrap:      resources.NewBootstrapResource(transport),
+		RMA:            resources.NewRMAResource(transport),
+		Files:          resources.NewFilesResource(transport),
+		System:         resources.NewSystemResource(transport),
+		NetOps:         resources.NewNetOpsResource(transport),
+		HostTenants:    resources.NewHostTenantsResource(transport),
+		NMXC:           resources.NewNMXCResource(transport),
+		Intents:        resources.NewIntentsResource(transport),
+		VPCPeering:     resources.NewVPCPeeringResource(transport),
+		Operations:     resources.NewOperationsResource(transport),
 	}
 	return c
 }

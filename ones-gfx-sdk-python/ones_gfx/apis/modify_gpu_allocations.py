@@ -23,7 +23,7 @@ def modify_gpu_allocations(client: Client, fabricName: str, tenantName: str, *, 
     body: dict[str, Any] = {}
     body["suid"] = suid
     if operation is not None:
-        body["operation"] = operation
+        body["gpuAction"] = operation  # Java field is gpuAction (GpuStatusUpdate)
     body["tenantName"] = tenantName
     body["fabricName"] = fabricName
     if configScope is not None:

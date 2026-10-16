@@ -103,7 +103,21 @@ from .get_hosts_list import get_hosts_list
 from .reset_nmxc_domain import reset_nmxc_domain
 from .factory_reset_nmxc_domain import factory_reset_nmxc_domain
 
+from .create_shared_services import create_shared_services
+from .get_shared_services import get_shared_services
+from .delete_shared_services import delete_shared_services
+from .list_vf_interfaces import list_vf_interfaces
+from .assign_vf_interface import assign_vf_interface
+from .unassign_vf_interface import unassign_vf_interface
+
 __all__ = [
+    "create_shared_services",
+    "get_shared_services",
+    "delete_shared_services",
+    "list_vf_interfaces",
+    "assign_vf_interface",
+    "unassign_vf_interface",
+
     "create_tenant",
     "list_tenants",
     "get_tenant",

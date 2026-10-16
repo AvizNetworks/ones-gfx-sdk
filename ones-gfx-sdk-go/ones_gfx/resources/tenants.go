@@ -17,9 +17,16 @@ func NewTenantsResource(transport *ones_gfx.Transport) *TenantsResource {
 	return &TenantsResource{transport: transport}
 }
 
+// DeviceGpus mirrors Java AutoAllocateGpuRequest.DeviceGpus: the inner value
+// of a suid map. It carries a single `gpus` list; a bare JSON array in its
+// place fails to deserialize server-side.
+type DeviceGpus struct {
+	Gpus []string `json:"gpus"`
+}
+
 // SuidMap mirrors the Java GpuStatusUpdate.suid / AutoAllocateGpuRequest.suid:
-// server index (as string; Jackson coerces to Integer) → hostname → GPU names.
-type SuidMap = map[string]map[string][]string
+// server index (as string; Jackson coerces to Integer) → hostname → DeviceGpus.
+type SuidMap = map[string]map[string]DeviceGpus
 
 // GpuServerInfo is one entry of the UpdateTenant.servers list
 // (Helper/GpuServerInfo.java). Shared nil keeps the existing sharing mode.
@@ -57,11 +64,12 @@ type tenantWebhookFields struct {
 func (r *TenantsResource) Create(ctx context.Context, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...ones_gfx.CallOption) (string, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		TenantName     string  `json:"tenantName"`
-		Description    *string `json:"description,omitempty"`
-		MaxGpusAllowed *int    `json:"maxGpusAllowed,omitempty"`
-		Shared         *bool   `json:"shared,omitempty"`
-	}{tenantName, description, maxGpusAllowed, shared}
+		TenantName     string                   `json:"tenantName"`
+		Description    *string                  `json:"description,omitempty"`
+		MaxGpusAllowed *int                     `json:"maxGpusAllowed,omitempty"`
+		Shared         *bool                    `json:"shared,omitempty"`
+		AnycastGateway *ones_gfx.AnycastGateway `json:"anycastGateway,omitempty"`
+	}{tenantName, description, maxGpusAllowed, shared, rc.AnycastGateway}
 	res, err := ones_gfx.Call[string](r.transport, "POST", "fabrics/"+fabricName+"/tenants", body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {
 		return "", err
@@ -131,7 +139,7 @@ func (r *TenantsResource) DeleteAsync(ctx context.Context, fabricName, tenantNam
 func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
@@ -143,7 +151,7 @@ func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName str
 func (r *TenantsResource) UpdateAsync(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
@@ -158,7 +166,7 @@ func (r *TenantsResource) ModifyAllocations(ctx context.Context, fabricName, ten
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		Suid               SuidMap             `json:"suid"`
-		Operation          *ones_gfx.GpuAction `json:"operation,omitempty"`
+		Operation          *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
 		TenantName         string              `json:"tenantName"`
 		FabricName         string              `json:"fabricName"`
 		ConfigScope        *ConfigScope        `json:"configScope,omitempty"`
@@ -174,7 +182,7 @@ func (r *TenantsResource) ModifyAllocationsAsync(ctx context.Context, fabricName
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		Suid               SuidMap             `json:"suid"`
-		Operation          *ones_gfx.GpuAction `json:"operation,omitempty"`
+		Operation          *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
 		TenantName         string              `json:"tenantName"`
 		FabricName         string              `json:"fabricName"`
 		ConfigScope        *ConfigScope        `json:"configScope,omitempty"`

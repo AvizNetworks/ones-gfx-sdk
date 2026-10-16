@@ -15,6 +15,7 @@ type callConfig struct {
 	webhookEvents  []string
 	idempotencyKey string
 	requestOrigin  string
+	anycastGateway *AnycastGateway
 }
 
 // defaultCallConfig returns a config with no overrides (uses client defaults).
@@ -43,6 +44,32 @@ func WithRequestOrigin(origin string) CallOption {
 	}
 }
 
+// AnycastGateway is the request-side anycastGateway block accepted by tenant
+// creation and by shared-services creation (GFX-5611). FM rejects any key but
+// these two and requires Enabled to be a real JSON boolean; leave MACAddress
+// empty to take the fabric's own MAC.
+//
+// The response field of the same name is a gateway address string, not this
+// object.
+type AnycastGateway struct {
+	Enabled    bool   `json:"enabled"`
+	MACAddress string `json:"macAddress,omitempty"`
+}
+
+// WithAnycastGateway sends an anycastGateway block on calls that accept one
+// (tenant create, shared-services create). Applies to HBN DPU fabrics in
+// tenant DHCP mode; elsewhere FM answers ANYCAST_GATEWAY_NOT_SUPPORTED.
+//
+// Example:
+//
+//	client.Tenants.Create(ctx, "fab1", "t1", nil, nil, nil,
+//	    ones_gfx.WithAnycastGateway(true, "00:11:22:33:44:55"))
+func WithAnycastGateway(enabled bool, macAddress string) CallOption {
+	return func(cfg *callConfig) {
+		cfg.anycastGateway = &AnycastGateway{Enabled: enabled, MACAddress: macAddress}
+	}
+}
+
 // ApplyCallOptions resolves CallOption values into a concrete config.
 // Intended for use by resource methods that need timeout/webhook values.
 func ApplyCallOptions(opts ...CallOption) (timeout *time.Duration, webhookURL string, webhookEvents []string) {
@@ -61,6 +88,7 @@ type ResolvedCall struct {
 	WebhookEvents  []string
 	IdempotencyKey string
 	RequestOrigin  string
+	AnycastGateway *AnycastGateway
 }
 
 // ReqOpts converts the resolved call config into transport-level ReqOpts.
@@ -84,6 +112,7 @@ func ResolveCallOptions(opts ...CallOption) ResolvedCall {
 		WebhookEvents:  cfg.webhookEvents,
 		IdempotencyKey: cfg.idempotencyKey,
 		RequestOrigin:  cfg.requestOrigin,
+		AnycastGateway: cfg.anycastGateway,
 	}
 }
 
