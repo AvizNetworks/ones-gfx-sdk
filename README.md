@@ -1,7 +1,7 @@
 # ONES GFX SDK
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
-Python and Go implementations expose the **same 97 Fabric Manager endpoints**
+Python and Go implementations expose the **same 131 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
 
@@ -90,7 +90,7 @@ Identical on both sides — Python is snake_case, Go is exported PascalCase.
 
 Every endpoint is a flat function taking the client. Go additionally takes a
 `context.Context` first, and offers `...Async` variants for the 5 async-capable
-endpoints (102 functions vs Python's 97; Python selects async with the `prefer`
+endpoints (136 functions vs Python's 131; Python selects async with the `prefer`
 argument on the same function).
 
 ```python
@@ -202,7 +202,7 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 | | Python | Go |
 |---|---|---|
-| Endpoint coverage | 97 | 97 (+5 async variants = 102 functions) |
+| Endpoint coverage | 131 | 131 (+5 async variants = 136 functions) |
 | Errors | exceptions | returned `error` values, typed taxonomy |
 | Type checking | TypedDicts, checked by mypy/pyright | compile-time |
 | Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |
@@ -223,7 +223,7 @@ ones-gfx-sdk/
 ├── ones-gfx-sdk-python/
 │   ├── ones_gfx/
 │   │   ├── client.py            # Client class
-│   │   ├── apis/                # 97 endpoint functions
+│   │   ├── apis/                # 131 endpoint functions
 │   │   └── _types.py            # TypedDicts
 │   ├── index.py                 # Runnable walkthrough
 │   └── pyproject.toml

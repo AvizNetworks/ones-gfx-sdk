@@ -110,6 +110,42 @@ from .list_vf_interfaces import list_vf_interfaces
 from .assign_vf_interface import assign_vf_interface
 from .unassign_vf_interface import unassign_vf_interface
 
+# --- Network policy (GFX-4721 / GFX-5327 / GFX-5394 / GFX-5536) ---
+from .list_network_policies import list_network_policies
+from .create_network_policy import create_network_policy
+from .patch_network_policy import patch_network_policy
+from .delete_network_policy import delete_network_policy
+# --- Webhook registration: global, fabric and tenant scopes ---
+from .register_webhook import register_webhook
+from .list_webhooks import list_webhooks
+from .get_webhook import get_webhook
+from .update_webhook import update_webhook
+from .delete_webhook import delete_webhook
+from .register_fabric_webhook import register_fabric_webhook
+from .get_fabric_webhook import get_fabric_webhook
+from .update_fabric_webhook import update_fabric_webhook
+from .delete_fabric_webhook import delete_fabric_webhook
+from .register_tenant_webhook import register_tenant_webhook
+from .get_tenant_webhook import get_tenant_webhook
+from .update_tenant_webhook import update_tenant_webhook
+from .delete_tenant_webhook import delete_tenant_webhook
+# --- IPAM address queries (GFX-5504) ---
+from .get_server_ips import get_server_ips
+from .get_tenant_ips import get_tenant_ips
+from .get_tenant_compute_ip import get_tenant_compute_ip
+# --- Tenant DHCP (GFX-5504 / GFX-5611) ---
+from .reconcile_fabric_dhcp import reconcile_fabric_dhcp
+from .get_tenant_dhcp import get_tenant_dhcp
+from .retry_tenant_dhcp import retry_tenant_dhcp
+# --- IPAM configuration (GFX-5229 / GFX-5449) ---
+from .get_ipam_config import get_ipam_config
+from .update_ipam_config import update_ipam_config
+# --- Rail CIDRPools (GFX-5264) ---
+from .get_rail_cidr_pools import get_rail_cidr_pools
+from .get_rail_cidr_pool import get_rail_cidr_pool
+# --- Inventory delete by hostname (GFX-5012) ---
+from .delete_inventory_by_hostnames import delete_inventory_by_hostnames
+
 __all__ = [
     "create_shared_services",
     "get_shared_services",
@@ -215,4 +251,39 @@ __all__ = [
     "get_hosts_list",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    # Network policy (GFX-4721 / GFX-5327 / GFX-5394 / GFX-5536)
+    "list_network_policies",
+    "create_network_policy",
+    "patch_network_policy",
+    "delete_network_policy",
+    # Webhook registration: global, fabric and tenant scopes
+    "register_webhook",
+    "list_webhooks",
+    "get_webhook",
+    "update_webhook",
+    "delete_webhook",
+    "register_fabric_webhook",
+    "get_fabric_webhook",
+    "update_fabric_webhook",
+    "delete_fabric_webhook",
+    "register_tenant_webhook",
+    "get_tenant_webhook",
+    "update_tenant_webhook",
+    "delete_tenant_webhook",
+    # IPAM address queries (GFX-5504)
+    "get_server_ips",
+    "get_tenant_ips",
+    "get_tenant_compute_ip",
+    # Tenant DHCP (GFX-5504 / GFX-5611)
+    "reconcile_fabric_dhcp",
+    "get_tenant_dhcp",
+    "retry_tenant_dhcp",
+    # IPAM configuration (GFX-5229 / GFX-5449)
+    "get_ipam_config",
+    "update_ipam_config",
+    # Rail CIDRPools (GFX-5264)
+    "get_rail_cidr_pools",
+    "get_rail_cidr_pool",
+    # Inventory delete by hostname (GFX-5012)
+    "delete_inventory_by_hostnames",
 ]

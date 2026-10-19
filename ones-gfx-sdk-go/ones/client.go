@@ -62,6 +62,16 @@ type Client struct {
 	SharedServices *resources.SharedServicesResource
 	VFs            *resources.VFInterfacesResource
 	Workflows      *resources.WorkflowsResource
+
+	// NetworkPolicy, Webhooks, IPAM, DHCP and Rails cover the fabric feature
+	// work that landed after the first SDK cut: network policies, webhook
+	// registration at all three scopes, IPAM configuration and its address
+	// listings, tenant DHCP in Kea, and the rail CIDRPool manifests.
+	NetworkPolicy *resources.NetworkPolicyResource
+	Webhooks      *resources.WebhooksResource
+	IPAM          *resources.IpamResource
+	DHCP          *resources.DhcpResource
+	Rails         *resources.RailsResource
 }
 
 // NewClient builds a Client for the given root base URL.
@@ -107,6 +117,11 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		SharedServices: resources.NewSharedServicesResource(transport),
 		VFs:            resources.NewVFInterfacesResource(transport),
 		Workflows:      resources.NewWorkflowsResource(transport),
+		NetworkPolicy:  resources.NewNetworkPolicyResource(transport),
+		Webhooks:       resources.NewWebhooksResource(transport),
+		IPAM:           resources.NewIpamResource(transport),
+		DHCP:           resources.NewDhcpResource(transport),
+		Rails:          resources.NewRailsResource(transport),
 		Fabrics:        resources.NewFabricsResource(transport),
 		Fabricsims:     resources.NewFabricsimsResource(transport),
 		Inventory:      resources.NewInventoryResource(transport),
@@ -144,6 +159,11 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 		SharedServices: resources.NewSharedServicesResource(transport),
 		VFs:            resources.NewVFInterfacesResource(transport),
 		Workflows:      resources.NewWorkflowsResource(transport),
+		NetworkPolicy:  resources.NewNetworkPolicyResource(transport),
+		Webhooks:       resources.NewWebhooksResource(transport),
+		IPAM:           resources.NewIpamResource(transport),
+		DHCP:           resources.NewDhcpResource(transport),
+		Rails:          resources.NewRailsResource(transport),
 		Fabrics:        resources.NewFabricsResource(transport),
 		Fabricsims:     resources.NewFabricsimsResource(transport),
 		Inventory:      resources.NewInventoryResource(transport),
