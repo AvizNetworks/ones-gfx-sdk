@@ -114,14 +114,14 @@ func scenarioReadOnly(client *ones.Client) {
 	fmt.Println("\n--- Scenario: read-only ---")
 	ctx := context.Background()
 
-	fabrics, err := client.Fabrics.List(ctx)
+	fabrics, err := client.Fabrics.ListDTOs(ctx)
 	if err != nil {
 		fmt.Printf("Error listing fabrics: %v\n", err)
 		return
 	}
-	fmt.Printf("Found %d fabric(s):\n", len(fabrics))
-	for _, fab := range fabrics {
-		fmt.Printf("  - %s (SUs=%d/%d)\n", fab.Name, fab.NumOfSus, fab.MaxNumOfSus)
+	fmt.Printf("Found %d fabric(s):\n", len(fabrics.Fabrics))
+	for _, fab := range fabrics.Fabrics {
+		fmt.Printf("  - %s (SUs=%d/%d)\n", fab.FabricName, fab.NumOfSUs, fab.MaxNumOfSUs)
 	}
 
 	tenants, err := client.Tenants.List(ctx, fabricName)
@@ -214,35 +214,6 @@ func pollOperation(client *ones.Client, operationID, label string, maxAttempts, 
 	return false
 }
 
-func pollWebhookStatus(client *ones.Client, operationID, label string, maxAttempts, pollIntervalS int) bool {
-	fmt.Printf("  -> polling %s webhook delivery: %s\n", label, operationID)
-	ctx := context.Background()
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		ws, err := client.Operations.WebhookStatus(ctx, operationID)
-		if err != nil {
-			fmt.Printf("\n  [poll %d] error: %v\n", attempt, err)
-			return false
-		}
-		status := "PENDING"
-		if ws != nil && ws.DeliveryStatus != "" {
-			status = ws.DeliveryStatus
-		}
-		if status == "SUCCESS" {
-			fmt.Printf("\n  [poll %d] webhook deliveryStatus=%s\n", attempt, status)
-			return true
-		}
-		if status == "FAILED" || status == "EXHAUSTED" {
-			fmt.Printf("\n  [poll %d] webhook deliveryStatus=%s\n", attempt, status)
-			fmt.Println("  -> FAILED: webhook delivery did not succeed")
-			return false
-		}
-		fmt.Print(".")
-		time.Sleep(time.Duration(pollIntervalS) * time.Second)
-	}
-	fmt.Println("\n  -> still not delivered after polling window; giving up")
-	return false
-}
-
 func tenantNameForMode(mode string) string {
 	switch mode {
 	case "sync":
@@ -283,11 +254,9 @@ func isWebhook(mode string) bool {
 	return mode == "async-webhook"
 }
 
-// pollFn selects the appropriate poller based on mode.
+// pollFn returns the poller for the mode. Webhook mode also polls the
+// operation; the delivery itself arrives at the registered receiver.
 func pollFn(mode string) func(*ones.Client, string, string, int, int) bool {
-	if isWebhook(mode) {
-		return pollWebhookStatus
-	}
 	return pollOperation
 }
 

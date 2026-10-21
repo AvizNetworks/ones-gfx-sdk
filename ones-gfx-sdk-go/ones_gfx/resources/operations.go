@@ -35,35 +35,8 @@ type OperationStatusItem struct {
 	FabricName     string `json:"fabricName,omitempty"`
 }
 
-// WebhookDeliveryAttempt is one delivery attempt within WebhookDeliveryStatus.
-type WebhookDeliveryAttempt struct {
-	AttemptNumber int    `json:"attemptNumber,omitempty"`
-	Status        string `json:"status,omitempty"`
-	StatusCode    *int   `json:"statusCode,omitempty"`
-	ErrorMessage  string `json:"errorMessage,omitempty"`
-	AttemptedAt   string `json:"attemptedAt,omitempty"`
-}
-
-// WebhookDeliveryStatus mirrors GET /operations/{operationId}/webhook-status.
-type WebhookDeliveryStatus struct {
-	OperationID      string                   `json:"operationId,omitempty"`
-	DeliveryStatus   string                   `json:"deliveryStatus,omitempty"`
-	TotalAttempts    int                      `json:"totalAttempts,omitempty"`
-	LastStatusCode   *int                     `json:"lastStatusCode,omitempty"`
-	LastErrorMessage string                   `json:"lastErrorMessage,omitempty"`
-	LastAttemptedAt  string                   `json:"lastAttemptedAt,omitempty"`
-	NextRetryAt      string                   `json:"nextRetryAt,omitempty"`
-	Attempts         []WebhookDeliveryAttempt `json:"attempts,omitempty"`
-}
-
 // Get fetches the current state of an async operation.
 // Maps to GET /operations/{operationId}.
 func (r *OperationsResource) Get(ctx context.Context, operationID string) (*OperationStatusItem, error) {
 	return ones_gfx.Call[OperationStatusItem](r.transport, "GET", "operations/"+operationID, nil, ones_gfx.OperationModeSynchronous, nil)
-}
-
-// WebhookStatus returns webhook delivery status for an operation.
-// Maps to GET /operations/{operationId}/webhook-status.
-func (r *OperationsResource) WebhookStatus(ctx context.Context, operationID string) (*WebhookDeliveryStatus, error) {
-	return ones_gfx.Call[WebhookDeliveryStatus](r.transport, "GET", "operations/"+operationID+"/webhook-status", nil, ones_gfx.OperationModeSynchronous, nil)
 }

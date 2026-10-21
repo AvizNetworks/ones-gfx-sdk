@@ -4,12 +4,13 @@ Go client library for **AVIZ ONES Spectrum-X** tenant management API (v4.2).
 
 ## Status
 
-**Core Library:** ✅ Typed surface complete — all 97 Fabric Manager endpoints
-exposed as 102 typed resource methods across 17 resource handles.
+**Core Library:** ✅ The 20 Fabric Manager endpoints documented in *ONES
+Spectrum-X API Operations v3.0* are exposed as 25 typed resource methods (20
+plus the `...Async` variants) across 8 resource handles.
 **CLI Binary:** 🚧 Not started.
 
 Typed request params and typed return values throughout; the only untyped
-returns are the 16 documented open-payload leaves (see
+returns are the 6 documented open-payload leaves (see
 [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)).
 
 ---
@@ -74,23 +75,13 @@ func main() {
         log.Fatal(err)
     }
 
-    fabrics, err := ones.GetAllFabrics(ctx)
+    fabrics, err := ones.GetFabrics(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    for _, f := range fabrics {
-        fmt.Printf("%d %s (type=%s status=%s)\n", f.ID, f.Name, f.Type, f.Status)
+    for _, f := range fabrics.Fabrics {
+        fmt.Printf("%d %s\n", f.ID, f.FabricName)
     }
-
-    msg, err := ones.CreateFabric(ctx, "gpu-fabric-1", &ones.FabricCreateArgs{
-        Type:        ones.Ptr("DNO ASN"),
-        Description: ones.Ptr("Primary GPU fabric"),
-        Status:      ones.Ptr("draft"),
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(msg)
 }
 ```
 
@@ -118,8 +109,8 @@ The transport also refreshes reactively on a 401.
 
 ### Flat function names
 
-Names flatten `Resource.Method` — e.g. `Fabrics.Create` → `ones.CreateFabric`,
-`Fabrics.List` → `ones.GetAllFabrics`, `Tenants.ModifyAllocations` →
+Names flatten `Resource.Method` — e.g. `Tenants.Create` → `ones.CreateTenant`,
+`Fabrics.ListDTOs` → `ones.GetFabrics`, `Tenants.ModifyAllocations` →
 `ones.ModifyGpuAllocations`. The full index is in
 [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md).
 
@@ -193,13 +184,12 @@ func main() {
     ctx := context.Background()
 
     // 3. List fabrics
-    fabrics, err := client.Fabrics.List(ctx)
+    fabrics, err := client.Fabrics.ListDTOs(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    for _, fabric := range fabrics {
-        fmt.Printf("Fabric: %s (type=%s status=%s)\n",
-            fabric.Name, fabric.Type, fabric.Status)
+    for _, fabric := range fabrics.Fabrics {
+        fmt.Printf("Fabric: %s (%s)\n", fabric.FabricName, fabric.Description)
     }
 
     // 4. Create a tenant (synchronous). Returns the server's message string.
@@ -279,9 +269,8 @@ client := ones.NewClient(baseURL, auth,
 )
 ```
 
-Resource handles: `Tenants`, `GPU`, `Fabrics`, `Fabricsims`, `Inventory`,
-`Devices`, `ConfigMgmt`, `Bootstrap`, `RMA`, `Files`, `System`, `NetOps`,
-`HostTenants`, `NMXC`, `Intents`, `VPCPeering`, `Operations`.
+Resource handles: `Tenants`, `GPU`, `Fabrics`, `Inventory`, `Devices`, `NMXC`,
+`VPCPeering`, `Operations`.
 
 ### Authentication
 
@@ -302,18 +291,8 @@ if err != nil {
 ### Fabrics
 
 ```go
-// List (full entity form)
-fabrics, err := client.Fabrics.List(ctx)          // []ones_gfx.FabricItem
-
-// Get one
-fabric, err := client.Fabrics.Get(ctx, name)      // *ones_gfx.FabricItem
-
-// Grouped DTO form
-dtos, err := client.Fabrics.ListDTOs(ctx)
-
-// Device IPs
-ips, err := client.Fabrics.DeviceIPs(ctx, fabricName)
-ips, err = client.Fabrics.DevicesByLayer(ctx, "spine")
+// List fabrics (GET /fabrics)
+dtos, err := client.Fabrics.ListDTOs(ctx)         // *resources.FabricsListResponse
 
 // Inventory sync — UFM enabled fabrics only (lives on Inventory)
 res, err := client.Inventory.Sync(ctx, fabricName)
@@ -610,16 +589,16 @@ func main() {
 
     // Test 1: List fabrics
     log.Println("Test 1: Listing fabrics...")
-    fabrics, err := client.Fabrics.List(ctx)
+    fabrics, err := client.Fabrics.ListDTOs(ctx)
     if err != nil {
         log.Fatal(err)
     }
-    log.Printf("Found %d fabric(s)\n", len(fabrics))
-    if len(fabrics) == 0 {
+    log.Printf("Found %d fabric(s)\n", len(fabrics.Fabrics))
+    if len(fabrics.Fabrics) == 0 {
         log.Fatal("No fabrics found - cannot proceed with tests")
     }
 
-    fabricName := fabrics[0].Name
+    fabricName := fabrics.Fabrics[0].FabricName
     log.Printf("Using fabric: %s\n", fabricName)
 
     // Test 2: List tenants
@@ -638,13 +617,6 @@ func main() {
     }
     log.Printf("Available servers: %v\n", servers.AvailableGPUs)
 
-    // Test 4: Controller version
-    ver, err := client.System.ControllerVersion(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-    log.Printf("Controller: %s %s\n", ver.AppName, ver.AppVersion)
-
     log.Println("All tests passed!")
 }
 ```
@@ -661,7 +633,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 ├── IMPLEMENTATION_STATUS.md    # Typed surface + method index
 ├── api_reference.txt           # Language-agnostic curl reference
 ├── ones/                       # ★ Public API — the only package you import
-│   ├── api.go                  # 102 flat functions (generated), auth-guarded
+│   ├── api.go                  # 25 flat functions (generated), auth-guarded
 │   ├── types.go                # Re-exported types/consts/options (generated)
 │   ├── session.go              # Init / GetClient / Login / Refresh / Logout
 │   └── client.go               # Client struct + resource handles
@@ -675,22 +647,13 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 │   ├── gpu_allocation.go       # GPUOperation ADD/DELETE enum
 │   ├── models.go               # Operation struct + timestamp parsing
 │   ├── options.go              # Functional call options
-│   └── resources/              # One file per API domain (97 endpoints)
-│       ├── bootstrap.go
-│       ├── configmgmt.go
+│   └── resources/              # One file per API domain (20 endpoints)
 │       ├── devices.go
 │       ├── fabrics.go
-│       ├── fabricsims.go
-│       ├── files.go
 │       ├── gpu.go
-│       ├── hosttenants.go
-│       ├── intents.go
 │       ├── inventory.go
-│       ├── netops.go
 │       ├── nmxc.go
 │       ├── operations.go
-│       ├── rma.go
-│       ├── system.go
 │       ├── tenants.go
 │       └── vpcpeering.go
 └── examples/
@@ -757,7 +720,7 @@ resp, err := client.Tenants.Update(ctx, fabricName, tenantName, servers,
 
 - **No login endpoint** — partners supply tokens obtained out-of-band.
 - **No CLI binary** — the core library is the deliverable.
-- **16 open-payload leaves** — a handful of responses are returned as
+- **6 open-payload leaves** — a handful of responses are returned as
   `interface{}` / `map[string]interface{}` because the upstream Java service
   returns `Object` / `Map<String,Object>` on those paths. The full list is in
   [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md).

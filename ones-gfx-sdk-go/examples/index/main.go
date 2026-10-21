@@ -40,36 +40,15 @@ func main() {
 		client.IsAuthenticated(), len(client.GetAuthToken()))
 
 	fmt.Println("\nFetching all fabrics ...")
-	fabrics, err := ones.GetAllFabrics(ctx, client)
+	fabrics, err := ones.GetFabrics(ctx, client)
 	if err != nil {
-		fmt.Println("GetAllFabrics failed:", err)
+		fmt.Println("GetFabrics failed:", err)
 	} else {
-		fmt.Printf("Fabrics (%d):\n", len(fabrics))
-		for _, f := range fabrics {
-			fmt.Printf("  - id=%d name=%q type=%q status=%q description=%q\n",
-				f.ID, f.Name, f.Type, f.Status, f.Description)
+		fmt.Printf("Fabrics (%d):\n", len(fabrics.Fabrics))
+		for _, f := range fabrics.Fabrics {
+			fmt.Printf("  - id=%d name=%q description=%q\n", f.ID, f.FabricName, f.Description)
 		}
 	}
-
-	fmt.Println("\nAdding a fabric ...")
-	msg, err := ones.CreateFabric(ctx, client, "CLI ASN Fabric Go", &ones.FabricCreateArgs{
-		Type:        ones.Ptr("DNO ASN"),
-		Description: ones.Ptr("fabric created from go cli"),
-		Status:      ones.Ptr("draft"),
-	})
-	if err != nil {
-		fmt.Println("CreateFabric failed:", err)
-	} else {
-		fmt.Println("Add fabric response:", msg)
-	}
-
-	// fmt.Println("\nDeleting a fabric ...")
-	// delMsg, err := ones.DeleteFabric(ctx, client, "CLI ASN Fabric Go")
-	// if err != nil {
-	// 	fmt.Println("DeleteFabric failed:", err)
-	// } else {
-	// 	fmt.Println("Delete fabric response:", delMsg)
-	// }
 
 	// fmt.Println("\nRefreshing auth ...")
 	// refreshed, err := client.RefreshAuth()
