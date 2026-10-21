@@ -52,15 +52,39 @@ type VFAssignment struct {
 	IPInterface    string `json:"ipInterface,omitempty"`
 }
 
-// List returns the VF interfaces on a server's DPU.
+// VFDpuEntry groups a DPU with the VFs it presents to the server.
+type VFDpuEntry struct {
+	DpuName      string        `json:"dpuName"`
+	VfInterfaces []VFInterface `json:"vfInterfaces"`
+}
+
+// VFInterfaceList is what FM returns for a server's VF interfaces: the VFs
+// grouped by the DPU that backs them, not a flat array.
+type VFInterfaceList struct {
+	ServerName string       `json:"serverName"`
+	FabricName string       `json:"fabricName"`
+	DpuCount   int          `json:"dpuCount"`
+	Dpus       []VFDpuEntry `json:"dpus"`
+}
+
+// List returns the VF interfaces on a server, grouped by DPU.
 // Maps to GET /fabrics/{fabricName}/servers/{serverName}/vf-interfaces.
-func (r *VFInterfacesResource) List(ctx context.Context, fabricName, serverName string, opts ...ones_gfx.CallOption) ([]VFInterface, error) {
+func (r *VFInterfacesResource) List(ctx context.Context, fabricName, serverName string, opts ...ones_gfx.CallOption) (*VFInterfaceList, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
-	res, err := ones_gfx.Call[[]VFInterface](r.transport, "GET", "fabrics/"+fabricName+"/servers/"+serverName+"/vf-interfaces", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
-	if err != nil || res == nil {
-		return nil, err
+	return ones_gfx.Call[VFInterfaceList](r.transport, "GET", "fabrics/"+fabricName+"/servers/"+serverName+"/vf-interfaces", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
+}
+
+// Flatten returns every VF across all DPUs, for callers that do not care which
+// DPU presents which.
+func (l *VFInterfaceList) Flatten() []VFInterface {
+	if l == nil {
+		return nil
 	}
-	return *res, nil
+	var out []VFInterface
+	for _, d := range l.Dpus {
+		out = append(out, d.VfInterfaces...)
+	}
+	return out
 }
 
 // Assign attaches a VF to a tenant.

@@ -3,7 +3,7 @@ ONES Spectrum-X Python SDK.
 
 Public API:
 
-    All 131 Fabric Manager API functions are re-exported here
+    All 130 Fabric Manager API functions are re-exported here
     (create_tenant, get_all_fabrics, update_tenant, ...),
     mirroring ones_gfx.apis.
 
@@ -23,9 +23,10 @@ Public API:
         OperationFailedError, APIError
 """
 
+from ._fm_direct import DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path
 from ._version import __version__
 from .auth import AuthBase, JWTAuth
-from .client import Client, NotAuthenticatedError, ONESClient
+from .client import ApiRoutingError, Client, NotAuthenticatedError, ONESClient
 from .enums import (
     UNLIMITED_GPUS,
     ConfigStatus,
@@ -177,7 +178,6 @@ from .apis import (
     update_ipam_config,
     get_rail_cidr_pools,
     get_rail_cidr_pool,
-    delete_inventory_by_hostnames,
 )
 
 __all__ = [
@@ -339,5 +339,8 @@ __all__ = [
     "update_ipam_config",
     "get_rail_cidr_pools",
     "get_rail_cidr_pool",
-    "delete_inventory_by_hostnames",
+    "ApiRoutingError",
+    "DIRECT_FM_PATHS",
+    "derive_fm_base_url",
+    "is_direct_path",
 ]

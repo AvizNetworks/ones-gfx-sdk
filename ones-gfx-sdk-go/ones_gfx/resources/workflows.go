@@ -98,7 +98,7 @@ func (r *WorkflowsResource) CleanUpTenant(ctx context.Context, fabricName, tenan
 		if err != nil {
 			continue // nothing listed means nothing to free here
 		}
-		for _, vf := range vfs {
+		for _, vf := range vfs.Flatten() {
 			if vf.TenantName != tenantName {
 				continue
 			}

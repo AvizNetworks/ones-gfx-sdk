@@ -162,26 +162,27 @@ var (
 // --- network policy, webhooks, IPAM, DHCP and rails -------------------------
 
 type (
-	NetworkPolicy         = resources.NetworkPolicy
-	NetworkPolicyList     = resources.NetworkPolicyList
-	NetworkPolicyName     = resources.NetworkPolicyName
-	NetworkPolicyRef      = resources.NetworkPolicyRef
-	NetworkPolicySide     = resources.NetworkPolicySide
-	NetworkPolicySpec     = resources.NetworkPolicySpec
-	WebhookFilters        = resources.WebhookFilters
-	WebhookRegistration   = resources.WebhookRegistration
-	IpamAllocation        = resources.IpamAllocation
-	IpamConfig            = resources.IpamConfig
-	IpamDhcpConfig        = resources.IpamDhcpConfig
-	IpamPagination        = resources.IpamPagination
-	IpamPoolSummary       = resources.IpamPoolSummary
-	IpamStaticConfig      = resources.IpamStaticConfig
-	ServerIPList          = resources.ServerIPList
-	TenantIPList          = resources.TenantIPList
-	DhcpReapplySummary    = resources.DhcpReapplySummary
-	TenantDhcp            = resources.TenantDhcp
-	RailCidrPools         = resources.RailCidrPools
-	InventoryDeleteResult = resources.InventoryDeleteResult
+	NetworkPolicy       = resources.NetworkPolicy
+	NetworkPolicyList   = resources.NetworkPolicyList
+	NetworkPolicyName   = resources.NetworkPolicyName
+	NetworkPolicyRef    = resources.NetworkPolicyRef
+	NetworkPolicySide   = resources.NetworkPolicySide
+	NetworkPolicySpec   = resources.NetworkPolicySpec
+	WebhookFilters      = resources.WebhookFilters
+	WebhookRegistration = resources.WebhookRegistration
+	IpamAllocation      = resources.IpamAllocation
+	IpamConfig          = resources.IpamConfig
+	IpamDhcpConfig      = resources.IpamDhcpConfig
+	IpamPagination      = resources.IpamPagination
+	IpamPoolSummary     = resources.IpamPoolSummary
+	IpamStaticConfig    = resources.IpamStaticConfig
+	ServerIPList        = resources.ServerIPList
+	TenantIPList        = resources.TenantIPList
+	DhcpReapplySummary  = resources.DhcpReapplySummary
+	TenantDhcp          = resources.TenantDhcp
+	RailCidrPools       = resources.RailCidrPools
+	VFInterfaceList     = resources.VFInterfaceList
+	VFDpuEntry          = resources.VFDpuEntry
 )
 
 // Network policy endpoint types and the longest name FM accepts.
@@ -213,11 +214,10 @@ const (
 // Media types a rail CIDRPool manifest can be rendered as, and the page and
 // hostname limits FM enforces.
 const (
-	RailYamlMediaType           = resources.RailYamlMediaType
-	RailLegacyYamlMediaType     = resources.RailLegacyYamlMediaType
-	RailTextMediaType           = resources.RailTextMediaType
-	MaxDhcpLeasePageSize        = resources.MaxDhcpLeasePageSize
-	MaxInventoryDeleteHostnames = resources.MaxInventoryDeleteHostnames
+	RailYamlMediaType       = resources.RailYamlMediaType
+	RailLegacyYamlMediaType = resources.RailLegacyYamlMediaType
+	RailTextMediaType       = resources.RailTextMediaType
+	MaxDhcpLeasePageSize    = resources.MaxDhcpLeasePageSize
 )
 
 // WebhookEventTypes lists every canonical event name.

@@ -1066,13 +1066,3 @@ func GetRailCidrPoolYAML(ctx context.Context, client *Client, fabricName, railNa
 	}
 	return client.Rails.CidrPoolYAML(ctx, fabricName, railName, mediaType, opts...)
 }
-
-// --- inventory --------------------------------------------------------------
-
-// DeleteInventoryByHostnames calls Inventory.DeleteByHostnames.
-func DeleteInventoryByHostnames(ctx context.Context, client *Client, fabricName string, hostnames []string, opts ...CallOption) (*InventoryDeleteResult, error) {
-	if client == nil {
-		return nil, ErrNilClient
-	}
-	return client.Inventory.DeleteByHostnames(ctx, fabricName, hostnames, opts...)
-}

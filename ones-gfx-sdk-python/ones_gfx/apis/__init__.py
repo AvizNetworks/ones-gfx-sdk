@@ -144,7 +144,6 @@ from .update_ipam_config import update_ipam_config
 from .get_rail_cidr_pools import get_rail_cidr_pools
 from .get_rail_cidr_pool import get_rail_cidr_pool
 # --- Inventory delete by hostname (GFX-5012) ---
-from .delete_inventory_by_hostnames import delete_inventory_by_hostnames
 
 __all__ = [
     "create_shared_services",
@@ -285,5 +284,4 @@ __all__ = [
     "get_rail_cidr_pools",
     "get_rail_cidr_pool",
     # Inventory delete by hostname (GFX-5012)
-    "delete_inventory_by_hostnames",
 ]

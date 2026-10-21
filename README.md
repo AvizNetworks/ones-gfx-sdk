@@ -1,7 +1,7 @@
 # ONES GFX SDK
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
-Python and Go implementations expose the **same 131 Fabric Manager endpoints**
+Python and Go implementations expose the **same 130 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
 
@@ -90,7 +90,7 @@ Identical on both sides — Python is snake_case, Go is exported PascalCase.
 
 Every endpoint is a flat function taking the client. Go additionally takes a
 `context.Context` first, and offers `...Async` variants for the 5 async-capable
-endpoints (136 functions vs Python's 131; Python selects async with the `prefer`
+endpoints (135 functions vs Python's 130; Python selects async with the `prefer`
 argument on the same function).
 
 ```python
@@ -198,11 +198,57 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## How requests are routed
+
+Point the client at your ONES host and it handles the rest — but it is worth
+knowing that not every call leaves by the same door.
+
+Most Fabric Manager calls go through the ONES gateway under `/api/fm/`. The
+gateway proxies that prefix through an explicit per-route allowlist, and as of
+the 4.4.0 release 35 routes are missing from it — network policy, webhook
+registration, IPAM configuration and address queries, tenant DHCP, rail
+CIDRPools, and the shared-services and VF-interface routes.
+A call to an unlisted route does not fail cleanly: it falls through to the UI's
+single-page app and returns **HTML with HTTP 200**.
+
+So the SDK sends those 34 straight to Fabric Manager, which serves them at the
+root with no prefix. Everything else continues through the gateway.
+
+```
+auth + most FM calls   ->  https://<ones-host>/api/fm/...
+the 34 listed routes   ->  https://<ones-host>:8443/...
+```
+
+The Fabric Manager base URL is derived from the one you pass — same host, port
+8443, which is how the deployment publishes it — so the common case needs no
+extra configuration. Override it where that does not hold:
+
+```python
+client = Client.initialize_with_creds(
+    "https://ones-host", "user", "pass",
+    fm_direct_url="https://fm-host:8443",      # optional
+)
+```
+
+```go
+client, _ := ones.InitializeWithCreds("https://ones-host", "user", "pass")
+client.GetTransport().SetFMDirectURL("https://fm-host:8443")   // optional
+```
+
+Authentication is unchanged: the token comes from the gateway and Fabric
+Manager accepts it, because both validate against the same secret.
+
+**This split is temporary.** It exists because the 4.4.0 train had shipped when
+the gap was found, so neither the gateway nor Fabric Manager could change. The
+route list lives in one place in each SDK — `ones_gfx/_fm_direct.py` and
+`ones_gfx/fmdirect.go`. Once a gateway release registers these routes, empty
+that list and every call goes back through the gateway with no other change.
+
 ## Language notes
 
 | | Python | Go |
 |---|---|---|
-| Endpoint coverage | 131 | 131 (+5 async variants = 136 functions) |
+| Endpoint coverage | 130 | 130 (+5 async variants = 135 functions) |
 | Errors | exceptions | returned `error` values, typed taxonomy |
 | Type checking | TypedDicts, checked by mypy/pyright | compile-time |
 | Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |
@@ -223,7 +269,7 @@ ones-gfx-sdk/
 ├── ones-gfx-sdk-python/
 │   ├── ones_gfx/
 │   │   ├── client.py            # Client class
-│   │   ├── apis/                # 131 endpoint functions
+│   │   ├── apis/                # 130 endpoint functions
 │   │   └── _types.py            # TypedDicts
 │   ├── index.py                 # Runnable walkthrough
 │   └── pyproject.toml

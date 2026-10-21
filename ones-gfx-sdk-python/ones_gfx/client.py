@@ -22,11 +22,20 @@ from typing import Any
 
 import requests
 
+from ._fm_direct import derive_fm_base_url, is_direct_path
 from ._types import AuthResponse
 
 
 class NotAuthenticatedError(RuntimeError):
     """Raised when an authenticated API call is made without a token."""
+
+
+class ApiRoutingError(RuntimeError):
+    """Raised when a call reaches the gateway but the gateway does not proxy it.
+
+    The gateway answers an unproxied ``/api/fm/`` route with the UI's HTML
+    rather than a refusal, so this turns a silent 200 into an explicit error.
+    """
 
 
 class Client:
@@ -50,10 +59,16 @@ class Client:
         username: str | None = None,
         password: str | None = None,
         verify_tls: bool | str = False,
+        fm_direct_url: str | None = None,
     ) -> None:
         if not baseUrl:
             raise ValueError("baseUrl is required.")
         self.baseUrl = baseUrl.rstrip("/")
+        # Routes the gateway does not proxy go straight to Fabric Manager; see
+        # ones_gfx._fm_direct. Derived from baseUrl because the deployment
+        # publishes FM on the same host, so the common case needs no extra
+        # configuration; pass fm_direct_url where that does not hold.
+        self.fmDirectUrl = (fm_direct_url or derive_fm_base_url(self.baseUrl)).rstrip("/")
         self.authToken = authToken
         self.username = username
         self.password = password
@@ -279,7 +294,13 @@ class Client:
             raise NotAuthenticatedError(
                 "Not authenticated: call login() before calling Fabric Manager APIs."
             )
-        url = f"{self.baseUrl}/api/fm/{path.lstrip('/')}"
+        # The gateway proxies most Fabric Manager routes under /api/fm/, but its
+        # allowlist does not cover them all; those go straight to FM, which
+        # serves them at the root with no prefix. See ones_gfx._fm_direct.
+        if is_direct_path(path):
+            url = f"{self.fmDirectUrl}/{path.lstrip('/')}"
+        else:
+            url = f"{self.baseUrl}/api/fm/{path.lstrip('/')}"
         headers = self._auth_headers()
         if extra_headers:
             headers.update(extra_headers)
@@ -299,7 +320,20 @@ class Client:
         try:
             body = response.json()
         except ValueError:
-            return response.text
+            text = response.text
+            # A route the gateway does not proxy falls through to the UI's
+            # single-page app, which answers 200 with HTML. Returning that as a
+            # string would surface much later as a baffling type error, so name
+            # the real problem here.
+            if text.lstrip()[:1] == "<" and "/api/fm/" in url:
+                raise ApiRoutingError(
+                    f"{method.upper()} {path} reached the ONES gateway but it does not "
+                    f"proxy that route, so the UI returned HTML instead of a Fabric "
+                    f"Manager response. Add the route to the SDK's direct-FM table "
+                    f"(ones_gfx._fm_direct.DIRECT_FM_PATHS), or register it in the "
+                    f"gateway's fm-router.js."
+                )
+            return text
         if isinstance(body, dict) and "data" in body:
             return body["data"]
         return body

@@ -143,28 +143,3 @@ func (r *InventoryResource) Sync(ctx context.Context, fabricName string) (map[st
 	}
 	return *res, nil
 }
-
-// MaxInventoryDeleteHostnames is the largest number of unique hostnames FM
-// accepts in one DeleteByHostnames call.
-const MaxInventoryDeleteHostnames = 200
-
-// InventoryDeleteResult reports which hostnames a delete did not match.
-//
-// NotFound is always present, because the status alone does not say which
-// names missed: FM answers 200 when every hostname matched, 207 when only
-// some did, and 404 when none did. Check NotFound even on success.
-type InventoryDeleteResult struct {
-	NotFound []string `json:"notFound"`
-	Message  string   `json:"message,omitempty"`
-}
-
-// DeleteByHostnames removes inventory devices by hostname, scoped to one
-// fabric. The request body is a bare JSON array of hostnames.
-// Maps to DELETE /fabrics/{fabricName}/inventory.
-//
-// Duplicates and blanks are dropped before the delete, and at most
-// MaxInventoryDeleteHostnames unique names may be sent.
-func (r *InventoryResource) DeleteByHostnames(ctx context.Context, fabricName string, hostnames []string, opts ...ones_gfx.CallOption) (*InventoryDeleteResult, error) {
-	rc := ones_gfx.ResolveCallOptions(opts...)
-	return ones_gfx.Call[InventoryDeleteResult](r.transport, "DELETE", "fabrics/"+fabricName+"/inventory", hostnames, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
-}

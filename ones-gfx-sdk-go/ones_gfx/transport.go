@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -18,10 +19,13 @@ import (
 // (envelope unwrapping, Prefer header, error mapping). This is exported so
 // the resources package can use it.
 type Transport struct {
-	baseURL    string
-	auth       AuthProvider
-	httpClient *http.Client
-	timeout    time.Duration
+	baseURL string
+	// fmDirectURL is Fabric Manager's own base, used for the routes the
+	// gateway does not proxy. See fmdirect.go; empty disables direct routing.
+	fmDirectURL string
+	auth        AuthProvider
+	httpClient  *http.Client
+	timeout     time.Duration
 }
 
 // NewTransport constructs a Transport with the given configuration.
@@ -39,10 +43,11 @@ func NewTransport(baseURL string, auth AuthProvider, cfg clientConfig) *Transpor
 	}
 
 	return &Transport{
-		baseURL:    baseURL,
-		auth:       auth,
-		httpClient: httpClient,
-		timeout:    cfg.timeout,
+		baseURL:     baseURL,
+		fmDirectURL: DeriveFMBaseURL(strings.TrimSuffix(baseURL, "/api/fm/")),
+		auth:        auth,
+		httpClient:  httpClient,
+		timeout:     cfg.timeout,
 	}
 }
 
@@ -206,8 +211,17 @@ func (t *Transport) handleResponse(resp *http.Response) (interface{}, error) {
 	return nil, classifyError(resp.StatusCode, message, body)
 }
 
-// buildURL joins baseURL and path.
+// SetFMDirectURL overrides the Fabric Manager base used for routes the
+// gateway does not proxy. Empty sends every route through the gateway.
+func (t *Transport) SetFMDirectURL(u string) { t.fmDirectURL = strings.TrimRight(u, "/") }
+
+// buildURL joins the right base and path. Most routes resolve against the
+// gateway base (.../api/fm/); the ones the gateway does not proxy resolve
+// against Fabric Manager itself, which serves them at the root.
 func (t *Transport) buildURL(path string) (string, error) {
+	if t.fmDirectURL != "" && IsDirectPath(path) {
+		return strings.TrimRight(t.fmDirectURL, "/") + "/" + strings.TrimLeft(path, "/"), nil
+	}
 	base, err := url.Parse(t.baseURL)
 	if err != nil {
 		return "", &TransportError{Message: "invalid base URL", Cause: err}
