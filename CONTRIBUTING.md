@@ -50,6 +50,53 @@ make check          # sanity import check
 
 Both SDKs wrap the same ONES Spectrum-X API — if you change request/response handling in one language, check whether the other needs the equivalent fix (see the Feature Comparison table in the [root README](./README.md)).
 
+## What the transport owns (read before adding a resource method)
+
+Several request details are set centrally by the transport, not by the method
+you are writing. Setting them again in a resource is at best redundant and at
+worst a conflict, because the transport writes last.
+
+| Set by the transport | Where | Driven by |
+|---|---|---|
+| `Prefer: respond-sync` / `respond-async` | `transport.go` — `send` and `sendRaw` | the `OperationMode` argument |
+| `Authorization` | `auth.Apply` on every request | the client's auth provider |
+| `Content-Type`, `Accept` | `sendRaw` | the call, with `ReqOpts.Accept` overriding |
+| `Idempotency-Key` | `sendRaw` | `ReqOpts.IdempotencyKey` |
+| `x-request-origin` | `sendRaw` | `ReqOpts.RequestOrigin` |
+| `/api/fm/` prefix, or direct-FM routing | `buildURL` | the path, via `fmdirect.go` |
+| Query string | `doRaw` | `ReqOpts.Query` |
+| `{"data": ...}` unwrapping | `Call` | always |
+| Auth refresh and one retry on 401 | `doRaw` | always |
+
+### Sync vs async is an argument, not a header
+
+A resource method chooses behaviour by passing an `OperationMode`:
+
+```go
+ones_gfx.Call[ApiResponseMessage](r.transport, "PATCH", path, body,
+    ones_gfx.OperationModeSynchronous,   // transport turns this into Prefer: respond-sync
+    rc.ReqOpts())
+```
+
+Do **not** write `headers["Prefer"] = ...` in a resource. If a method needs a
+mode the enum does not cover, add it to `OperationMode` and teach the transport,
+so every call site stays consistent.
+
+The paired `...Async` methods differ only in this argument — compare
+`TenantsResource.Update` with `UpdateAsync`.
+
+### Checklist for a new resource method
+
+1. Give it a `// Maps to VERB /path` comment. `fmdirect.go` and the coverage
+   checks both read these.
+2. Pass an `OperationMode`; never set `Prefer` yourself.
+3. Pass `rc.ReqOpts()` so idempotency, request origin, timeout and query
+   options keep working.
+4. Return a typed model rather than `map[string]interface{}`. Keep unmodelled
+   keys in an `Extra` field if the payload varies by fabric type.
+5. If the route is one the ONES gateway does not proxy, add it to
+   `DirectFMPaths` in `fmdirect.go`.
+
 ## Commit Messages
 
 Write commit messages that explain *why* a change was made, not just what changed. Reference the related issue number when one exists (e.g. `Fixes #42`).

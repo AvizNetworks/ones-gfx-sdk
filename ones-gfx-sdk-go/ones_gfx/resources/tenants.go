@@ -179,6 +179,11 @@ func (r *TenantsResource) DeleteAsync(ctx context.Context, fabricName, tenantNam
 
 // Update adds or removes whole GPU servers on a tenant (synchronous).
 // Maps to PATCH /fabrics/{fabricName}/tenants/{tenantName}.
+//
+// "Synchronous" is the OperationModeSynchronous argument below, not anything
+// this method sets: the transport turns it into Prefer: respond-sync. The
+// only difference between this and UpdateAsync is that argument. Never set
+// Prefer in a resource method — see CONTRIBUTING.md.
 func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
