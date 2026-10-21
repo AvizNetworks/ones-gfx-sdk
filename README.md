@@ -242,6 +242,38 @@ go through the strict parser, which reports unknown input instead of hiding it.
 terminal, and they are neither a failure nor a success — treat them as their
 own outcome.
 
+## Timeouts on synchronous writes
+
+A timeout on a synchronous `PATCH` is ambiguous. Fabric Manager may have
+finished, may still be pushing config to devices, or may never have received
+the request — the HTTP layer cannot tell which.
+
+By default the SDK says so plainly: the timeout surfaces as a `TransportError`
+and the caller decides. Nothing is retried, because retrying a write that may
+have landed is its own hazard.
+
+Where that decision is always "wait and see", the SDK can do it for you:
+
+```go
+client, _ := ones.InitializeWithCreds(url, user, pass,
+    ones.WithSyncPatchTimeoutFallback(true, 5*time.Second, 2*time.Minute))
+```
+
+On timeout the tenant's `config_status` is then polled until it settles:
+
+| Outcome | Result |
+|---|---|
+| `PASS` | success — the change landed after all |
+| `FAIL` | `APIError` naming the terminal status |
+| `BROWN_FIELD` / `SKIPPED` | success — deliberately not configured |
+| still running at `MaxWait` | `SyncPatchTimeoutError` — outcome still unknown |
+
+That last case is deliberately **not** a failure. The change may yet complete,
+so the error says the outcome is unknown rather than inviting a blind retry.
+
+`ones.IsTimeout(err)` reports whether any error was a timeout, at any depth,
+without matching on strings.
+
 ## How requests are routed
 
 Point the client at your ONES host and it handles the rest — but it is worth

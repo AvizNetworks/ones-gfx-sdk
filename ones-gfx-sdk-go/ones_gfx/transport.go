@@ -23,9 +23,12 @@ type Transport struct {
 	// fmDirectURL is Fabric Manager's own base, used for the routes the
 	// gateway does not proxy. See fmdirect.go; empty disables direct routing.
 	fmDirectURL string
-	auth        AuthProvider
-	httpClient  *http.Client
-	timeout     time.Duration
+	// syncPatchFallback is consulted by resources whose synchronous PATCH can
+	// outlive the HTTP timeout; see SyncPatchFallback.
+	syncPatchFallback SyncPatchFallback
+	auth              AuthProvider
+	httpClient        *http.Client
+	timeout           time.Duration
 }
 
 // NewTransport constructs a Transport with the given configuration.
@@ -43,11 +46,12 @@ func NewTransport(baseURL string, auth AuthProvider, cfg clientConfig) *Transpor
 	}
 
 	return &Transport{
-		baseURL:     baseURL,
-		fmDirectURL: DeriveFMBaseURL(strings.TrimSuffix(baseURL, "/api/fm/")),
-		auth:        auth,
-		httpClient:  httpClient,
-		timeout:     cfg.timeout,
+		baseURL:           baseURL,
+		fmDirectURL:       DeriveFMBaseURL(strings.TrimSuffix(baseURL, "/api/fm/")),
+		syncPatchFallback: cfg.syncPatchFallback.withDefaults(),
+		auth:              auth,
+		httpClient:        httpClient,
+		timeout:           cfg.timeout,
 	}
 }
 
@@ -209,6 +213,14 @@ func (t *Transport) handleResponse(resp *http.Response) (interface{}, error) {
 
 	// Map status code to typed error
 	return nil, classifyError(resp.StatusCode, message, body)
+}
+
+// SyncPatchFallback returns the configured sync-PATCH timeout behaviour.
+func (t *Transport) SyncPatchFallback() SyncPatchFallback { return t.syncPatchFallback }
+
+// SetSyncPatchFallback overrides the sync-PATCH timeout behaviour.
+func (t *Transport) SetSyncPatchFallback(f SyncPatchFallback) {
+	t.syncPatchFallback = f.withDefaults()
 }
 
 // SetFMDirectURL overrides the Fabric Manager base used for routes the

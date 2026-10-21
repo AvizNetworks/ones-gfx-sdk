@@ -2,6 +2,8 @@ package resources
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 )
@@ -185,7 +187,86 @@ func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName str
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
 	attachTenantWebhook(&body.tenantWebhookFields, rc)
-	return ones_gfx.Call[ApiResponseMessage](r.transport, "PATCH", "fabrics/"+fabricName+"/tenants/"+tenantName, body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
+	res, err := ones_gfx.Call[ApiResponseMessage](r.transport, "PATCH", "fabrics/"+fabricName+"/tenants/"+tenantName, body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
+	if err != nil && ones_gfx.IsTimeout(err) {
+		if fb := r.transport.SyncPatchFallback(); fb.Enabled {
+			return r.awaitAfterTimeout(ctx, fabricName, tenantName, fb, err)
+		}
+	}
+	return res, err
+}
+
+// awaitAfterTimeout resolves a synchronous PATCH that timed out.
+//
+// The HTTP timeout says nothing about whether Fabric Manager applied the
+// change, so rather than guessing, the tenant's own config_status is read
+// until it settles. A terminal status is the answer the PATCH could not
+// deliver: PASS means the change landed, FAIL means it did not. Running out
+// of patience is neither, and returns SyncPatchTimeoutError.
+func (r *TenantsResource) awaitAfterTimeout(
+	ctx context.Context,
+	fabricName, tenantName string,
+	fb ones_gfx.SyncPatchFallback,
+	cause error,
+) (*ApiResponseMessage, error) {
+	deadline := time.Now().Add(fb.MaxWait)
+	started := time.Now()
+	last := ones_gfx.ConfigStatusNotStarted
+
+	for {
+		tn, getErr := r.Get(ctx, fabricName, tenantName)
+		if getErr == nil && tn != nil {
+			last = tn.ConfigStatus
+			if last.IsTerminal() {
+				switch {
+				case last.IsSuccess():
+					return &ApiResponseMessage{
+						Status: "success",
+						Message: fmt.Sprintf(
+							"sync PATCH timed out; tenant %s/%s reached %v after %s",
+							fabricName, tenantName, last, time.Since(started).Round(time.Second)),
+					}, nil
+				case last.IsSkipped():
+					// Deliberately not configured; neither applied nor failed.
+					return &ApiResponseMessage{
+						Status: "success",
+						Message: fmt.Sprintf(
+							"sync PATCH timed out; tenant %s/%s is %v (not configured by design)",
+							fabricName, tenantName, last),
+					}, nil
+				default:
+					return nil, &ones_gfx.APIError{
+						StatusCode: 0,
+						Message: fmt.Sprintf(
+							"sync PATCH on tenant %s/%s timed out and the tenant settled as %v",
+							fabricName, tenantName, last),
+					}
+				}
+			}
+		}
+		// A read that fails is not fatal here: the tenant may be mid-update.
+		// Keep trying until the budget runs out.
+		if !time.Now().Add(fb.PollInterval).Before(deadline) {
+			return nil, &ones_gfx.SyncPatchTimeoutError{
+				FabricName: fabricName,
+				TenantName: tenantName,
+				LastStatus: last,
+				Waited:     time.Since(started).Round(time.Second),
+				Cause:      cause,
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return nil, &ones_gfx.SyncPatchTimeoutError{
+				FabricName: fabricName,
+				TenantName: tenantName,
+				LastStatus: last,
+				Waited:     time.Since(started).Round(time.Second),
+				Cause:      ctx.Err(),
+			}
+		case <-time.After(fb.PollInterval):
+		}
+	}
 }
 
 // UpdateAsync adds or removes whole GPU servers and returns the 202 handle.
