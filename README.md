@@ -1,14 +1,13 @@
 # ONES GFX SDK
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
-Python and Go implementations expose the **same 97 Fabric Manager endpoints**
+Python and Go implementations expose the **same 20 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
 
-Covers tenant lifecycle, GPU allocation and per-port assignment, fabric
-discovery and configuration, inventory, bootstrap/ZTP, RMA, config
-backup/restore, NMX-C and UFM integration, VPC peering, and async operation
-tracking.
+Covers the endpoints documented in *ONES Spectrum-X API Operations v3.0*:
+tenant lifecycle, GPU allocation and per-port assignment, fabric listing,
+NMX-C and UFM integration, VPC peering, and async operation tracking.
 
 ---
 
@@ -90,20 +89,20 @@ Identical on both sides — Python is snake_case, Go is exported PascalCase.
 
 Every endpoint is a flat function taking the client. Go additionally takes a
 `context.Context` first, and offers `...Async` variants for the 5 async-capable
-endpoints (102 functions vs Python's 97; Python selects async with the `prefer`
+endpoints (25 functions vs Python's 20; Python selects async with the `prefer`
 argument on the same function).
 
 ```python
-from ones_gfx.apis import get_all_fabrics
-fabrics = get_all_fabrics(client)
+from ones_gfx.apis import get_fabrics
+fabrics = get_fabrics(client)
 ```
 
 ```go
-fabrics, err := ones.GetAllFabrics(ctx, client)
+fabrics, err := ones.GetFabrics(ctx, client)
 ```
 
-Names differ only in case convention: `get_all_fabrics` ↔ `GetAllFabrics`,
-`add_fabric_data` ↔ `CreateFabric`, `modify_gpu_allocations` ↔
+Names differ only in case convention: `get_fabrics` ↔ `GetFabrics`,
+`create_tenant` ↔ `CreateTenant`, `modify_gpu_allocations` ↔
 `ModifyGpuAllocations`. Optional fields are keyword args defaulting to `None` in
 Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 
@@ -122,23 +121,14 @@ Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 
 ```python
 from ones_gfx import Client
-from ones_gfx.apis import add_fabric_data, get_all_fabrics
+from ones_gfx.apis import get_fabrics, list_tenants
 
 client = Client.initialize_with_creds("https://10.4.5.76:8089", "admin", "secret")
 print("authenticated:", client.is_authenticated())
 
-for f in get_all_fabrics(client):
-    print(f"  {f.get('id')} {f.get('name')} type={f.get('type')}")
-
-print(add_fabric_data(
-    client,
-    name="gpu-fabric-1",
-    type="DNO ASN",
-    description="Primary GPU fabric",
-    status="draft",
-))
-
-client.close()
+for f in get_fabrics(client)["fabrics"]:
+    print(f"  {f.get('id')} {f.get('fabricName')}")
+    print(list_tenants(client, f["fabricName"]))
 ```
 
 ## Example — Go
@@ -164,28 +154,18 @@ func main() {
     defer client.Close()
     fmt.Println("authenticated:", client.IsAuthenticated())
 
-    fabrics, err := ones.GetAllFabrics(ctx, client)
+    fabrics, err := ones.GetFabrics(ctx, client)
     if err != nil {
         log.Fatal(err)
     }
-    for _, f := range fabrics {
-        fmt.Printf("  %d %s type=%s\n", f.ID, f.Name, f.Type)
+    for _, f := range fabrics.Fabrics {
+        fmt.Printf("  %d %s\n", f.ID, f.FabricName)
     }
-
-    msg, err := ones.CreateFabric(ctx, client, "gpu-fabric-1", &ones.FabricCreateArgs{
-        Type:        ones.Ptr("DNO ASN"),
-        Description: ones.Ptr("Primary GPU fabric"),
-        Status:      ones.Ptr("draft"),
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Println(msg)
 }
 ```
 
 `ones` is the only import you need — every type, constant and option is
-re-exported there (`ones.FabricCreateArgs`, `ones.GpuActionAdd`, `ones.Ptr`, …).
+re-exported there (`ones.GpuServerInfo`, `ones.GpuActionAdd`, `ones.Ptr`, …).
 
 Runnable versions of both live at
 [`ones-gfx-sdk-python/index.py`](./ones-gfx-sdk-python/index.py) and
@@ -202,7 +182,7 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 | | Python | Go |
 |---|---|---|
-| Endpoint coverage | 97 | 97 (+5 async variants = 102 functions) |
+| Endpoint coverage | 20 | 20 (+5 async variants = 25 functions) |
 | Errors | exceptions | returned `error` values, typed taxonomy |
 | Type checking | TypedDicts, checked by mypy/pyright | compile-time |
 | Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |
@@ -223,7 +203,7 @@ ones-gfx-sdk/
 ├── ones-gfx-sdk-python/
 │   ├── ones_gfx/
 │   │   ├── client.py            # Client class
-│   │   ├── apis/                # 97 endpoint functions
+│   │   ├── apis/                # 20 endpoint functions
 │   │   └── _types.py            # TypedDicts
 │   ├── index.py                 # Runnable walkthrough
 │   └── pyproject.toml

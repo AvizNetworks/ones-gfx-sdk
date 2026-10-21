@@ -9,10 +9,10 @@ you need, for different hosts or different users.
 Pass the client explicitly into the ``ones_gfx.apis`` functions::
 
     from ones_gfx import Client
-    from ones_gfx.apis import get_all_fabrics
+    from ones_gfx.apis import get_fabrics
 
     client = Client.initialize_with_creds("https://host:3002", "admin", "secret")
-    fabrics = get_all_fabrics(client)
+    fabrics = get_fabrics(client)["fabrics"]
 """
 
 from __future__ import annotations

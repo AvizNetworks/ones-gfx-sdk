@@ -84,10 +84,9 @@ from ones_gfx.apis import (
     create_tenant,
     create_vpc_peering,
     delete_tenant,
-    get_all_fabrics,
     get_available_servers,
+    get_fabrics,
     get_operation,
-    get_operation_webhook_status,
     get_tenant,
     inventory_sync,
     list_tenants,
@@ -148,22 +147,6 @@ def poll_operation(
     return False
 
 
-def poll_webhook(
-    client: Client, op_id: str, *, label: str, interval_s: int, attempts: int
-) -> bool:
-    """Poll GET /operations/{id}/webhook-status until delivery settles."""
-    print(f"  -> polling {label} webhook delivery: {op_id}")
-    for attempt in range(1, attempts + 1):
-        current = get_operation_webhook_status(client, op_id)
-        status = current.get("deliveryStatus")
-        print(f"\n  [poll {attempt}] webhook deliveryStatus={status}")
-        if status and status.upper() not in {"PENDING", "RETRYING"}:
-            return status.upper() in {"DELIVERED", "SUCCESS"}
-        time.sleep(interval_s)
-    print(f"\n  -> {label} not delivered after {attempts} polls; giving up")
-    return False
-
-
 def settle(client: Client, result: Any, *, label: str, args: argparse.Namespace) -> bool:
     """Resolve a call result: print it if sync, poll it if async."""
     op_id = operation_id(result)
@@ -174,10 +157,7 @@ def settle(client: Client, result: Any, *, label: str, args: argparse.Namespace)
     if args.mode == "async-webhook":
         if isinstance(result, dict):
             print(f"  -> webhook registered: {result.get('webhookRegistered')}")
-        poller = poll_webhook
-    else:
-        poller = poll_operation
-    return poller(
+    return poll_operation(
         client,
         op_id,
         label=label,
@@ -194,10 +174,10 @@ def settle(client: Client, result: Any, *, label: str, args: argparse.Namespace)
 def scenario_read_only(client: Client, args: argparse.Namespace) -> None:
     print("\n--- Scenario: read-only ---")
 
-    fabrics = get_all_fabrics(client)
+    fabrics = get_fabrics(client)["fabrics"]
     print(f"Fabrics ({len(fabrics)}):")
     for f in fabrics:
-        print(f"  - id={f.get('id')} name={f.get('name')!r} type={f.get('type')!r}")
+        print(f"  - id={f.get('id')} name={f.get('fabricName')!r}")
 
     print(f"\nTenants in {args.fabric!r}:")
     print(f"  {list_tenants(client, args.fabric)}")
@@ -324,7 +304,7 @@ def scenario_error_handling(client: Client, args: argparse.Namespace) -> None:
 
     print("2. Calling an API with a token-less client:")
     try:
-        get_all_fabrics(Client(args.url, verify_tls=args.verify_tls))
+        get_fabrics(Client(args.url, verify_tls=args.verify_tls))
     except NotAuthenticatedError as exc:
         print(f"   NotAuthenticatedError: {exc}")
 

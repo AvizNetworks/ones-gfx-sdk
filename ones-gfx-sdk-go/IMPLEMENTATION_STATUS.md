@@ -1,8 +1,12 @@
 # Go SDK Implementation Status
 
-The Go SDK mirrors the Python SDK's typed API surface: all 97 Fabric Manager
-endpoints are exposed through typed resource methods (no `map[string]interface{}`
-body builders, no `interface{}` returns except the documented open-payload leaves).
+The Go SDK mirrors the Python SDK's typed API surface: the 20 Fabric Manager
+endpoints documented in *ONES Spectrum-X API Operations v3.0* are exposed as
+flat functions (25 including the `...Async` variants) backed by typed resource
+methods. See [`../FM_API_LIST.md`](../FM_API_LIST.md) for the full list.
+
+Not yet included: the guide's three HBN VF-interface endpoints
+(`GET …/vf-interfaces`, `POST`/`DELETE …/vf-interfaces/{vfId}/assign`).
 
 ## Build and Test Commands
 
@@ -14,15 +18,18 @@ go build ./...
 go vet ./...
 
 # Format check
-gofmt -l ones_gfx/ sdk/ examples/
+gofmt -l ones/ ones_gfx/ examples/
 ```
 
 ## Package layout
 
+- `ones/` — the public package: `client.go` (the `Client`), `api.go` (one flat
+  function per endpoint) and `types.go` (type aliases, constants and options, so
+  `ones` is the only import a caller needs).
 - `ones_gfx/` — transport, auth, enums, errors, shared API types (`apitypes.go`).
-- `ones_gfx/resources/` — one file per API domain, 97 endpoints total.
-- `sdk/` — the top-level `Client` with one resource handle per domain.
-- `examples/` — a runnable CLI tour (`go run examples/usage_examples.go`).
+- `ones_gfx/resources/` — one file per API domain.
+- `examples/` — `index/` (login + list fabrics) and `usage_examples.go`, a CLI
+  tour of the tenant lifecycle (`go run ./examples`).
 
 ## Typing conventions
 
@@ -43,37 +50,24 @@ into a typed result, unwrapping the `{"data": ...}` envelope exactly as the
 Python client does. The legacy `Get/Post/Patch/Delete` methods remain for
 back-compat but are no longer used by the resources.
 
-## Open-payload leaves (16)
+## Open-payload leaves (6)
 
-The following returns fall back to `interface{}` / `map[string]interface{}`
-because the Java service layer itself returns `Object`/`Map<String,Object>`
-(see the Python SDK's TYPING_GAPS.md for the full analysis):
+The following returns fall back to `map[string]interface{}` because the Java
+service layer itself returns `Map<String,Object>`:
 
-- bare `interface{}`: `ConfigMgmt.Get`, `ConfigMgmt.GetDiff`, `ConfigMgmt.Replace`
-- `map[string]interface{}`: `Tenants.List/Get`, `Inventory.Ports/UFMHosts/Sync`,
-  `NMXC.Inventory`, `Bootstrap.GetBatch`
-- `[]interface{}`: `Devices.Versions/ImgmgmtStatus`, `Intents.Validation/Day1ConfigStatus/DerivationLogs`
-- `[]map[string]interface{}`: `Bootstrap.ListBatches`
-- `GetFilesResult.Files` (grouped map for "ALL" vs list for a typed filetype)
+- `Tenants.List`, `Tenants.Get`
+- `Inventory.Ports`, `Inventory.UFMHosts`, `Inventory.Sync`
+- `NMXC.Inventory`
 
 ## Resource method index
 
 | Resource | Methods |
 |---|---|
-| `Tenants` | Create/CreateAsync, List, Get, Delete/DeleteAsync, Update/UpdateAsync, ModifyAllocations/ModifyAllocationsAsync, AutoAllocate |
-| `GPU` | AssignPorts, List, ByHost, TenantMappings, AllocationHistory, AvailableServers |
-| `Fabrics` | Create, Update, Delete, List, Get, ListDTOs, DeviceIPs, DevicesByLayer, UpdateStatus |
-| `Fabricsims` | Create, List, Get, Delete, UpdateStatus |
-| `Inventory` | Add, Update, Edit, ListAll, ByFabric, Ports, UFMHosts, Sync |
-| `Devices` | AddFacts, RemoveFacts, Versions, ImgmgmtStatus, EnableZTP, UpgradeNOS, Reboot, IsAlive, FMInventory, ValidateUFMCreds |
-| `ConfigMgmt` | Get, GetDiff, Replace, Restore, Backup, FetchBackupFiles, ListToRestore, UploadDay1 |
-| `Bootstrap` | Fill, Trigger, List, ListBatches, GetBatch, DeviceStages |
-| `RMA` | Fill, Trigger, List, Status |
-| `Files` | Upload, List, Delete |
-| `System` | ControllerVersion, ControllerVersionInternal, Status, UploadStatus, StartStreaming, StopStreaming, UpdateRoleInfo, SetLogLevel, GetLogLevel |
-| `NetOps` | Device, Fabric |
-| `HostTenants` | Add, Delete, List, ListHosts, UpdateHosts |
+| `Fabrics` | ListDTOs |
+| `Tenants` | Create/CreateAsync, List, Get, Delete/DeleteAsync, Update/UpdateAsync, ModifyAllocations/ModifyAllocationsAsync |
+| `GPU` | AssignPorts, AvailableServers |
+| `VPCPeering` | Create/CreateAsync |
+| `Devices` | ValidateUFMCreds |
+| `Inventory` | Ports, UFMHosts, Sync |
 | `NMXC` | UpdateDomains, ProbeDomains, Inventory, Reset, FactoryReset |
-| `Intents` | UploadUIObject, GetUIObject, LastOrchestratedName, Validation, Day1ConfigStatus, DerivationLogs |
-| `VPCPeering` | Create/CreateAsync, Delete |
-| `Operations` | Get, WebhookStatus |
+| `Operations` | Get |
