@@ -93,9 +93,34 @@ func (r *TenantsResource) CreateAsync(ctx context.Context, fabricName, tenantNam
 	return ones_gfx.Call[ones_gfx.OperationAccepted](r.transport, "POST", "fabrics/"+fabricName+"/tenants", body, ones_gfx.OperationModeAsyncPoll, rc.ReqOpts())
 }
 
+// tenantListEnvelope is FM's wrapper for the list response.
+type tenantListEnvelope struct {
+	Tenants []ones_gfx.Tenant `json:"tenants"`
+}
+
+// tenantEnvelope is FM's wrapper for a single tenant.
+type tenantEnvelope struct {
+	Tenant ones_gfx.Tenant `json:"tenant"`
+}
+
 // List returns the tenants of a fabric.
 // Maps to GET /fabrics/{fabricName}/tenants.
-func (r *TenantsResource) List(ctx context.Context, fabricName string) (map[string]interface{}, error) {
+//
+// FM wraps the array in a {"tenants": [...]} envelope; that is unwrapped here,
+// so an empty fabric yields an empty slice rather than a nil map to inspect.
+func (r *TenantsResource) List(ctx context.Context, fabricName string) ([]ones_gfx.Tenant, error) {
+	res, err := ones_gfx.Call[tenantListEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
+	if err != nil || res == nil {
+		return nil, err
+	}
+	return res.Tenants, nil
+}
+
+// ListRaw returns the list response exactly as FM sent it.
+//
+// Prefer List. This exists for a payload the typed model does not cover and
+// Tenant.Extra cannot express — a response whose envelope itself changes.
+func (r *TenantsResource) ListRaw(ctx context.Context, fabricName string) (map[string]interface{}, error) {
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -103,9 +128,25 @@ func (r *TenantsResource) List(ctx context.Context, fabricName string) (map[stri
 	return *res, nil
 }
 
-// Get returns one tenant (detail incl. GPU assignment).
+// Get returns one tenant, including its GPU assignment and config status.
 // Maps to GET /fabrics/{fabricName}/tenants/{tenantName}.
-func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
+//
+// FM wraps the object in a {"tenant": {...}} envelope; that is unwrapped here.
+// Fields FM adds per fabric type that this SDK does not model are kept in
+// Tenant.Extra rather than dropped.
+func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string) (*ones_gfx.Tenant, error) {
+	res, err := ones_gfx.Call[tenantEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
+	if err != nil || res == nil {
+		return nil, err
+	}
+	return &res.Tenant, nil
+}
+
+// GetRaw returns the tenant response exactly as FM sent it.
+//
+// Prefer Get. This exists for a payload the typed model does not cover and
+// Tenant.Extra cannot express — a response whose envelope itself changes.
+func (r *TenantsResource) GetRaw(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err

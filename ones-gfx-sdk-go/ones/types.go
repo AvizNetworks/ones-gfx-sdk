@@ -33,6 +33,10 @@ type (
 	CallOption           = ones_gfx.CallOption
 	ClientOption         = ones_gfx.ClientOption
 	ConfigStatus         = ones_gfx.ConfigStatus
+	Tenant               = ones_gfx.Tenant
+	VNetInfo             = ones_gfx.VNetInfo
+	VNetTenantIPPool     = ones_gfx.VNetTenantIPPool
+	NMXCPartition        = ones_gfx.NMXCPartition
 	ConflictError        = ones_gfx.ConflictError
 	FabricItem           = ones_gfx.FabricItem
 	GPUOperation         = ones_gfx.GPUOperation
@@ -218,6 +222,14 @@ const (
 	RailLegacyYamlMediaType = resources.RailLegacyYamlMediaType
 	RailTextMediaType       = resources.RailTextMediaType
 	MaxDhcpLeasePageSize    = resources.MaxDhcpLeasePageSize
+)
+
+// Tenant configuration states, as ConfigStatus values.
+const (
+	ConfigStatusFail       = ones_gfx.ConfigStatusFail
+	ConfigStatusPass       = ones_gfx.ConfigStatusPass
+	ConfigStatusNotStarted = ones_gfx.ConfigStatusNotStarted
+	ConfigStatusInProgress = ones_gfx.ConfigStatusInProgress
 )
 
 // WebhookEventTypes lists every canonical event name.

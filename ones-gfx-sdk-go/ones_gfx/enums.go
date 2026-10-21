@@ -1,5 +1,10 @@
 package ones_gfx
 
+import (
+	"strconv"
+	"strings"
+)
+
 // OperationMode determines how the SDK submits mutating requests to the API.
 type OperationMode string
 
@@ -65,6 +70,32 @@ const (
 	// ConfigStatusInProgress indicates configuration is underway.
 	ConfigStatusInProgress ConfigStatus = 3
 )
+
+// UnmarshalJSON decodes a config status from either spelling Fabric Manager
+// uses: the string "1" that the tenant payload carries, or a bare number.
+//
+// An unrecognised value decodes to ConfigStatusNotStarted rather than failing
+// the whole response, matching ConfigStatus.from_api in the Python SDK: one
+// malformed status should not make an otherwise good tenant unreadable.
+func (c *ConfigStatus) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(strings.TrimSpace(string(data)), `"`)
+	if s == "" || s == "null" {
+		*c = ConfigStatusNotStarted
+		return nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		*c = ConfigStatusNotStarted
+		return nil
+	}
+	switch ConfigStatus(n) {
+	case ConfigStatusFail, ConfigStatusPass, ConfigStatusNotStarted, ConfigStatusInProgress:
+		*c = ConfigStatus(n)
+	default:
+		*c = ConfigStatusNotStarted
+	}
+	return nil
+}
 
 // String returns the human-readable name of the status.
 func (c ConfigStatus) String() string {

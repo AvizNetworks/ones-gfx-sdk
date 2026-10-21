@@ -546,11 +546,19 @@ func GetStatus(ctx context.Context, client *Client, fileName *string) ([]string,
 }
 
 // GetTenant calls Tenants.Get.
-func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (map[string]interface{}, error) {
+func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (*Tenant, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.Tenants.Get(ctx, fabricName, tenantName)
+}
+
+// GetTenantRaw calls Tenants.GetRaw.
+func GetTenantRaw(ctx context.Context, client *Client, fabricName, tenantName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.GetRaw(ctx, fabricName, tenantName)
 }
 
 // GetUIObject calls Intents.GetUIObject.
@@ -594,11 +602,19 @@ func IsDeviceAlive(ctx context.Context, client *Client, hostIP string) (bool, er
 }
 
 // ListTenants calls Tenants.List.
-func ListTenants(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func ListTenants(ctx context.Context, client *Client, fabricName string) ([]Tenant, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.Tenants.List(ctx, fabricName)
+}
+
+// ListTenantsRaw calls Tenants.ListRaw.
+func ListTenantsRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.ListRaw(ctx, fabricName)
 }
 
 // ModifyGpuAllocations calls Tenants.ModifyAllocations.
