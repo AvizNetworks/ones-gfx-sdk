@@ -230,6 +230,8 @@ const (
 	ConfigStatusPass       = ones_gfx.ConfigStatusPass
 	ConfigStatusNotStarted = ones_gfx.ConfigStatusNotStarted
 	ConfigStatusInProgress = ones_gfx.ConfigStatusInProgress
+	ConfigStatusBrownField = ones_gfx.ConfigStatusBrownField
+	ConfigStatusSkipped    = ones_gfx.ConfigStatusSkipped
 )
 
 // WebhookEventTypes lists every canonical event name.

@@ -198,6 +198,50 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## Configuration status
+
+`config_status` is the one field in this API whose numbering actively misleads.
+It is positional, not a progression:
+
+| Value | Name | Meaning |
+|---|---|---|
+| 0 | `FAIL` | configuration failed |
+| 1 | `PASS` | **configured** — the only success value |
+| 2 | `NOT_STARTED` | configuration has not begun — **not** a success |
+| 3 | `IN_PROGRESS` | configuration is underway |
+| 4 | `BROWN_FIELD` | skipped: the fabric deploys as brownfield |
+| 5 | `SKIPPED` | skipped: pre-validation or minimal-config excluded the device |
+
+The trap is **2**. It sits above `PASS`, so it looks like a later, stronger
+state — and a `status >= 1` check silently reports a device that was never
+configured as configured. Compare against the named values, never the ordinal:
+
+```python
+from ones_gfx import ConfigStatus
+
+if tenant.config_status.is_success:        # PASS only
+    ...
+if tenant.config_status.is_terminal:       # stop polling
+    ...
+ConfigStatus.parse("PASS")                 # strict: raises on anything unknown
+ConfigStatus.from_api(raw)                 # lenient: unknown -> NOT_STARTED
+```
+
+```go
+if tn.ConfigStatus.IsSuccess() { ... }     // PASS only
+if tn.ConfigStatus.IsTerminal() { ... }    // stop polling
+ones.ParseConfigStatus("PASS")             // strict: returns an error
+```
+
+Fabric Manager sends these as JSON **strings** (`"1"`, not `1`). Decoding a
+response is lenient — an unreadable status becomes `NOT_STARTED` rather than
+discarding an otherwise good payload. Values arriving from anywhere else should
+go through the strict parser, which reports unknown input instead of hiding it.
+
+`BROWN_FIELD` and `SKIPPED` both mean *deliberately not configured*. They are
+terminal, and they are neither a failure nor a success — treat them as their
+own outcome.
+
 ## How requests are routed
 
 Point the client at your ONES host and it handles the rest — but it is worth
