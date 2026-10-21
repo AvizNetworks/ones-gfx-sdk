@@ -198,6 +198,53 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## Asynchronous work: which contract answers what
+
+Fabric Manager exposes two async contracts. They are **layered, not
+alternatives**, and the common mistake is treating either one as the whole
+answer.
+
+| | Question it answers | How |
+|---|---|---|
+| **Operations API** | Did FM accept and process my request? | 202 → `operationId` → poll `Operations.Get`, or receive a webhook |
+| **`config_status`** | Did the configuration reach the devices? | Poll the tenant, watch `config_status` |
+
+**An operation reaches SUCCESS before the devices are configured.** Creating a
+tenant asynchronously, `AsyncTenantService` marks the operation SUCCESS as soon
+as the tenant row is saved and its IPAM pool provisioned — at that moment the
+tenant's `config_status` is still `2` (NOT_STARTED). The device push runs
+afterwards and is what drives `2 → 3 → 1`, or `0` on failure.
+
+So an operation-only wait tells you FM took the request, not that the fabric
+carries the change. A `config_status`-only wait misses the case where FM
+rejected the request outright. Most workflows want both, in that order:
+
+```go
+res, err := client.Tenants.AwaitTenantChange(
+    ctx, client.Operations,
+    accepted.OperationID,       // "" if the call was synchronous
+    "fabric-1", "tenant-a",
+    resources.WaitOptions{Interval: 5 * time.Second, Timeout: 10 * time.Minute},
+)
+if res.Applied() {
+    // operation processed AND config_status == PASS
+}
+```
+
+Either layer can be waited on alone when that is genuinely what you want:
+
+```go
+op, _ := client.Operations.WaitForOperation(ctx, opID, opts)          // layer 1
+tn, _ := client.Tenants.WaitForTenantConfigApplied(ctx, f, t, opts)   // layer 2
+```
+
+A **synchronous** call collapses layer 1 only: it returns once FM has processed
+the request, and `config_status` may still be settling. That is the same gap
+the sync-PATCH timeout fallback covers.
+
+Running out of time returns `WaitTimeoutError`, which is deliberately not a
+failure — the work may still be in progress.
+
 ## Configuration status
 
 `config_status` is the one field in this API whose numbering actively misleads.
