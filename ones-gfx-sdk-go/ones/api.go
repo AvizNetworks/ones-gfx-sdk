@@ -122,11 +122,19 @@ func GetOperation(ctx context.Context, client *Client, operationID string) (*Ope
 }
 
 // GetTenant calls Tenants.Get.
-func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (map[string]interface{}, error) {
+func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (*Tenant, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.Tenants.Get(ctx, fabricName, tenantName)
+}
+
+// GetTenantRaw calls Tenants.GetRaw.
+func GetTenantRaw(ctx context.Context, client *Client, fabricName, tenantName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.GetRaw(ctx, fabricName, tenantName)
 }
 
 // InventorySync calls Inventory.Sync.
@@ -138,11 +146,19 @@ func InventorySync(ctx context.Context, client *Client, fabricName string) (map[
 }
 
 // ListTenants calls Tenants.List.
-func ListTenants(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func ListTenants(ctx context.Context, client *Client, fabricName string) ([]Tenant, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.Tenants.List(ctx, fabricName)
+}
+
+// ListTenantsRaw calls Tenants.ListRaw.
+func ListTenantsRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.ListRaw(ctx, fabricName)
 }
 
 // ModifyGpuAllocations calls Tenants.ModifyAllocations.

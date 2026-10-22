@@ -155,6 +155,46 @@ type clientConfig struct {
 	timeout   time.Duration
 	tlsConfig *tls.Config
 	verifyTLS bool
+
+	// syncPatchFallback re-polls tenant status when a synchronous PATCH times
+	// out. Off by default: see WithSyncPatchTimeoutFallback.
+	syncPatchFallback SyncPatchFallback
+}
+
+// SyncPatchFallback configures what a synchronous PATCH does when it times
+// out.
+//
+// A timeout on a synchronous write is ambiguous: Fabric Manager may have
+// finished, may still be applying the change to devices, or may never have
+// received it. The transport cannot tell, so by default the timeout surfaces
+// as a TransportError and the caller decides.
+//
+// With Enabled set, the SDK instead treats the operation as possibly still
+// running and polls the tenant until its config_status reaches a terminal
+// state, which is what callers were otherwise each writing by hand.
+type SyncPatchFallback struct {
+	// Enabled turns the fallback on. Default false, preserving the strict
+	// behaviour of surfacing the timeout.
+	Enabled bool
+
+	// PollInterval is the gap between status reads. Default 5s.
+	PollInterval time.Duration
+
+	// MaxWait bounds the polling, measured from the moment the PATCH timed
+	// out. Default 2m. Reaching it returns a SyncPatchTimeoutError rather
+	// than a success or a failure, because the outcome is still unknown.
+	MaxWait time.Duration
+}
+
+// withDefaults fills in the unset knobs.
+func (f SyncPatchFallback) withDefaults() SyncPatchFallback {
+	if f.PollInterval <= 0 {
+		f.PollInterval = 5 * time.Second
+	}
+	if f.MaxWait <= 0 {
+		f.MaxWait = 2 * time.Minute
+	}
+	return f
 }
 
 // defaultClientConfig returns sensible defaults.
@@ -162,6 +202,26 @@ func defaultClientConfig() clientConfig {
 	return clientConfig{
 		timeout:   30 * time.Second,
 		verifyTLS: true,
+	}
+}
+
+// WithSyncPatchTimeoutFallback enables re-polling tenant status when a
+// synchronous PATCH times out.
+//
+// Pass zero for pollInterval or maxWait to take the defaults (5s and 2m).
+//
+//	client, _ := ones.InitializeWithCreds(url, user, pass,
+//	    ones.WithSyncPatchTimeoutFallback(true, 5*time.Second, 2*time.Minute))
+//
+// Leaving this off keeps the existing behaviour exactly: a timeout surfaces as
+// a TransportError and nothing is polled.
+func WithSyncPatchTimeoutFallback(enabled bool, pollInterval, maxWait time.Duration) ClientOption {
+	return func(c *clientConfig) {
+		c.syncPatchFallback = SyncPatchFallback{
+			Enabled:      enabled,
+			PollInterval: pollInterval,
+			MaxWait:      maxWait,
+		}.withDefaults()
 	}
 }
 

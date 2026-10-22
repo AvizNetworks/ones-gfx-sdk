@@ -2,6 +2,8 @@ package resources
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 )
@@ -93,9 +95,34 @@ func (r *TenantsResource) CreateAsync(ctx context.Context, fabricName, tenantNam
 	return ones_gfx.Call[ones_gfx.OperationAccepted](r.transport, "POST", "fabrics/"+fabricName+"/tenants", body, ones_gfx.OperationModeAsyncPoll, rc.ReqOpts())
 }
 
+// tenantListEnvelope is FM's wrapper for the list response.
+type tenantListEnvelope struct {
+	Tenants []ones_gfx.Tenant `json:"tenants"`
+}
+
+// tenantEnvelope is FM's wrapper for a single tenant.
+type tenantEnvelope struct {
+	Tenant ones_gfx.Tenant `json:"tenant"`
+}
+
 // List returns the tenants of a fabric.
 // Maps to GET /fabrics/{fabricName}/tenants.
-func (r *TenantsResource) List(ctx context.Context, fabricName string) (map[string]interface{}, error) {
+//
+// FM wraps the array in a {"tenants": [...]} envelope; that is unwrapped here,
+// so an empty fabric yields an empty slice rather than a nil map to inspect.
+func (r *TenantsResource) List(ctx context.Context, fabricName string) ([]ones_gfx.Tenant, error) {
+	res, err := ones_gfx.Call[tenantListEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
+	if err != nil || res == nil {
+		return nil, err
+	}
+	return res.Tenants, nil
+}
+
+// ListRaw returns the list response exactly as FM sent it.
+//
+// Prefer List. This exists for a payload the typed model does not cover and
+// Tenant.Extra cannot express — a response whose envelope itself changes.
+func (r *TenantsResource) ListRaw(ctx context.Context, fabricName string) (map[string]interface{}, error) {
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -103,9 +130,25 @@ func (r *TenantsResource) List(ctx context.Context, fabricName string) (map[stri
 	return *res, nil
 }
 
-// Get returns one tenant (detail incl. GPU assignment).
+// Get returns one tenant, including its GPU assignment and config status.
 // Maps to GET /fabrics/{fabricName}/tenants/{tenantName}.
-func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
+//
+// FM wraps the object in a {"tenant": {...}} envelope; that is unwrapped here.
+// Fields FM adds per fabric type that this SDK does not model are kept in
+// Tenant.Extra rather than dropped.
+func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string) (*ones_gfx.Tenant, error) {
+	res, err := ones_gfx.Call[tenantEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
+	if err != nil || res == nil {
+		return nil, err
+	}
+	return &res.Tenant, nil
+}
+
+// GetRaw returns the tenant response exactly as FM sent it.
+//
+// Prefer Get. This exists for a payload the typed model does not cover and
+// Tenant.Extra cannot express — a response whose envelope itself changes.
+func (r *TenantsResource) GetRaw(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -136,6 +179,11 @@ func (r *TenantsResource) DeleteAsync(ctx context.Context, fabricName, tenantNam
 
 // Update adds or removes whole GPU servers on a tenant (synchronous).
 // Maps to PATCH /fabrics/{fabricName}/tenants/{tenantName}.
+//
+// "Synchronous" is the OperationModeSynchronous argument below, not anything
+// this method sets: the transport turns it into Prefer: respond-sync. The
+// only difference between this and UpdateAsync is that argument. Never set
+// Prefer in a resource method — see CONTRIBUTING.md.
 func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
@@ -144,7 +192,86 @@ func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName str
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
 	attachTenantWebhook(&body.tenantWebhookFields, rc)
-	return ones_gfx.Call[ApiResponseMessage](r.transport, "PATCH", "fabrics/"+fabricName+"/tenants/"+tenantName, body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
+	res, err := ones_gfx.Call[ApiResponseMessage](r.transport, "PATCH", "fabrics/"+fabricName+"/tenants/"+tenantName, body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
+	if err != nil && ones_gfx.IsTimeout(err) {
+		if fb := r.transport.SyncPatchFallback(); fb.Enabled {
+			return r.awaitAfterTimeout(ctx, fabricName, tenantName, fb, err)
+		}
+	}
+	return res, err
+}
+
+// awaitAfterTimeout resolves a synchronous PATCH that timed out.
+//
+// The HTTP timeout says nothing about whether Fabric Manager applied the
+// change, so rather than guessing, the tenant's own config_status is read
+// until it settles. A terminal status is the answer the PATCH could not
+// deliver: PASS means the change landed, FAIL means it did not. Running out
+// of patience is neither, and returns SyncPatchTimeoutError.
+func (r *TenantsResource) awaitAfterTimeout(
+	ctx context.Context,
+	fabricName, tenantName string,
+	fb ones_gfx.SyncPatchFallback,
+	cause error,
+) (*ApiResponseMessage, error) {
+	deadline := time.Now().Add(fb.MaxWait)
+	started := time.Now()
+	last := ones_gfx.ConfigStatusNotStarted
+
+	for {
+		tn, getErr := r.Get(ctx, fabricName, tenantName)
+		if getErr == nil && tn != nil {
+			last = tn.ConfigStatus
+			if last.IsTerminal() {
+				switch {
+				case last.IsSuccess():
+					return &ApiResponseMessage{
+						Status: "success",
+						Message: fmt.Sprintf(
+							"sync PATCH timed out; tenant %s/%s reached %v after %s",
+							fabricName, tenantName, last, time.Since(started).Round(time.Second)),
+					}, nil
+				case last.IsSkipped():
+					// Deliberately not configured; neither applied nor failed.
+					return &ApiResponseMessage{
+						Status: "success",
+						Message: fmt.Sprintf(
+							"sync PATCH timed out; tenant %s/%s is %v (not configured by design)",
+							fabricName, tenantName, last),
+					}, nil
+				default:
+					return nil, &ones_gfx.APIError{
+						StatusCode: 0,
+						Message: fmt.Sprintf(
+							"sync PATCH on tenant %s/%s timed out and the tenant settled as %v",
+							fabricName, tenantName, last),
+					}
+				}
+			}
+		}
+		// A read that fails is not fatal here: the tenant may be mid-update.
+		// Keep trying until the budget runs out.
+		if !time.Now().Add(fb.PollInterval).Before(deadline) {
+			return nil, &ones_gfx.SyncPatchTimeoutError{
+				FabricName: fabricName,
+				TenantName: tenantName,
+				LastStatus: last,
+				Waited:     time.Since(started).Round(time.Second),
+				Cause:      cause,
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return nil, &ones_gfx.SyncPatchTimeoutError{
+				FabricName: fabricName,
+				TenantName: tenantName,
+				LastStatus: last,
+				Waited:     time.Since(started).Round(time.Second),
+				Cause:      ctx.Err(),
+			}
+		case <-time.After(fb.PollInterval):
+		}
+	}
 }
 
 // UpdateAsync adds or removes whole GPU servers and returns the 202 handle.

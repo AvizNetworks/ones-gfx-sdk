@@ -15,17 +15,34 @@ import (
 	"time"
 )
 
-// Transport wraps HTTP operations and knows about ONES API conventions
-// (envelope unwrapping, Prefer header, error mapping). This is exported so
-// the resources package can use it.
+// Transport wraps HTTP operations and owns the ONES API conventions every
+// request shares, so no resource method has to repeat them:
+//
+//   - Prefer: respond-sync / respond-async, derived from the OperationMode
+//     argument a resource passes
+//   - Authorization, and one retry after a proactive or reactive refresh
+//   - Content-Type and Accept (ReqOpts.Accept overrides)
+//   - Idempotency-Key and x-request-origin from ReqOpts
+//   - the /api/fm/ prefix, or direct-FM routing for the routes the gateway
+//     does not proxy (see fmdirect.go)
+//   - unwrapping the {"data": ...} envelope and mapping errors
+//
+// A resource method that sets any of these itself is at best redundant and at
+// worst in conflict, because the transport writes last. CONTRIBUTING.md has
+// the full table.
+//
+// This is exported so the resources package can use it.
 type Transport struct {
 	baseURL string
 	// fmDirectURL is Fabric Manager's own base, used for the routes the
 	// gateway does not proxy. See fmdirect.go; empty disables direct routing.
 	fmDirectURL string
-	auth        AuthProvider
-	httpClient  *http.Client
-	timeout     time.Duration
+	// syncPatchFallback is consulted by resources whose synchronous PATCH can
+	// outlive the HTTP timeout; see SyncPatchFallback.
+	syncPatchFallback SyncPatchFallback
+	auth              AuthProvider
+	httpClient        *http.Client
+	timeout           time.Duration
 }
 
 // NewTransport constructs a Transport with the given configuration.
@@ -43,11 +60,12 @@ func NewTransport(baseURL string, auth AuthProvider, cfg clientConfig) *Transpor
 	}
 
 	return &Transport{
-		baseURL:     baseURL,
-		fmDirectURL: DeriveFMBaseURL(strings.TrimSuffix(baseURL, "/api/fm/")),
-		auth:        auth,
-		httpClient:  httpClient,
-		timeout:     cfg.timeout,
+		baseURL:           baseURL,
+		fmDirectURL:       DeriveFMBaseURL(strings.TrimSuffix(baseURL, "/api/fm/")),
+		syncPatchFallback: cfg.syncPatchFallback.withDefaults(),
+		auth:              auth,
+		httpClient:        httpClient,
+		timeout:           cfg.timeout,
 	}
 }
 
@@ -150,7 +168,10 @@ func (t *Transport) send(method, fullURL string, body interface{}, mode Operatio
 	}
 	t.auth.Apply(headers)
 
-	// Add Prefer header for sync/async mode
+	// Prefer is owned here, not by resource methods. A resource picks
+	// behaviour by passing an OperationMode; the translation to a header
+	// happens once, so every call site stays consistent. See the transport
+	// ownership table in CONTRIBUTING.md.
 	if mode == OperationModeSynchronous {
 		headers["Prefer"] = "respond-sync"
 	} else if mode == OperationModeAsyncPoll || mode == OperationModeAsyncWebhook {
@@ -209,6 +230,14 @@ func (t *Transport) handleResponse(resp *http.Response) (interface{}, error) {
 
 	// Map status code to typed error
 	return nil, classifyError(resp.StatusCode, message, body)
+}
+
+// SyncPatchFallback returns the configured sync-PATCH timeout behaviour.
+func (t *Transport) SyncPatchFallback() SyncPatchFallback { return t.syncPatchFallback }
+
+// SetSyncPatchFallback overrides the sync-PATCH timeout behaviour.
+func (t *Transport) SetSyncPatchFallback(f SyncPatchFallback) {
+	t.syncPatchFallback = f.withDefaults()
 }
 
 // SetFMDirectURL overrides the Fabric Manager base used for routes the
@@ -510,6 +539,8 @@ func (t *Transport) sendRaw(method, fullURL, contentType string, payload []byte,
 	for k, v := range authHeaders {
 		req.Header.Set(k, v)
 	}
+	// As in send: Prefer is transport-owned and derived from the mode
+	// argument. Resource methods must not set it themselves.
 	switch mode {
 	case OperationModeSynchronous:
 		req.Header.Set("Prefer", "respond-sync")

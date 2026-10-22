@@ -1,6 +1,14 @@
 package ones_gfx
 
-import "fmt"
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/url"
+	"os"
+	"time"
+)
 
 // ONESError is the interface implemented by all SDK errors. Partners can check
 // if an error originated from the SDK with errors.As(&ones.ONESError{}).
@@ -25,6 +33,37 @@ func (e *TransportError) Error() string {
 }
 
 func (e *TransportError) ONESError() {}
+
+// IsTimeout reports whether this transport failure was a timeout.
+func (e *TransportError) IsTimeout() bool { return IsTimeout(e) }
+
+// IsTimeout reports whether err was caused by a timeout or a cancelled
+// deadline, at any depth.
+//
+// This matters because a timeout on a synchronous write is not the same as a
+// failure: Fabric Manager may still be applying the change. Callers that need
+// to tell those apart — and the sync-PATCH fallback below — ask here rather
+// than matching on error strings.
+func IsTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrDeadlineExceeded) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	// http.Client wraps its own timeout in *url.Error, whose Timeout() is the
+	// reliable signal; errors.As above catches it, but a bare url.Error with a
+	// non-net cause still reports correctly here.
+	var ue *url.Error
+	if errors.As(err, &ue) && ue.Timeout() {
+		return true
+	}
+	return false
+}
 
 func (e *TransportError) Unwrap() error {
 	return e.Cause
@@ -122,3 +161,30 @@ func (e *ConfigurationFailedError) Error() string {
 }
 
 func (e *ConfigurationFailedError) ONESError() {}
+
+// SyncPatchTimeoutError reports that a synchronous PATCH timed out and the
+// status fallback finished without reaching a terminal state.
+//
+// The outcome is genuinely unknown: Fabric Manager may still be applying the
+// change. This is deliberately not a failure — retrying blindly could repeat a
+// change that did land. Read the tenant again before deciding.
+type SyncPatchTimeoutError struct {
+	FabricName string
+	TenantName string
+	LastStatus ConfigStatus
+	Waited     time.Duration
+	Cause      error
+}
+
+func (e *SyncPatchTimeoutError) Error() string {
+	return fmt.Sprintf(
+		"sync PATCH on tenant %s/%s timed out and status was still %v after polling %s; "+
+			"the change may still be in progress",
+		e.FabricName, e.TenantName, e.LastStatus, e.Waited)
+}
+
+func (e *SyncPatchTimeoutError) Unwrap() error { return e.Cause }
+func (e *SyncPatchTimeoutError) ONESError()    {}
+
+// IsTimeout reports true: the underlying cause was a timeout.
+func (e *SyncPatchTimeoutError) IsTimeout() bool { return true }

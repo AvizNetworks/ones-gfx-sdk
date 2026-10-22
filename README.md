@@ -178,6 +178,129 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## Asynchronous work: which contract answers what
+
+Fabric Manager exposes two async contracts. They are **layered, not
+alternatives**, and the common mistake is treating either one as the whole
+answer.
+
+| | Question it answers | How |
+|---|---|---|
+| **Operations API** | Did FM accept and process my request? | 202 → `operationId` → poll `Operations.Get`, or receive a webhook |
+| **`config_status`** | Did the configuration reach the devices? | Poll the tenant, watch `config_status` |
+
+**An operation reaches SUCCESS before the devices are configured.** Creating a
+tenant asynchronously, `AsyncTenantService` marks the operation SUCCESS as soon
+as the tenant row is saved and its IPAM pool provisioned — at that moment the
+tenant's `config_status` is still `2` (NOT_STARTED). The device push runs
+afterwards and is what drives `2 → 3 → 1`, or `0` on failure.
+
+So an operation-only wait tells you FM took the request, not that the fabric
+carries the change. A `config_status`-only wait misses the case where FM
+rejected the request outright. Most workflows want both, in that order:
+
+```go
+res, err := client.Tenants.AwaitTenantChange(
+    ctx, client.Operations,
+    accepted.OperationID,       // "" if the call was synchronous
+    "fabric-1", "tenant-a",
+    resources.WaitOptions{Interval: 5 * time.Second, Timeout: 10 * time.Minute},
+)
+if res.Applied() {
+    // operation processed AND config_status == PASS
+}
+```
+
+Either layer can be waited on alone when that is genuinely what you want:
+
+```go
+op, _ := client.Operations.WaitForOperation(ctx, opID, opts)          // layer 1
+tn, _ := client.Tenants.WaitForTenantConfigApplied(ctx, f, t, opts)   // layer 2
+```
+
+A **synchronous** call collapses layer 1 only: it returns once FM has processed
+the request, and `config_status` may still be settling. That is the same gap
+the sync-PATCH timeout fallback covers.
+
+Running out of time returns `WaitTimeoutError`, which is deliberately not a
+failure — the work may still be in progress.
+
+## Configuration status
+
+`config_status` is the one field in this API whose numbering actively misleads.
+It is positional, not a progression:
+
+| Value | Name | Meaning |
+|---|---|---|
+| 0 | `FAIL` | configuration failed |
+| 1 | `PASS` | **configured** — the only success value |
+| 2 | `NOT_STARTED` | configuration has not begun — **not** a success |
+| 3 | `IN_PROGRESS` | configuration is underway |
+| 4 | `BROWN_FIELD` | skipped: the fabric deploys as brownfield |
+| 5 | `SKIPPED` | skipped: pre-validation or minimal-config excluded the device |
+
+The trap is **2**. It sits above `PASS`, so it looks like a later, stronger
+state — and a `status >= 1` check silently reports a device that was never
+configured as configured. Compare against the named values, never the ordinal:
+
+```python
+from ones_gfx import ConfigStatus
+
+if tenant.config_status.is_success:        # PASS only
+    ...
+if tenant.config_status.is_terminal:       # stop polling
+    ...
+ConfigStatus.parse("PASS")                 # strict: raises on anything unknown
+ConfigStatus.from_api(raw)                 # lenient: unknown -> NOT_STARTED
+```
+
+```go
+if tn.ConfigStatus.IsSuccess() { ... }     // PASS only
+if tn.ConfigStatus.IsTerminal() { ... }    // stop polling
+ones.ParseConfigStatus("PASS")             // strict: returns an error
+```
+
+Fabric Manager sends these as JSON **strings** (`"1"`, not `1`). Decoding a
+response is lenient — an unreadable status becomes `NOT_STARTED` rather than
+discarding an otherwise good payload. Values arriving from anywhere else should
+go through the strict parser, which reports unknown input instead of hiding it.
+
+`BROWN_FIELD` and `SKIPPED` both mean *deliberately not configured*. They are
+terminal, and they are neither a failure nor a success — treat them as their
+own outcome.
+
+## Timeouts on synchronous writes
+
+A timeout on a synchronous `PATCH` is ambiguous. Fabric Manager may have
+finished, may still be pushing config to devices, or may never have received
+the request — the HTTP layer cannot tell which.
+
+By default the SDK says so plainly: the timeout surfaces as a `TransportError`
+and the caller decides. Nothing is retried, because retrying a write that may
+have landed is its own hazard.
+
+Where that decision is always "wait and see", the SDK can do it for you:
+
+```go
+client, _ := ones.InitializeWithCreds(url, user, pass,
+    ones.WithSyncPatchTimeoutFallback(true, 5*time.Second, 2*time.Minute))
+```
+
+On timeout the tenant's `config_status` is then polled until it settles:
+
+| Outcome | Result |
+|---|---|
+| `PASS` | success — the change landed after all |
+| `FAIL` | `APIError` naming the terminal status |
+| `BROWN_FIELD` / `SKIPPED` | success — deliberately not configured |
+| still running at `MaxWait` | `SyncPatchTimeoutError` — outcome still unknown |
+
+That last case is deliberately **not** a failure. The change may yet complete,
+so the error says the outcome is unknown rather than inviting a blind retry.
+
+`ones.IsTimeout(err)` reports whether any error was a timeout, at any depth,
+without matching on strings.
+
 ## How requests are routed
 
 Point the client at your ONES host and it handles the rest — but it is worth
