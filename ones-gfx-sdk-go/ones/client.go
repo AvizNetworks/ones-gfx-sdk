@@ -8,7 +8,7 @@ package ones
 // the package-level API functions:
 //
 //	client, err := ones.InitializeWithCreds("https://host:3002", "admin", "secret")
-//	fabrics, err := ones.GetAllFabrics(ctx, client)
+//	fabrics, err := ones.GetFabrics(ctx, client)
 
 import (
 	"errors"
@@ -38,23 +38,14 @@ type Client struct {
 	auth      *ones_gfx.TokenAuth
 	transport *ones_gfx.Transport
 
-	Tenants     *resources.TenantsResource
-	GPU         *resources.GPUResource
-	Fabrics     *resources.FabricsResource
-	Fabricsims  *resources.FabricsimsResource
-	Inventory   *resources.InventoryResource
-	Devices     *resources.DevicesResource
-	ConfigMgmt  *resources.ConfigMgmtResource
-	Bootstrap   *resources.BootstrapResource
-	RMA         *resources.RMAResource
-	Files       *resources.FilesResource
-	System      *resources.SystemResource
-	NetOps      *resources.NetOpsResource
-	HostTenants *resources.HostTenantsResource
-	NMXC        *resources.NMXCResource
-	Intents     *resources.IntentsResource
-	VPCPeering  *resources.VPCPeeringResource
-	Operations  *resources.OperationsResource
+	Tenants    *resources.TenantsResource
+	GPU        *resources.GPUResource
+	Fabrics    *resources.FabricsResource
+	Inventory  *resources.InventoryResource
+	Devices    *resources.DevicesResource
+	NMXC       *resources.NMXCResource
+	VPCPeering *resources.VPCPeeringResource
+	Operations *resources.OperationsResource
 
 	// SharedServices and VFs are the GFX-5709 shared-services tenant and the
 	// DPU VF interfaces it is joined through. Workflows holds the multi-call
@@ -123,18 +114,9 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		DHCP:           resources.NewDhcpResource(transport),
 		Rails:          resources.NewRailsResource(transport),
 		Fabrics:        resources.NewFabricsResource(transport),
-		Fabricsims:     resources.NewFabricsimsResource(transport),
 		Inventory:      resources.NewInventoryResource(transport),
 		Devices:        resources.NewDevicesResource(transport),
-		ConfigMgmt:     resources.NewConfigMgmtResource(transport),
-		Bootstrap:      resources.NewBootstrapResource(transport),
-		RMA:            resources.NewRMAResource(transport),
-		Files:          resources.NewFilesResource(transport),
-		System:         resources.NewSystemResource(transport),
-		NetOps:         resources.NewNetOpsResource(transport),
-		HostTenants:    resources.NewHostTenantsResource(transport),
 		NMXC:           resources.NewNMXCResource(transport),
-		Intents:        resources.NewIntentsResource(transport),
 		VPCPeering:     resources.NewVPCPeeringResource(transport),
 		Operations:     resources.NewOperationsResource(transport),
 	}, nil
@@ -165,18 +147,9 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 		DHCP:           resources.NewDhcpResource(transport),
 		Rails:          resources.NewRailsResource(transport),
 		Fabrics:        resources.NewFabricsResource(transport),
-		Fabricsims:     resources.NewFabricsimsResource(transport),
 		Inventory:      resources.NewInventoryResource(transport),
 		Devices:        resources.NewDevicesResource(transport),
-		ConfigMgmt:     resources.NewConfigMgmtResource(transport),
-		Bootstrap:      resources.NewBootstrapResource(transport),
-		RMA:            resources.NewRMAResource(transport),
-		Files:          resources.NewFilesResource(transport),
-		System:         resources.NewSystemResource(transport),
-		NetOps:         resources.NewNetOpsResource(transport),
-		HostTenants:    resources.NewHostTenantsResource(transport),
 		NMXC:           resources.NewNMXCResource(transport),
-		Intents:        resources.NewIntentsResource(transport),
 		VPCPeering:     resources.NewVPCPeeringResource(transport),
 		Operations:     resources.NewOperationsResource(transport),
 	}
