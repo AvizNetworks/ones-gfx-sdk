@@ -208,3 +208,245 @@ func ValidateUfmCreds(ctx context.Context, client *Client, ufmURL, username, pas
 	}
 	return client.Devices.ValidateUFMCreds(ctx, ufmURL, username, password)
 }
+
+// --- network policy ---------------------------------------------------------
+
+// ListNetworkPolicies calls NetworkPolicy.List.
+func ListNetworkPolicies(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (*NetworkPolicyList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.NetworkPolicy.List(ctx, fabricName, opts...)
+}
+
+// CreateNetworkPolicy calls NetworkPolicy.Create.
+func CreateNetworkPolicy(ctx context.Context, client *Client, fabricName, policyName string, source, destination NetworkPolicySide, opts ...CallOption) (*NetworkPolicyRef, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.NetworkPolicy.Create(ctx, fabricName, policyName, source, destination, opts...)
+}
+
+// PatchNetworkPolicy calls NetworkPolicy.Patch.
+func PatchNetworkPolicy(ctx context.Context, client *Client, fabricName, policyName string, source, destination NetworkPolicySide, opts ...CallOption) (*NetworkPolicyRef, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.NetworkPolicy.Patch(ctx, fabricName, policyName, source, destination, opts...)
+}
+
+// DeleteNetworkPolicy calls NetworkPolicy.Delete.
+func DeleteNetworkPolicy(ctx context.Context, client *Client, fabricName, policyName string, opts ...CallOption) (*NetworkPolicyRef, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.NetworkPolicy.Delete(ctx, fabricName, policyName, opts...)
+}
+
+// --- webhook registration ---------------------------------------------------
+
+// RegisterWebhook calls Webhooks.Register.
+func RegisterWebhook(ctx context.Context, client *Client, callbackURL string, eventTypes []string, enabled *bool, filters *WebhookFilters, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.Register(ctx, callbackURL, eventTypes, enabled, filters, opts...)
+}
+
+// ListWebhooks calls Webhooks.List.
+func ListWebhooks(ctx context.Context, client *Client, opts ...CallOption) ([]WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.List(ctx, opts...)
+}
+
+// GetWebhook calls Webhooks.Get.
+func GetWebhook(ctx context.Context, client *Client, webhookID string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.Get(ctx, webhookID, opts...)
+}
+
+// UpdateWebhook calls Webhooks.Update.
+func UpdateWebhook(ctx context.Context, client *Client, webhookID string, callbackURL *string, enabled *bool, eventTypes []string, filters *WebhookFilters, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.Update(ctx, webhookID, callbackURL, enabled, eventTypes, filters, opts...)
+}
+
+// DeleteWebhook calls Webhooks.Delete.
+func DeleteWebhook(ctx context.Context, client *Client, webhookID string, opts ...CallOption) error {
+	if client == nil {
+		return ErrNilClient
+	}
+	return client.Webhooks.Delete(ctx, webhookID, opts...)
+}
+
+// RegisterFabricWebhook calls Webhooks.RegisterFabric.
+func RegisterFabricWebhook(ctx context.Context, client *Client, fabricName, callbackURL string, enabled *bool, eventTypes []string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.RegisterFabric(ctx, fabricName, callbackURL, enabled, eventTypes, opts...)
+}
+
+// GetFabricWebhook calls Webhooks.GetFabric.
+func GetFabricWebhook(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.GetFabric(ctx, fabricName, opts...)
+}
+
+// UpdateFabricWebhook calls Webhooks.UpdateFabric.
+func UpdateFabricWebhook(ctx context.Context, client *Client, fabricName string, callbackURL *string, enabled bool, eventTypes []string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.UpdateFabric(ctx, fabricName, callbackURL, enabled, eventTypes, opts...)
+}
+
+// DeleteFabricWebhook calls Webhooks.DeleteFabric.
+func DeleteFabricWebhook(ctx context.Context, client *Client, fabricName string, opts ...CallOption) error {
+	if client == nil {
+		return ErrNilClient
+	}
+	return client.Webhooks.DeleteFabric(ctx, fabricName, opts...)
+}
+
+// RegisterTenantWebhook calls Webhooks.RegisterTenant.
+func RegisterTenantWebhook(ctx context.Context, client *Client, fabricName, tenantName, callbackURL string, enabled *bool, eventTypes []string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.RegisterTenant(ctx, fabricName, tenantName, callbackURL, enabled, eventTypes, opts...)
+}
+
+// GetTenantWebhook calls Webhooks.GetTenant.
+func GetTenantWebhook(ctx context.Context, client *Client, fabricName, tenantName string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.GetTenant(ctx, fabricName, tenantName, opts...)
+}
+
+// UpdateTenantWebhook calls Webhooks.UpdateTenant.
+func UpdateTenantWebhook(ctx context.Context, client *Client, fabricName, tenantName string, callbackURL *string, enabled bool, eventTypes []string, opts ...CallOption) (*WebhookRegistration, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Webhooks.UpdateTenant(ctx, fabricName, tenantName, callbackURL, enabled, eventTypes, opts...)
+}
+
+// DeleteTenantWebhook calls Webhooks.DeleteTenant.
+func DeleteTenantWebhook(ctx context.Context, client *Client, fabricName, tenantName string, opts ...CallOption) error {
+	if client == nil {
+		return ErrNilClient
+	}
+	return client.Webhooks.DeleteTenant(ctx, fabricName, tenantName, opts...)
+}
+
+// --- IPAM configuration and address queries ---------------------------------
+
+// GetIpamConfig calls IPAM.GetConfig.
+func GetIpamConfig(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (*IpamConfig, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.GetConfig(ctx, fabricName, opts...)
+}
+
+// UpdateIpamConfig calls IPAM.UpdateConfig.
+func UpdateIpamConfig(ctx context.Context, client *Client, fabricName string, cfg IpamConfig, force bool, opts ...CallOption) (*IpamConfig, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.UpdateConfig(ctx, fabricName, cfg, force, opts...)
+}
+
+// GetTenantIps calls IPAM.TenantIPs.
+func GetTenantIps(ctx context.Context, client *Client, fabricName, tenantName string, page, size int, status string, opts ...CallOption) (*TenantIPList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.TenantIPs(ctx, fabricName, tenantName, page, size, status, opts...)
+}
+
+// GetServerIps calls IPAM.ServerIPs.
+func GetServerIps(ctx context.Context, client *Client, fabricName, serverName string, opts ...CallOption) (*ServerIPList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.ServerIPs(ctx, fabricName, serverName, opts...)
+}
+
+// GetTenantComputeIp calls IPAM.TenantComputeIP.
+func GetTenantComputeIp(ctx context.Context, client *Client, fabricName, tenantName, serverName string, opts ...CallOption) (IpamAllocation, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.TenantComputeIP(ctx, fabricName, tenantName, serverName, opts...)
+}
+
+// --- tenant DHCP ------------------------------------------------------------
+
+// GetTenantDhcp calls DHCP.GetTenant.
+func GetTenantDhcp(ctx context.Context, client *Client, fabricName, tenantName string, page, size int, opts ...CallOption) (*TenantDhcp, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.DHCP.GetTenant(ctx, fabricName, tenantName, page, size, opts...)
+}
+
+// RetryTenantDhcp calls DHCP.RetryTenant.
+func RetryTenantDhcp(ctx context.Context, client *Client, fabricName, tenantName string, opts ...CallOption) (DhcpReapplySummary, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.DHCP.RetryTenant(ctx, fabricName, tenantName, opts...)
+}
+
+// ReconcileFabricDhcp calls DHCP.Reconcile.
+func ReconcileFabricDhcp(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (DhcpReapplySummary, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.DHCP.Reconcile(ctx, fabricName, opts...)
+}
+
+// --- rail CIDRPools ---------------------------------------------------------
+
+// GetRailCidrPools calls Rails.CidrPools.
+func GetRailCidrPools(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (RailCidrPools, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Rails.CidrPools(ctx, fabricName, opts...)
+}
+
+// GetRailCidrPoolsYAML calls Rails.CidrPoolsYAML.
+func GetRailCidrPoolsYAML(ctx context.Context, client *Client, fabricName, mediaType string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
+	}
+	return client.Rails.CidrPoolsYAML(ctx, fabricName, mediaType, opts...)
+}
+
+// GetRailCidrPool calls Rails.CidrPool.
+func GetRailCidrPool(ctx context.Context, client *Client, fabricName, railName string, opts ...CallOption) (RailCidrPools, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Rails.CidrPool(ctx, fabricName, railName, opts...)
+}
+
+// GetRailCidrPoolYAML calls Rails.CidrPoolYAML.
+func GetRailCidrPoolYAML(ctx context.Context, client *Client, fabricName, railName, mediaType string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
+	}
+	return client.Rails.CidrPoolYAML(ctx, fabricName, railName, mediaType, opts...)
+}

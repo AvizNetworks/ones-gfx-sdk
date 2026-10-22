@@ -119,3 +119,67 @@ var (
 	// FMBaseURL turns a root base URL into the /api/fm/ resource base.
 	FMBaseURL = ones_gfx.FMBaseURL
 )
+
+// --- network policy, webhooks, IPAM, DHCP and rails -------------------------
+
+type (
+	NetworkPolicy       = resources.NetworkPolicy
+	NetworkPolicyList   = resources.NetworkPolicyList
+	NetworkPolicyName   = resources.NetworkPolicyName
+	NetworkPolicyRef    = resources.NetworkPolicyRef
+	NetworkPolicySide   = resources.NetworkPolicySide
+	NetworkPolicySpec   = resources.NetworkPolicySpec
+	WebhookFilters      = resources.WebhookFilters
+	WebhookRegistration = resources.WebhookRegistration
+	IpamAllocation      = resources.IpamAllocation
+	IpamConfig          = resources.IpamConfig
+	IpamDhcpConfig      = resources.IpamDhcpConfig
+	IpamPagination      = resources.IpamPagination
+	IpamPoolSummary     = resources.IpamPoolSummary
+	IpamStaticConfig    = resources.IpamStaticConfig
+	ServerIPList        = resources.ServerIPList
+	TenantIPList        = resources.TenantIPList
+	DhcpReapplySummary  = resources.DhcpReapplySummary
+	TenantDhcp          = resources.TenantDhcp
+	RailCidrPools       = resources.RailCidrPools
+	VFInterfaceList     = resources.VFInterfaceList
+	VFDpuEntry          = resources.VFDpuEntry
+)
+
+// Network policy endpoint types and the longest name FM accepts.
+const (
+	NetworkPolicyTypeTenant    = resources.NetworkPolicyTypeTenant
+	NetworkPolicyTypeService   = resources.NetworkPolicyTypeService
+	MaxNetworkPolicyNameLength = resources.MaxNetworkPolicyNameLength
+)
+
+// Canonical webhook event types. FM also accepts the fabric.tenant_* aliases
+// and resolves them to these on write.
+const (
+	WebhookEventTenantCreate     = resources.WebhookEventTenantCreate
+	WebhookEventTenantDelete     = resources.WebhookEventTenantDelete
+	WebhookEventTenantAllocate   = resources.WebhookEventTenantAllocate
+	WebhookEventTenantDeallocate = resources.WebhookEventTenantDeallocate
+	WebhookEventTenantVPCPeering = resources.WebhookEventTenantVPCPeering
+	WebhookEventFabricDeploy     = resources.WebhookEventFabricDeploy
+	WebhookEventFabricDelete     = resources.WebhookEventFabricDelete
+)
+
+// IP assignment states, used by the status filter on TenantIPs.
+const (
+	IPAssignStatusAllocatedOnly = resources.IPAssignStatusAllocatedOnly
+	IPAssignStatusAssigned      = resources.IPAssignStatusAssigned
+	IPAssignStatusFailed        = resources.IPAssignStatusFailed
+)
+
+// Media types a rail CIDRPool manifest can be rendered as, and the page and
+// hostname limits FM enforces.
+const (
+	RailYamlMediaType       = resources.RailYamlMediaType
+	RailLegacyYamlMediaType = resources.RailLegacyYamlMediaType
+	RailTextMediaType       = resources.RailTextMediaType
+	MaxDhcpLeasePageSize    = resources.MaxDhcpLeasePageSize
+)
+
+// WebhookEventTypes lists every canonical event name.
+var WebhookEventTypes = resources.WebhookEventTypes

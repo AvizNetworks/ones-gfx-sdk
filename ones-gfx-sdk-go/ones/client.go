@@ -46,6 +46,23 @@ type Client struct {
 	NMXC       *resources.NMXCResource
 	VPCPeering *resources.VPCPeeringResource
 	Operations *resources.OperationsResource
+
+	// SharedServices and VFs are the GFX-5709 shared-services tenant and the
+	// DPU VF interfaces it is joined through. Workflows holds the multi-call
+	// sequences whose order the FM enforces (see CleanUpTenant).
+	SharedServices *resources.SharedServicesResource
+	VFs            *resources.VFInterfacesResource
+	Workflows      *resources.WorkflowsResource
+
+	// NetworkPolicy, Webhooks, IPAM, DHCP and Rails cover the fabric feature
+	// work that landed after the first SDK cut: network policies, webhook
+	// registration at all three scopes, IPAM configuration and its address
+	// listings, tenant DHCP in Kea, and the rail CIDRPool manifests.
+	NetworkPolicy *resources.NetworkPolicyResource
+	Webhooks      *resources.WebhooksResource
+	IPAM          *resources.IpamResource
+	DHCP          *resources.DhcpResource
+	Rails         *resources.RailsResource
 }
 
 // NewClient builds a Client for the given root base URL.
@@ -83,17 +100,25 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		all...,
 	)
 	return &Client{
-		baseUrl:    baseUrl,
-		auth:       auth,
-		transport:  transport,
-		Tenants:    resources.NewTenantsResource(transport),
-		GPU:        resources.NewGPUResource(transport),
-		Fabrics:    resources.NewFabricsResource(transport),
-		Inventory:  resources.NewInventoryResource(transport),
-		Devices:    resources.NewDevicesResource(transport),
-		NMXC:       resources.NewNMXCResource(transport),
-		VPCPeering: resources.NewVPCPeeringResource(transport),
-		Operations: resources.NewOperationsResource(transport),
+		baseUrl:        baseUrl,
+		auth:           auth,
+		transport:      transport,
+		Tenants:        resources.NewTenantsResource(transport),
+		GPU:            resources.NewGPUResource(transport),
+		SharedServices: resources.NewSharedServicesResource(transport),
+		VFs:            resources.NewVFInterfacesResource(transport),
+		Workflows:      resources.NewWorkflowsResource(transport),
+		NetworkPolicy:  resources.NewNetworkPolicyResource(transport),
+		Webhooks:       resources.NewWebhooksResource(transport),
+		IPAM:           resources.NewIpamResource(transport),
+		DHCP:           resources.NewDhcpResource(transport),
+		Rails:          resources.NewRailsResource(transport),
+		Fabrics:        resources.NewFabricsResource(transport),
+		Inventory:      resources.NewInventoryResource(transport),
+		Devices:        resources.NewDevicesResource(transport),
+		NMXC:           resources.NewNMXCResource(transport),
+		VPCPeering:     resources.NewVPCPeeringResource(transport),
+		Operations:     resources.NewOperationsResource(transport),
 	}, nil
 }
 
@@ -108,17 +133,25 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 	transport := ones_gfx.NewTransportWithOptions(ones_gfx.FMBaseURL(root), auth, opts...)
 	tokenAuth, _ := auth.(*ones_gfx.TokenAuth)
 	c := &Client{
-		baseUrl:    root,
-		auth:       tokenAuth,
-		transport:  transport,
-		Tenants:    resources.NewTenantsResource(transport),
-		GPU:        resources.NewGPUResource(transport),
-		Fabrics:    resources.NewFabricsResource(transport),
-		Inventory:  resources.NewInventoryResource(transport),
-		Devices:    resources.NewDevicesResource(transport),
-		NMXC:       resources.NewNMXCResource(transport),
-		VPCPeering: resources.NewVPCPeeringResource(transport),
-		Operations: resources.NewOperationsResource(transport),
+		baseUrl:        root,
+		auth:           tokenAuth,
+		transport:      transport,
+		Tenants:        resources.NewTenantsResource(transport),
+		GPU:            resources.NewGPUResource(transport),
+		SharedServices: resources.NewSharedServicesResource(transport),
+		VFs:            resources.NewVFInterfacesResource(transport),
+		Workflows:      resources.NewWorkflowsResource(transport),
+		NetworkPolicy:  resources.NewNetworkPolicyResource(transport),
+		Webhooks:       resources.NewWebhooksResource(transport),
+		IPAM:           resources.NewIpamResource(transport),
+		DHCP:           resources.NewDhcpResource(transport),
+		Rails:          resources.NewRailsResource(transport),
+		Fabrics:        resources.NewFabricsResource(transport),
+		Inventory:      resources.NewInventoryResource(transport),
+		Devices:        resources.NewDevicesResource(transport),
+		NMXC:           resources.NewNMXCResource(transport),
+		VPCPeering:     resources.NewVPCPeeringResource(transport),
+		Operations:     resources.NewOperationsResource(transport),
 	}
 	return c
 }

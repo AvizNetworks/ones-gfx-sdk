@@ -3,9 +3,9 @@ ONES Spectrum-X Python SDK.
 
 Public API:
 
-    The 20 Fabric Manager API functions documented in the ONES Spectrum-X API
-    Operations guide are re-exported here (create_tenant, get_fabrics,
-    update_tenant, ...), mirroring ones_gfx.apis.
+    All 130 Fabric Manager API functions are re-exported here
+    (create_tenant, get_all_fabrics, update_tenant, ...),
+    mirroring ones_gfx.apis.
 
     ONESClient         - main entry point
     JWTAuth            - JWT-based authentication
@@ -23,9 +23,10 @@ Public API:
         OperationFailedError, APIError
 """
 
+from ._fm_direct import DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path
 from ._version import __version__
 from .auth import AuthBase, JWTAuth
-from .client import Client, NotAuthenticatedError, ONESClient
+from .client import ApiRoutingError, Client, NotAuthenticatedError, ONESClient
 from .enums import (
     UNLIMITED_GPUS,
     ConfigStatus,
@@ -45,6 +46,7 @@ from .exceptions import (
     TransportError,
 )
 from .models import Fabric, NMXCPartition, Operation, Tenant, VNetInfo
+from .workflows import CleanUpResult, clean_up_tenant
 from .apis import (
     create_tenant,
     list_tenants,
@@ -66,9 +68,51 @@ from .apis import (
     get_available_servers,
     reset_nmxc_domain,
     factory_reset_nmxc_domain,
+    create_shared_services,
+    get_shared_services,
+    delete_shared_services,
+    list_vf_interfaces,
+    assign_vf_interface,
+    unassign_vf_interface,
+    list_network_policies,
+    create_network_policy,
+    patch_network_policy,
+    delete_network_policy,
+    register_webhook,
+    list_webhooks,
+    get_webhook,
+    update_webhook,
+    delete_webhook,
+    register_fabric_webhook,
+    get_fabric_webhook,
+    update_fabric_webhook,
+    delete_fabric_webhook,
+    register_tenant_webhook,
+    get_tenant_webhook,
+    update_tenant_webhook,
+    delete_tenant_webhook,
+    get_server_ips,
+    get_tenant_ips,
+    get_tenant_compute_ip,
+    reconcile_fabric_dhcp,
+    get_tenant_dhcp,
+    retry_tenant_dhcp,
+    get_ipam_config,
+    update_ipam_config,
+    get_rail_cidr_pools,
+    get_rail_cidr_pool,
 )
 
 __all__ = [
+    "create_shared_services",
+    "get_shared_services",
+    "delete_shared_services",
+    "list_vf_interfaces",
+    "assign_vf_interface",
+    "unassign_vf_interface",
+    "clean_up_tenant",
+    "CleanUpResult",
+
     "__version__",
     "Client",
     "NotAuthenticatedError",
@@ -114,4 +158,35 @@ __all__ = [
     "get_available_servers",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    "list_network_policies",
+    "create_network_policy",
+    "patch_network_policy",
+    "delete_network_policy",
+    "register_webhook",
+    "list_webhooks",
+    "get_webhook",
+    "update_webhook",
+    "delete_webhook",
+    "register_fabric_webhook",
+    "get_fabric_webhook",
+    "update_fabric_webhook",
+    "delete_fabric_webhook",
+    "register_tenant_webhook",
+    "get_tenant_webhook",
+    "update_tenant_webhook",
+    "delete_tenant_webhook",
+    "get_server_ips",
+    "get_tenant_ips",
+    "get_tenant_compute_ip",
+    "reconcile_fabric_dhcp",
+    "get_tenant_dhcp",
+    "retry_tenant_dhcp",
+    "get_ipam_config",
+    "update_ipam_config",
+    "get_rail_cidr_pools",
+    "get_rail_cidr_pool",
+    "ApiRoutingError",
+    "DIRECT_FM_PATHS",
+    "derive_fm_base_url",
+    "is_direct_path",
 ]

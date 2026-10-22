@@ -34,7 +34,10 @@ class GpuServerInfo(TypedDict):
 
 # Java: TreeMap<Integer, Map<String, DeviceGpus{gpus: List<String>}>>
 # JSON object keys are strings; Jackson coerces them to Integer server-side.
-SuidMap = dict[str, dict[str, list[str]]]
+# suid maps SU index (as a string key) -> hostname -> {"gpus": [port names]}.
+# The inner object mirrors Java DeviceGpus, which has a single `gpus`
+# list; a bare list here fails to deserialize server-side.
+SuidMap = dict[str, dict[str, dict[str, list[str]]]]
 
 
 # ── NMX-C domains (FabricManager nmxc endpoints) ───────────────────────────
