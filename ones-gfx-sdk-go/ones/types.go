@@ -4,11 +4,11 @@ package ones
 // `ones` is the only package you have to import:
 //
 //	client, err := ones.InitializeWithCreds("https://host:3002", "user", "pass")
-//	fabrics, err := ones.GetAllFabrics(ctx, client)
-//	msg, err := ones.CreateFabric(ctx, client, "f1", &ones.FabricCreateArgs{Type: ones.Ptr("DNO ASN")})
+//	fabrics, err := ones.GetFabrics(ctx, client)
+//	tenants, err := ones.ListTenants(ctx, client, "f1")
 //
-// These are Go type aliases, so ones.FabricCreateArgs and
-// resources.FabricCreateArgs are the same type and interchangeable.
+// These are Go type aliases, so ones.GpuServerInfo and
+// resources.GpuServerInfo are the same type and interchangeable.
 //
 // Generated — edit the generator, not this file.
 
@@ -38,7 +38,6 @@ type (
 	VNetTenantIPPool     = ones_gfx.VNetTenantIPPool
 	NMXCPartition        = ones_gfx.NMXCPartition
 	ConflictError        = ones_gfx.ConflictError
-	FabricItem           = ones_gfx.FabricItem
 	GPUOperation         = ones_gfx.GPUOperation
 	GpuAction            = ones_gfx.GpuAction
 	JWTAuth              = ones_gfx.JWTAuth
@@ -58,53 +57,20 @@ type (
 // --- request/response types -------------------------------------------------
 
 type (
-	ApiResponseMessage        = resources.ApiResponseMessage
-	AvailableServerResult     = resources.AvailableServerResult
-	BootstrapStage            = resources.BootstrapStage
-	BootstrapinfoItem         = resources.BootstrapinfoItem
-	BootstrapinfoRecord       = resources.BootstrapinfoRecord
-	ConfigScope               = resources.ConfigScope
-	ControllerVersion         = resources.ControllerVersion
-	DeleteFileResult          = resources.DeleteFileResult
-	DeviceConfigBackup        = resources.DeviceConfigBackup
-	DeviceConfigRestore       = resources.DeviceConfigRestore
-	DeviceDetail              = resources.DeviceDetail
-	DeviceInventoryItem       = resources.DeviceInventoryItem
-	FabricCreateArgs          = resources.FabricCreateArgs
-	FabricInventoryUpdateItem = resources.FabricInventoryUpdateItem
-	FabricSimItem             = resources.FabricSimItem
-	FabricsListResponse       = resources.FabricsListResponse
-	FetchBackupFilesResult    = resources.FetchBackupFilesResult
-	GetFilesResult            = resources.GetFilesResult
-	GpuAllocationHistoryItem  = resources.GpuAllocationHistoryItem
-	GpuItem                   = resources.GpuItem
-	GpuPortAssignmentResult   = resources.GpuPortAssignmentResult
-	GpuServerInfo             = resources.GpuServerInfo
-	GpuTenantMappingItem      = resources.GpuTenantMappingItem
-	HostAction                = resources.HostAction
-	HostItem                  = resources.HostItem
-	HosttenantsRecord         = resources.HosttenantsRecord
-	ImageUpgradeDetailsItem   = resources.ImageUpgradeDetailsItem
-	IntentItem                = resources.IntentItem
-	InventoryItem             = resources.InventoryItem
-	InventoryRecord           = resources.InventoryRecord
-	NetOpsAction              = resources.NetOpsAction
-	NetOpsParams              = resources.NetOpsParams
-	NmxcDomain                = resources.NmxcDomain
-	NmxcDomainsUpdateResult   = resources.NmxcDomainsUpdateResult
-	NmxcFactoryResetResult    = resources.NmxcFactoryResetResult
-	NmxcProbeResult           = resources.NmxcProbeResult
-	NmxcResetResult           = resources.NmxcResetResult
-	OperationStatusItem       = resources.OperationStatusItem
-	RMAInfoItem               = resources.RMAInfoItem
-	RMAInfoRecord             = resources.RMAInfoRecord
-	RMAStatusItem             = resources.RMAStatusItem
-	SuidMap                   = resources.SuidMap
-	TriggerBootstrapResult    = resources.TriggerBootstrapResult
-	UfmCredsResult            = resources.UfmCredsResult
-	UploadFileResult          = resources.UploadFileResult
-	UploadUIObjectArgs        = resources.UploadUIObjectArgs
-	WebhookDeliveryStatus     = resources.WebhookDeliveryStatus
+	ApiResponseMessage      = resources.ApiResponseMessage
+	AvailableServerResult   = resources.AvailableServerResult
+	ConfigScope             = resources.ConfigScope
+	FabricsListResponse     = resources.FabricsListResponse
+	GpuPortAssignmentResult = resources.GpuPortAssignmentResult
+	GpuServerInfo           = resources.GpuServerInfo
+	NmxcDomain              = resources.NmxcDomain
+	NmxcDomainsUpdateResult = resources.NmxcDomainsUpdateResult
+	NmxcFactoryResetResult  = resources.NmxcFactoryResetResult
+	NmxcProbeResult         = resources.NmxcProbeResult
+	NmxcResetResult         = resources.NmxcResetResult
+	OperationStatusItem     = resources.OperationStatusItem
+	SuidMap                 = resources.SuidMap
+	UfmCredsResult          = resources.UfmCredsResult
 )
 
 // --- enum constants ---------------------------------------------------------
@@ -123,11 +89,6 @@ const (
 	OperationModeAsyncWebhook = ones_gfx.OperationModeAsyncWebhook
 	ConfigScopeWholeServer    = resources.ConfigScopeWholeServer
 	ConfigScopeParticularGPU  = resources.ConfigScopeParticularGPU
-	HostActionAdd             = resources.HostActionAdd
-	HostActionDelete          = resources.HostActionDelete
-	NetOpsActionVlan          = resources.NetOpsActionVlan
-	NetOpsActionPortChange    = resources.NetOpsActionPortChange
-	NetOpsActionVlanMember    = resources.NetOpsActionVlanMember
 )
 
 // --- errors -----------------------------------------------------------------

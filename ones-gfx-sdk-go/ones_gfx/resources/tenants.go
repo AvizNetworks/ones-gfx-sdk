@@ -320,22 +320,6 @@ func (r *TenantsResource) ModifyAllocationsAsync(ctx context.Context, fabricName
 	return ones_gfx.Call[ones_gfx.OperationAccepted](r.transport, "POST", "fabrics/"+fabricName+"/tenants/"+tenantName+"/gpuAllocations", body, ones_gfx.OperationModeAsyncPoll, rc.ReqOpts())
 }
 
-// AutoAllocate automatically picks GPUs for a tenant.
-// Maps to POST /autoAllocateGpusToTenants.
-func (r *TenantsResource) AutoAllocate(ctx context.Context, fabricName, tenantName string, autoAllocationDevicesNeed int, suid SuidMap) (bool, error) {
-	body := struct {
-		FabricName                string  `json:"fabricName"`
-		TenantName                string  `json:"tenantName"`
-		AutoAllocationDevicesNeed int     `json:"autoAllocationDevicesNeed"`
-		Suid                      SuidMap `json:"suid,omitempty"`
-	}{fabricName, tenantName, autoAllocationDevicesNeed, suid}
-	res, err := ones_gfx.Call[bool](r.transport, "POST", "autoAllocateGpusToTenants", body, ones_gfx.OperationModeSynchronous, nil)
-	if err != nil || res == nil {
-		return false, err
-	}
-	return *res, nil
-}
-
 // attachTenantWebhook fills webhook body fields when WithWebhook was supplied.
 func attachTenantWebhook(fields *tenantWebhookFields, rc ones_gfx.ResolvedCall) {
 	if rc.WebhookURL == "" {
