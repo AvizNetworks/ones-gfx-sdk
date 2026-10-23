@@ -26,19 +26,32 @@ __all__ = [
     "GpuAction",
     "GpuItem",
     "GpuServerInfo",
+    "GpuUpdateResult",
     "InventoryItem",
     "InventoryRecord",
+    "IpAllocation",
+    "IpAssignStatus",
+    "IpCleanupStatus",
+    "IpamConfig",
+    "IpamServerResult",
     "NetOpsAction",
     "NmxcDomain",
     "OperationAccepted",
+    "Pagination",
     "ParametersItem",
     "QosItem",
     "QosmappingItem",
     "RMAInfoItem",
+    "RailCidrPoolAccept",
+    "RailCidrPoolResult",
+    "RailCidrPoolsResult",
     "SchedulerItem",
+    "ServerIpAllocations",
     "StatusItem",
     "SuidMap",
     "SvimapperItem",
+    "TenantIpAllocations",
+    "TenantIpPool",
     "UploadFileResult",
     "VlanvnimapperItem",
 ]
@@ -480,3 +493,134 @@ class UploadFileResult(TypedDict, total=False):
     error: str
 
 
+# ── Rail CIDRPool manifests (GET /fabrics/{f}/rails/cidrpools, .../{rail}/cidrpool) ──
+
+# Accept values the server honours. The YAML/text types return the manifest
+# verbatim (a ``str``); ``application/json`` returns the standard envelope whose
+# ``data`` is a RailCidrPoolsResult / RailCidrPoolResult.
+RailCidrPoolAccept = Literal[
+    "application/yaml", "application/x-yaml", "text/plain", "application/json"
+]
+
+
+class RailCidrPoolsResult(TypedDict):
+    """JSON form of GET /fabrics/{fabricName}/rails/cidrpools."""
+
+    fabricName: str
+    rails: list[str]
+    yaml: str
+
+
+class RailCidrPoolResult(TypedDict):
+    """JSON form of GET /fabrics/{fabricName}/rails/{railName}/cidrpool."""
+
+    fabricName: str
+    railName: str
+    yaml: str
+
+
+# ── IPAM (Models/IpamServiceConfig.java, Models/IpamAllocation.java) ────────
+
+IpAssignStatus = Literal["ALLOCATED_ONLY", "ASSIGNED", "IP_ASSIGN_FAILED"]
+IpCleanupStatus = Literal["NONE", "PENDING"]
+
+
+class IpamConfig(TypedDict):
+    """Per-fabric IPAM switches (GET/PATCH /fabrics/{fabricName}/ipam/config).
+
+    ``updatedBy`` is ``None`` until the config has been written once.
+    """
+
+    fabricName: str
+    enableIpam: bool
+    enableIpAssign: bool
+    updatedAt: str
+    updatedBy: str | None
+
+
+class IpAllocation(TypedDict, total=False):
+    """One row of an IPAM pool (Models/IpamAllocation.java).
+
+    ``interfaceName`` is only present when the address lives on an HBN VF
+    rather than the N-S NIC.
+    """
+
+    id: int
+    poolId: int
+    fabricName: str
+    tenantName: str
+    tenantId: int | None
+    serverName: str
+    ipAddress: str
+    prefixLength: int
+    assignStatus: IpAssignStatus
+    cleanupStatus: IpCleanupStatus
+    allocatedAt: str
+    interfaceName: str | None
+
+
+class TenantIpPool(TypedDict):
+    cidr: str
+    allocatableAddressCount: int
+    allocatedCount: int
+
+
+class Pagination(TypedDict):
+    """Zero-based page metadata."""
+
+    page: int
+    size: int
+    totalElements: int
+    totalPages: int
+
+
+class TenantIpAllocations(TypedDict):
+    """GET /fabrics/{f}/tenants/{t}/ip-addresses."""
+
+    fabricName: str
+    tenantName: str
+    pool: TenantIpPool
+    allocations: list[IpAllocation]
+    pagination: Pagination
+
+
+class ServerIpAllocations(TypedDict):
+    """GET /fabrics/{f}/computes/{s}/ip-addresses."""
+
+    fabricName: str
+    serverName: str
+    allocations: list[IpAllocation]
+
+
+class IpamServerResult(TypedDict, total=False):
+    """Per-server outcome in a tenant GPU update on an IPAM-enabled fabric.
+
+    ``status`` is ``SUCCESS`` or a failure name (``IP_POOL_EXHAUSTED``,
+    ``IPAM_NOT_CONFIGURED``, ``NOT_ALLOCATED``, ``DUPLICATE_SERVER_IN_REQUEST``,
+    ``INVALID_REQUEST``, ``CLEANUP_PENDING``, ``FAILED``). ``ipAssignStatus`` is
+    an IpAssignStatus, or the failure name / ``NOT_ALLOCATED`` when no address
+    exists. ``ipAddress`` is ``"a.b.c.d/len"`` or ``None``. ``message`` explains
+    a failure; ``released`` is set on release (DELETE) outcomes.
+    """
+
+    serverName: str
+    status: str
+    ipAddress: str | None
+    ipAssignStatus: str
+    message: str
+    released: bool
+
+
+class GpuUpdateResult(TypedDict):
+    """``data`` of PATCH /fabrics/{f}/tenants/{t} when IPAM is enabled.
+
+    The server answers HTTP 207 instead of 200 when ``partial`` is true (at
+    least one server failed IPAM allocation, assignment or release). Both are
+    2xx, so the SDK returns normally — check ``partial``.
+    """
+
+    fabricName: str
+    tenantName: str
+    operation: GpuAction
+    servers: list[IpamServerResult]
+    partial: bool

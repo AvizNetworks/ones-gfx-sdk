@@ -55,6 +55,8 @@ type Client struct {
 	Intents     *resources.IntentsResource
 	VPCPeering  *resources.VPCPeeringResource
 	Operations  *resources.OperationsResource
+	IPAM        *resources.IPAMResource
+	Rails       *resources.RailsResource
 }
 
 // NewClient builds a Client for the given root base URL.
@@ -112,6 +114,8 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		Intents:     resources.NewIntentsResource(transport),
 		VPCPeering:  resources.NewVPCPeeringResource(transport),
 		Operations:  resources.NewOperationsResource(transport),
+		IPAM:        resources.NewIPAMResource(transport),
+		Rails:       resources.NewRailsResource(transport),
 	}, nil
 }
 
@@ -146,6 +150,8 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 		Intents:     resources.NewIntentsResource(transport),
 		VPCPeering:  resources.NewVPCPeeringResource(transport),
 		Operations:  resources.NewOperationsResource(transport),
+		IPAM:        resources.NewIPAMResource(transport),
+		Rails:       resources.NewRailsResource(transport),
 	}
 	return c
 }

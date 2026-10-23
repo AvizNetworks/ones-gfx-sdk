@@ -4,8 +4,8 @@ Go client library for **AVIZ ONES Spectrum-X** tenant management API (v4.2).
 
 ## Status
 
-**Core Library:** ✅ Typed surface complete — all 97 Fabric Manager endpoints
-exposed as 102 typed resource methods across 17 resource handles.
+**Core Library:** ✅ Typed surface complete — all 104 Fabric Manager endpoints
+exposed as 109 typed resource methods across 19 resource handles.
 **CLI Binary:** 🚧 Not started.
 
 Typed request params and typed return values throughout; the only untyped
@@ -367,6 +367,48 @@ ports, err = client.GPU.AssignPorts(ctx, fabricName, tenantName,
     ones_gfx.GpuActionDelete, []string{"su00-rack00-node00"}, []int{1, 2, 3}, nil)
 ```
 
+### IPAM and rail CIDRPools
+
+```go
+// Rail CIDRPool manifests. A nil accept means application/yaml; the raw
+// representations fill .YAML only, RailAcceptJSON also fills .Rails.
+pools, err := ones.GetRailCidrPools(ctx, client, "yml", nil)
+r0, err := ones.GetRailCidrPool(ctx, client, "yml", "r0", ones.Ptr(ones.RailAcceptText))
+fmt.Println(pools.YAML, r0.YAML)
+
+// Per-fabric IPAM switches (externally managed fabrics only). force is optional.
+cfg, err := ones.UpdateIpamConfig(ctx, client, "ns", true, true, nil)
+cfg, err = ones.GetIpamConfig(ctx, client, "ns")
+_, err = ones.UpdateIpamConfig(ctx, client, "ns", false, false, ones.Ptr(true)) // ?force=true
+
+// Adding a server to a tenant allocates (and optionally assigns) its IP.
+res, err := ones.UpdateTenant(ctx, client, "ns", "gorax",
+    []ones.GpuServerInfo{{ServerName: "su00-node00"}}, ones.Ptr(ones.GpuActionAdd))
+if res.Partial { /* HTTP 207: at least one server failed — see res.Servers */ }
+
+one, err := ones.GetTenantComputeIp(ctx, client, "ns", "gorax", "su00-node00")
+page, err := ones.GetTenantIps(ctx, client, "ns", "gorax",
+    ones.Ptr(0), ones.Ptr(50), ones.Ptr(ones.IpAssignStatusAssigned))
+all, err := ones.GetServerIps(ctx, client, "ns", "su00-node00")
+
+// Tenant IPAM pool at creation time (required when IPAM is on and the fabric
+// has no tenant compute pool): an option, so Create's signature is unchanged.
+// Validated locally (IPv4, prefix /8-/30, whitespace trimmed) -> *ones.ValidationError.
+_, err = ones.CreateTenant(ctx, client, "ns", "t1", nil, nil, nil,
+    ones.WithTenantDhcpCidrPool("192.3.0.0/17"))
+```
+
+- Bad arguments (blank names, `page < 0`, `size < 1`, unknown `status`/`accept`,
+  `enableIpAssign` without `enableIpam`) return `*ones.ValidationError` before any
+  request is sent. Path parameters are escaped into a single URL segment.
+- HTTP 207 (partial IPAM result) is a 2xx: no error — check `res.Partial`.
+  `Tenants.Update` now returns `*GpuUpdateResult`, which embeds the old
+  `ApiResponseMessage`, so existing `.Status` / `.Message` reads still compile.
+- Server errors map to the usual typed errors (`*ones.NotFoundError`,
+  `*ones.ConflictError`, …); the server's error code is in
+  `ResponseBody` → `error.code`. For raw rail responses the error message is the
+  server's plain text `"<CODE>: <detail>"`.
+
 ### Partial GPU Allocation
 
 Map or unmap specific GPUs to a tenant on a shared server. This is distinct
@@ -566,6 +608,13 @@ staticcheck ./...
 
 ## Testing the SDK
 
+Unit and integration tests (an in-process fake Fabric Manager behind `httptest`):
+
+```bash
+go test ./...          # or: make test
+go test -race ./ones
+```
+
 A runnable CLI tour lives in `examples/`:
 
 ```bash
@@ -656,12 +705,12 @@ func main() {
 ```
 ones-gfx-sdk/ones-gfx-sdk-go/
 ├── go.mod                      # Module definition
-├── Makefile                    # build-lib / vet / fmt / check targets
+├── Makefile                    # build-lib / vet / fmt / test / check targets
 ├── README.md                   # This file
 ├── IMPLEMENTATION_STATUS.md    # Typed surface + method index
 ├── api_reference.txt           # Language-agnostic curl reference
 ├── ones/                       # ★ Public API — the only package you import
-│   ├── api.go                  # 102 flat functions (generated), auth-guarded
+│   ├── api.go                  # 109 flat functions (generated), auth-guarded
 │   ├── types.go                # Re-exported types/consts/options (generated)
 │   ├── session.go              # Init / GetClient / Login / Refresh / Logout
 │   └── client.go               # Client struct + resource handles
@@ -675,7 +724,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 │   ├── gpu_allocation.go       # GPUOperation ADD/DELETE enum
 │   ├── models.go               # Operation struct + timestamp parsing
 │   ├── options.go              # Functional call options
-│   └── resources/              # One file per API domain (97 endpoints)
+│   └── resources/              # One file per API domain (104 endpoints)
 │       ├── bootstrap.go
 │       ├── configmgmt.go
 │       ├── devices.go
@@ -686,12 +735,15 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 │       ├── hosttenants.go
 │       ├── intents.go
 │       ├── inventory.go
+│       ├── ipam.go
 │       ├── netops.go
 │       ├── nmxc.go
 │       ├── operations.go
+│       ├── rails.go
 │       ├── rma.go
 │       ├── system.go
 │       ├── tenants.go
+│       ├── validate.go         # path-param validation/escaping
 │       └── vpcpeering.go
 └── examples/
     ├── usage_examples.go       # Runnable CLI tour

@@ -481,6 +481,14 @@ func GetInventoryPorts(ctx context.Context, client *Client, fabricName string) (
 	return client.Inventory.Ports(ctx, fabricName)
 }
 
+// GetIpamConfig calls IPAM.GetConfig.
+func GetIpamConfig(ctx context.Context, client *Client, fabricName string) (*IpamConfig, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.GetConfig(ctx, fabricName)
+}
+
 // GetLastOrchestratedIntentName calls Intents.LastOrchestratedName.
 func GetLastOrchestratedIntentName(ctx context.Context, client *Client) (string, error) {
 	if client == nil {
@@ -521,6 +529,22 @@ func GetOperationWebhookStatus(ctx context.Context, client *Client, operationID 
 	return client.Operations.WebhookStatus(ctx, operationID)
 }
 
+// GetRailCidrPool calls Rails.CidrPool. A nil accept means application/yaml.
+func GetRailCidrPool(ctx context.Context, client *Client, fabricName, railName string, accept *RailAccept) (*RailCidrPool, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Rails.CidrPool(ctx, fabricName, railName, accept)
+}
+
+// GetRailCidrPools calls Rails.CidrPools. A nil accept means application/yaml.
+func GetRailCidrPools(ctx context.Context, client *Client, fabricName string, accept *RailAccept) (*RailCidrPools, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Rails.CidrPools(ctx, fabricName, accept)
+}
+
 // GetRmaInfo calls RMA.List.
 func GetRmaInfo(ctx context.Context, client *Client) ([]RMAInfoRecord, error) {
 	if client == nil {
@@ -537,6 +561,14 @@ func GetRmaStatus(ctx context.Context, client *Client, rmaInfoID int) ([]RMAStat
 	return client.RMA.Status(ctx, rmaInfoID)
 }
 
+// GetServerIps calls IPAM.ServerIPs.
+func GetServerIps(ctx context.Context, client *Client, fabricName, serverName string) (*ServerIpAllocations, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.ServerIPs(ctx, fabricName, serverName)
+}
+
 // GetStatus calls System.Status.
 func GetStatus(ctx context.Context, client *Client, fileName *string) ([]string, error) {
 	if client == nil {
@@ -551,6 +583,22 @@ func GetTenant(ctx context.Context, client *Client, fabricName, tenantName strin
 		return nil, ErrNilClient
 	}
 	return client.Tenants.Get(ctx, fabricName, tenantName)
+}
+
+// GetTenantComputeIp calls IPAM.TenantComputeIP.
+func GetTenantComputeIp(ctx context.Context, client *Client, fabricName, tenantName, serverName string) (*IpAllocation, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.TenantComputeIP(ctx, fabricName, tenantName, serverName)
+}
+
+// GetTenantIps calls IPAM.TenantIPs.
+func GetTenantIps(ctx context.Context, client *Client, fabricName, tenantName string, page, size *int, status *IpAssignStatus) (*TenantIpAllocations, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.TenantIPs(ctx, fabricName, tenantName, page, size, status)
 }
 
 // GetUIObject calls Intents.GetUIObject.
@@ -753,6 +801,14 @@ func UpdateInventoryData(ctx context.Context, client *Client, items []FabricInve
 	return client.Inventory.Update(ctx, items)
 }
 
+// UpdateIpamConfig calls IPAM.UpdateConfig.
+func UpdateIpamConfig(ctx context.Context, client *Client, fabricName string, enableIpam, enableIpAssign bool, force *bool) (*IpamConfig, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.IPAM.UpdateConfig(ctx, fabricName, enableIpam, enableIpAssign, force)
+}
+
 // UpdateNmxcDomains calls NMXC.UpdateDomains.
 func UpdateNmxcDomains(ctx context.Context, client *Client, fabricName string, domains []NmxcDomain, operation GpuAction) (*NmxcDomainsUpdateResult, error) {
 	if client == nil {
@@ -770,7 +826,7 @@ func UpdateRoleInfo(ctx context.Context, client *Client, layer int, currentName 
 }
 
 // UpdateTenant calls Tenants.Update.
-func UpdateTenant(ctx context.Context, client *Client, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*ApiResponseMessage, error) {
+func UpdateTenant(ctx context.Context, client *Client, fabricName, tenantName string, servers []GpuServerInfo, operation *GpuAction, opts ...CallOption) (*GpuUpdateResult, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}

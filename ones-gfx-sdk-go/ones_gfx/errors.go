@@ -30,6 +30,21 @@ func (e *TransportError) Unwrap() error {
 	return e.Cause
 }
 
+// ValidationError is returned, before any request is sent, when a call's
+// arguments are invalid (blank path parameter, out-of-range page size, an
+// unsupported enum value, ...). The Python SDK raises ValueError for the same
+// cases.
+type ValidationError struct {
+	Field  string // the offending argument
+	Reason string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("invalid argument %s: %s", e.Field, e.Reason)
+}
+
+func (e *ValidationError) ONESError() {}
+
 // APIError is the base for errors returned by the ONES API (i.e., the request
 // reached the server and got an HTTP response, but the response indicates failure).
 type APIError struct {

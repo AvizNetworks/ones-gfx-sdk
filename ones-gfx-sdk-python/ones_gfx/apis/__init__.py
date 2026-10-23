@@ -102,6 +102,13 @@ from .update_hosts import update_hosts
 from .get_hosts_list import get_hosts_list
 from .reset_nmxc_domain import reset_nmxc_domain
 from .factory_reset_nmxc_domain import factory_reset_nmxc_domain
+from .get_rail_cidr_pools import get_rail_cidr_pools
+from .get_rail_cidr_pool import get_rail_cidr_pool
+from .get_ipam_config import get_ipam_config
+from .update_ipam_config import update_ipam_config
+from .get_tenant_compute_ip import get_tenant_compute_ip
+from .get_tenant_ips import get_tenant_ips
+from .get_server_ips import get_server_ips
 
 __all__ = [
     "create_tenant",
@@ -201,4 +208,11 @@ __all__ = [
     "get_hosts_list",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    "get_rail_cidr_pools",
+    "get_rail_cidr_pool",
+    "get_ipam_config",
+    "update_ipam_config",
+    "get_tenant_compute_ip",
+    "get_tenant_ips",
+    "get_server_ips",
 ]

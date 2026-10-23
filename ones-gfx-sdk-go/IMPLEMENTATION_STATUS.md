@@ -1,6 +1,6 @@
 # Go SDK Implementation Status
 
-The Go SDK mirrors the Python SDK's typed API surface: all 97 Fabric Manager
+The Go SDK mirrors the Python SDK's typed API surface: all 104 Fabric Manager
 endpoints are exposed through typed resource methods (no `map[string]interface{}`
 body builders, no `interface{}` returns except the documented open-payload leaves).
 
@@ -13,6 +13,9 @@ body builders, no `interface{}` returns except the documented open-payload leave
 go build ./...
 go vet ./...
 
+# Tests (unit + integration against an in-process fake Fabric Manager)
+go test ./...
+
 # Format check
 gofmt -l ones_gfx/ sdk/ examples/
 ```
@@ -20,7 +23,7 @@ gofmt -l ones_gfx/ sdk/ examples/
 ## Package layout
 
 - `ones_gfx/` — transport, auth, enums, errors, shared API types (`apitypes.go`).
-- `ones_gfx/resources/` — one file per API domain, 97 endpoints total.
+- `ones_gfx/resources/` — one file per API domain, 104 endpoints total.
 - `sdk/` — the top-level `Client` with one resource handle per domain.
 - `examples/` — a runnable CLI tour (`go run examples/usage_examples.go`).
 
@@ -77,3 +80,5 @@ because the Java service layer itself returns `Object`/`Map<String,Object>`
 | `Intents` | UploadUIObject, GetUIObject, LastOrchestratedName, Validation, Day1ConfigStatus, DerivationLogs |
 | `VPCPeering` | Create/CreateAsync, Delete |
 | `Operations` | Get, WebhookStatus |
+| `IPAM` | GetConfig, UpdateConfig, TenantComputeIP, TenantIPs, ServerIPs |
+| `Rails` | CidrPools, CidrPool |

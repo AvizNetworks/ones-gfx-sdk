@@ -15,6 +15,8 @@ type callConfig struct {
 	webhookEvents  []string
 	idempotencyKey string
 	requestOrigin  string
+	// tenantDhcpCidrPool is the tenant's IPAM pool, sent on tenant creation.
+	tenantDhcpCidrPool string
 }
 
 // defaultCallConfig returns a config with no overrides (uses client defaults).
@@ -43,6 +45,16 @@ func WithRequestOrigin(origin string) CallOption {
 	}
 }
 
+// WithTenantDhcpCidrPool sets the tenant's IPAM pool (e.g. "192.3.0.0/17") on
+// Tenants.Create / CreateAsync. The server requires it when IPAM is enabled on
+// the fabric and the fabric has no tenant compute pool to derive one from
+// (error IPAM_CIDR_REQUIRED).
+func WithTenantDhcpCidrPool(cidr string) CallOption {
+	return func(cfg *callConfig) {
+		cfg.tenantDhcpCidrPool = cidr
+	}
+}
+
 // ApplyCallOptions resolves CallOption values into a concrete config.
 // Intended for use by resource methods that need timeout/webhook values.
 func ApplyCallOptions(opts ...CallOption) (timeout *time.Duration, webhookURL string, webhookEvents []string) {
@@ -61,6 +73,8 @@ type ResolvedCall struct {
 	WebhookEvents  []string
 	IdempotencyKey string
 	RequestOrigin  string
+	// TenantDhcpCidrPool is the IPAM pool for tenant creation ("" = omit).
+	TenantDhcpCidrPool string
 }
 
 // ReqOpts converts the resolved call config into transport-level ReqOpts.
@@ -84,6 +98,8 @@ func ResolveCallOptions(opts ...CallOption) ResolvedCall {
 		WebhookEvents:  cfg.webhookEvents,
 		IdempotencyKey: cfg.idempotencyKey,
 		RequestOrigin:  cfg.requestOrigin,
+
+		TenantDhcpCidrPool: cfg.tenantDhcpCidrPool,
 	}
 }
 

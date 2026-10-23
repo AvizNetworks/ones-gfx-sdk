@@ -7,11 +7,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from .._types import ApiResponseMessage, GpuAction, GpuServerInfo, OperationAccepted
+from .._types import ApiResponseMessage, GpuAction, GpuServerInfo, GpuUpdateResult, OperationAccepted
 from ..client import Client
 
 
-def update_tenant(client: Client, fabricName: str, tenantName: str, *, servers: list[GpuServerInfo], prefer: str | None = None, idempotency_key: str | None = None, operation: GpuAction | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> ApiResponseMessage | OperationAccepted:
+def update_tenant(client: Client, fabricName: str, tenantName: str, *, servers: list[GpuServerInfo], prefer: str | None = None, idempotency_key: str | None = None, operation: GpuAction | None = None, enableWebhook: bool | None = None, webhookUrl: str | None = None, webhookEvents: list[str] | None = None) -> GpuUpdateResult | ApiResponseMessage | OperationAccepted:
+    """Add/remove whole GPU servers on a tenant.
+
+    Synchronous result depends on the fabric: with IPAM enabled it is the
+    unwrapped ``data`` (:class:`GpuUpdateResult` — per-server ``ipAddress`` /
+    ``ipAssignStatus`` and a ``partial`` flag; the server answers HTTP 207 when
+    partial, which does not raise); otherwise the plain
+    ``{"status", "message"}`` body. With ``prefer="respond-async"`` it is an
+    :class:`OperationAccepted` handle.
+    """
     path = f"fabrics/{fabricName}/tenants/{tenantName}"
     headers: dict[str, str] = {}
     if prefer is not None:

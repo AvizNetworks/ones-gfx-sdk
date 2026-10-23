@@ -37,6 +37,11 @@ fmt: ## Format code with gofmt
 	$(GOFMT) ./...
 	@echo "✓ Code formatted"
 
+test: ## Run unit + integration tests
+	@echo "Running tests..."
+	$(GOTEST) ./...
+	@echo "✓ Tests passed"
+
 check: vet ## Run static checks
 	@echo "✓ All checks passed"
 
@@ -52,4 +57,4 @@ deps: ## Download dependencies
 # build-cli: ## Build CLI binary (coming in v1.1)
 # 	@echo "CLI build not yet available"
 
-.PHONY: help build-lib vet fmt check clean deps
+.PHONY: help build-lib vet fmt test check clean deps

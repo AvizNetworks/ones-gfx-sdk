@@ -3,7 +3,7 @@ ONES Spectrum-X Python SDK.
 
 Public API:
 
-    All 97 Fabric Manager API functions are re-exported here
+    All 104 Fabric Manager API functions are re-exported here
     (create_tenant, get_all_fabrics, update_tenant, ...),
     mirroring ones_gfx.apis.
 
@@ -143,6 +143,13 @@ from .apis import (
     get_hosts_list,
     reset_nmxc_domain,
     factory_reset_nmxc_domain,
+    get_rail_cidr_pools,
+    get_rail_cidr_pool,
+    get_ipam_config,
+    update_ipam_config,
+    get_tenant_compute_ip,
+    get_tenant_ips,
+    get_server_ips,
 )
 
 __all__ = [
@@ -268,4 +275,11 @@ __all__ = [
     "get_hosts_list",
     "reset_nmxc_domain",
     "factory_reset_nmxc_domain",
+    "get_rail_cidr_pools",
+    "get_rail_cidr_pool",
+    "get_ipam_config",
+    "update_ipam_config",
+    "get_tenant_compute_ip",
+    "get_tenant_ips",
+    "get_server_ips",
 ]

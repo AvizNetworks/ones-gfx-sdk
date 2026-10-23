@@ -1,7 +1,7 @@
 # ONES GFX SDK
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
-Python and Go implementations expose the **same 97 Fabric Manager endpoints**
+Python and Go implementations expose the **same 104 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
 
@@ -90,7 +90,7 @@ Identical on both sides — Python is snake_case, Go is exported PascalCase.
 
 Every endpoint is a flat function taking the client. Go additionally takes a
 `context.Context` first, and offers `...Async` variants for the 5 async-capable
-endpoints (102 functions vs Python's 97; Python selects async with the `prefer`
+endpoints (109 functions vs Python's 104; Python selects async with the `prefer`
 argument on the same function).
 
 ```python
@@ -115,6 +115,8 @@ Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 | Nil/missing client | n/a | `ErrNilClient` |
 | Session method on a non-token client | n/a | `ErrNoTokenAuth` |
 | HTTP 4xx/5xx | `requests.HTTPError` | typed: `*AuthenticationError`, `*NotFoundError`, `*ConflictError`, `*ServerError`, … (use `errors.As`) |
+| Invalid argument (new IPAM/rail endpoints) | `ValueError`, before any request | `*ValidationError`, before any request |
+| HTTP 207 (partial IPAM result) | success — check `partial` in the result | success — check `Partial` on the result |
 
 ---
 
@@ -198,11 +200,40 @@ cd ones-gfx-sdk-go     && go run ./examples/index
 
 ---
 
+## IPAM and rail CIDRPools
+
+Seven endpoints on both SDKs (Go names in parentheses):
+
+| Endpoint | Python | Go |
+|---|---|---|
+| `GET /fabrics/{f}/rails/cidrpools` | `get_rail_cidr_pools` | `GetRailCidrPools` |
+| `GET /fabrics/{f}/rails/{rail}/cidrpool` | `get_rail_cidr_pool` | `GetRailCidrPool` |
+| `GET /fabrics/{f}/ipam/config` | `get_ipam_config` | `GetIpamConfig` |
+| `PATCH /fabrics/{f}/ipam/config` | `update_ipam_config` | `UpdateIpamConfig` |
+| `GET /fabrics/{f}/tenants/{t}/computes/{s}/ip-address` | `get_tenant_compute_ip` | `GetTenantComputeIp` |
+| `GET /fabrics/{f}/tenants/{t}/ip-addresses` | `get_tenant_ips` | `GetTenantIps` |
+| `GET /fabrics/{f}/computes/{s}/ip-addresses` | `get_server_ips` | `GetServerIps` |
+
+Related changes to existing calls: `update_tenant` / `UpdateTenant` now return the
+per-server IP outcome when IPAM is enabled (HTTP 207 when partial), and tenant
+creation accepts the tenant's IPAM pool (`tenantDhcpCidrPool` in Python,
+`WithTenantDhcpCidrPool(...)` in Go; validated locally: IPv4, prefix /8–/30). The rail manifests are returned verbatim as
+YAML text by default; pass the accept type to get the JSON form instead. See the
+[Python](./ones-gfx-sdk-python/README.md#ipam-and-rail-cidrpools) and
+[Go](./ones-gfx-sdk-go/README.md#ipam-and-rail-cidrpools) READMEs.
+
+The **Terraform provider** (`terraform-provider-fabricapi`) exposes the same endpoints as
+resources and data sources (`fabricapi_ipam_config`, `fabricapi_rail_cidrpools`,
+`fabricapi_tenant_ip_addresses`, …) and follows the same rules: identical argument validation,
+HTTP 207 treated as success-with-a-partial-flag, and the server's error codes passed through.
+
+---
+
 ## Language notes
 
 | | Python | Go |
 |---|---|---|
-| Endpoint coverage | 97 | 97 (+5 async variants = 102 functions) |
+| Endpoint coverage | 104 | 104 (+5 async variants = 109 functions) |
 | Errors | exceptions | returned `error` values, typed taxonomy |
 | Type checking | TypedDicts, checked by mypy/pyright | compile-time |
 | Context/cancellation | — | takes `context.Context` (currently accepted but **not** yet honoured by the transport) |
@@ -223,8 +254,9 @@ ones-gfx-sdk/
 ├── ones-gfx-sdk-python/
 │   ├── ones_gfx/
 │   │   ├── client.py            # Client class
-│   │   ├── apis/                # 97 endpoint functions
+│   │   ├── apis/                # 104 endpoint functions
 │   │   └── _types.py            # TypedDicts
+│   ├── tests/                   # pytest: unit + fake-Fabric-Manager integration
 │   ├── index.py                 # Runnable walkthrough
 │   └── pyproject.toml
 └── ones-gfx-sdk-go/

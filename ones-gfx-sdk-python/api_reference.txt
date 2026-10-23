@@ -248,3 +248,69 @@ Get Tenants: But there is no Async support for this .
 curl http://localhost:8787/fabrics/Fab101/tenants
 
 {"tenants":[{"id":1,"description":"Testing workloads","name":"tenant1","maxGpusAllowed":8,"gpusAllocated":0,"allotedGpus":"","vniId":4001,"vlanId":101,"transitVlanId":null,"vlanVniId":8001,"vlanSubnetCPU":"10.2.12.128/27","vlanSubnetStorage":"10.3.12.128/27","fabricName":"Fab101","config_status":"1","createdAt":1776521388205,"updatedAt":1776524227352,"nsVniId":6001,"networks":["Fab101-north-south","Fab101-east-west"],"tags":[{"east-west-vni":"vniId = 4001"},{"north-south-vlan":"vlanId = 101"}],"vnets":{"name":"tenant1-Fab101-north-south","description":"Tenant tenant1 for North-South VNet","t
+
+
+==================== IPAM and rail CIDRPools ====================
+(Tokens redacted. Paths shown against the Fabric Manager directly; the SDKs go
+through the gateway as {baseUrl}/api/fm/<path>.)
+
+Rail CIDRPool manifest, all rails (YAML; use Accept: text/plain for the same body,
+Accept: application/json for {"data":{"fabricName","rails","yaml"}}):
+
+curl -k -X GET "https://127.0.0.1:8443/fabrics/yml/rails/cidrpools" -H "Accept: application/yaml" -H "Authorization: Bearer XXXX"
+apiVersion: nv-ipam.nvidia.com/v1alpha1
+kind: CIDRPool
+metadata:
+  name: r0
+  namespace: aviz-network-operator
+spec:
+  cidr: 172.16.0.0/15
+  gatewayIndex: 0
+  perNodeNetworkPrefix: 31
+  routes:
+  - dst: 172.16.0.0/15
+  - dst: 172.16.0.0/12
+  staticAllocations:
+  - gateway: 172.16.0.1
+    nodeName: hgx-su00-h00
+    prefix: 172.16.0.0/31
+  - gateway: 172.16.0.3
+    nodeName: hgx-su00-h01
+    prefix: 172.16.0.2/31
+---
+(one document per rail: r0, r2, r4, r6, ...)
+
+Errors for the YAML/text types are text/plain "<CODE>: <detail>" (INVALID_FABRIC,
+RAIL_CIDRPOOL_NOT_FOUND, INVALID_RAIL); for application/json the usual envelope.
+
+Single rail:
+
+curl -k -X GET "https://127.0.0.1:8443/fabrics/yml/rails/r0/cidrpool" -H "Accept: text/plain" -H "Authorization: Bearer XXXX"
+
+IPAM config (externally managed fabrics only; ?force=true allows disabling while pools exist):
+
+curl -k -X PATCH "https://localhost:8443/fabrics/ns/ipam/config" -H "Content-Type: application/json" -d '{"enableIpam": true,"enableIpAssign": true}' -H "Authorization: XXXX"
+{"status":"success","message":"IPAM configuration updated successfully.","data":{"fabricName":"ns","enableIpam":true,"enableIpAssign":true,"updatedAt":"2026-09-24T08:57:28.254792109Z","updatedBy":"Aviz Admin"}}
+
+curl -k -X GET "https://localhost:8443/fabrics/ns/ipam/config" -H "Content-Type: application/json" -H "Authorization: XXXX"
+{"status":"success","message":"IPAM configuration retrieved successfully.","data":{"fabricName":"ns","enableIpam":true,"enableIpAssign":true,"updatedAt":"2026-09-24T08:57:28.254792Z","updatedBy":"Aviz Admin"}}
+
+Add a server to a tenant (allocates the IP; HTTP 207 instead of 200 when "partial" is true):
+
+curl -k -X PATCH "https://localhost:8443/fabrics/ns/tenants/gorax" -H "Content-Type: application/json" -d '{"operation":"ADD","servers":[{"serverName":"su00-node00"}]}' -H "Authorization: XXXX"
+{"status":"success","message":"GPU update processed successfully.","data":{"fabricName":"ns","tenantName":"gorax","operation":"ADD","servers":[{"serverName":"su00-node00","status":"SUCCESS","ipAddress":"192.3.0.2/32","ipAssignStatus":"ASSIGNED"}],"partial":false}}
+
+IP allocation of one compute server in a tenant:
+
+curl -k -X GET "https://localhost:8443/fabrics/ns/tenants/gorax/computes/su00-node00/ip-address" -H "Content-Type: application/json" -H "Authorization: XXXX"
+{"status":"success","message":"IP allocation retrieved successfully.","data":{"id":2,"poolId":1,"fabricName":"ns","tenantName":"gorax","tenantId":3,"serverName":"su00-node00","ipAddress":"192.3.0.2","prefixLength":32,"assignStatus":"ASSIGNED","cleanupStatus":"NONE","allocatedAt":"2026-09-24T09:56:21.645313Z"}}
+
+All IP allocations of a tenant (query: page=0, size=50, status=ALLOCATED_ONLY|ASSIGNED|IP_ASSIGN_FAILED):
+
+curl -k -X GET "https://localhost:8443/fabrics/ns/tenants/gorax/ip-addresses" -H "Content-Type: application/json" -H "Authorization: XXXX"
+{"status":"success","message":"IP allocations retrieved successfully.","data":{"fabricName":"ns","tenantName":"gorax","pool":{"cidr":"192.3.0.0/17","allocatableAddressCount":32765,"allocatedCount":1},"allocations":[{"id":2,"poolId":1,"fabricName":"ns","tenantName":"gorax","tenantId":3,"serverName":"su00-node00","ipAddress":"192.3.0.2","prefixLength":32,"assignStatus":"ASSIGNED","cleanupStatus":"NONE","allocatedAt":"2026-09-24T09:56:21.645313Z"}],"pagination":{"page":0,"size":50,"totalElements":1,"totalPages":1}}}
+
+All IP allocations of a compute server (across tenants):
+
+curl -k -X GET "https://localhost:8443/fabrics/ns/computes/su00-node00/ip-addresses" -H "Content-Type: application/json" -H "Authorization: XXXX"
+{"status":"success","message":"IP allocations retrieved successfully.","data":{"fabricName":"ns","serverName":"su00-node00","allocations":[{"id":2,"poolId":1,"fabricName":"ns","tenantName":"gorax","tenantId":3,"serverName":"su00-node00","ipAddress":"192.3.0.2","prefixLength":32,"assignStatus":"ASSIGNED","cleanupStatus":"NONE","allocatedAt":"2026-09-24T09:56:21.645313Z"}]}}

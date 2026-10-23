@@ -327,6 +327,10 @@ type ReqOpts struct {
 	RequestOrigin string
 	// Query holds URL query parameters (nil values are dropped).
 	Query url.Values
+	// Accept overrides the default "Accept: application/json" header. Needed by
+	// endpoints that can return a raw manifest (e.g. YAML) instead of the JSON
+	// envelope.
+	Accept string
 }
 
 // Call executes an HTTP request with a JSON body and decodes the response
@@ -365,6 +369,19 @@ func Call[T any](tr *Transport, method, path string, body any, mode OperationMod
 		}
 	}
 	return &out, nil
+}
+
+// CallText executes a body-less request and returns the 2xx response body
+// verbatim as text — no envelope unwrapping and no JSON decoding. Use it with
+// ReqOpts.Accept for endpoints that serve a raw document (e.g. a YAML
+// manifest). Error responses are mapped exactly as in Call; their plain-text
+// bodies become the error message. An empty body yields "".
+func CallText(tr *Transport, method, path string, ro *ReqOpts) (string, error) {
+	raw, err := tr.doRaw(method, path, "application/json", nil, OperationModeSynchronous, ro)
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
 }
 
 // CallMultipart executes a multipart/form-data request (file upload endpoints)
@@ -483,7 +500,11 @@ func (t *Transport) sendRaw(method, fullURL, contentType string, payload []byte,
 	if err != nil {
 		return nil, &TransportError{Message: "failed to build request", Cause: err}
 	}
-	authHeaders := map[string]string{"Content-Type": contentType, "Accept": "application/json"}
+	accept := "application/json"
+	if ro != nil && ro.Accept != "" {
+		accept = ro.Accept
+	}
+	authHeaders := map[string]string{"Content-Type": contentType, "Accept": accept}
 	t.auth.Apply(authHeaders)
 	for k, v := range authHeaders {
 		req.Header.Set(k, v)

@@ -186,6 +186,63 @@ print(op.id, op.webhook_registered)
 The SDK does not implement the receiver — you build that on your side.
 The server will POST the operation result to `webhook_url` on completion.
 
+## IPAM and rail CIDRPools
+
+Seven functions in `ones_gfx.apis` cover per-fabric IPAM and the rail CIDRPool
+manifests (typed responses are `TypedDict`s in `ones_gfx._types`).
+
+```python
+from ones_gfx import Client
+from ones_gfx.apis import (
+    get_rail_cidr_pools, get_rail_cidr_pool, update_ipam_config, get_ipam_config,
+    update_tenant, get_tenant_compute_ip, get_tenant_ips, get_server_ips,
+)
+
+client = Client.initialize_with_token("https://10.4.5.76:8089", token)
+
+# Rail CIDRPool manifests — raw YAML by default; accept= picks the representation:
+# "application/yaml" | "application/x-yaml" | "text/plain" (all a str) or
+# "application/json" ({"fabricName", "rails", "yaml"}).
+manifest = get_rail_cidr_pools(client, "yml")
+r0 = get_rail_cidr_pool(client, "yml", "r0")
+
+# Per-fabric IPAM switches (externally managed fabrics only)
+update_ipam_config(client, "ns", enableIpam=True, enableIpAssign=True)
+get_ipam_config(client, "ns")
+update_ipam_config(client, "ns", enableIpam=False, enableIpAssign=False, force=True)
+
+# Adding a server to a tenant allocates (and, with enableIpAssign, assigns) its IP
+res = update_tenant(client, "ns", "gorax", operation="ADD",
+                    servers=[{"serverName": "su00-node00"}])
+res["servers"][0]["ipAddress"]      # "192.3.0.2/32"
+res["partial"]                      # True when any server failed (HTTP 207)
+
+get_tenant_compute_ip(client, "ns", "gorax", "su00-node00")   # one allocation
+get_tenant_ips(client, "ns", "gorax", page=0, size=50, status="ASSIGNED")
+get_server_ips(client, "ns", "su00-node00")                   # across tenants
+```
+
+Behaviour worth knowing:
+
+- Arguments are validated before any request: blank names, non-bool switches,
+  `enableIpAssign` without `enableIpam`, `page < 0`, `size < 1`, unknown
+  `status` / `accept` raise `ValueError`. Path parameters are URL-quoted.
+- A partial IPAM result is HTTP **207**, which is a success status — no
+  exception; check `res["partial"]`.
+- Failures raise `requests.HTTPError`. The server's error code is in
+  `exc.response.json()["error"]["code"]` (e.g. `IPAM_HAS_ACTIVE_POOLS`,
+  `FABRIC_NOT_EXTERNALLY_MANAGED`, `IPAM_NOT_CONFIGURED`, `INVALID_RAIL`). For the
+  YAML/text rail representations the error body is plain text
+  `"<CODE>: <detail>"` (`exc.response.text`).
+- `create_tenant(..., tenantDhcpCidrPool="192.3.0.0/17")` sets the tenant's IPAM
+  pool; the server requires it when IPAM is on and the fabric has no tenant
+  compute pool to derive one from (`IPAM_CIDR_REQUIRED`). It is validated before
+  the request — IPv4, prefix /8–/30, surrounding whitespace stripped — and raises
+  `ValueError` otherwise. The Terraform provider (`fabricapi_tenant.tenant_dhcp_cidr_pool`)
+  applies the same rule, the same 207 handling and surfaces the same error codes.
+
+Run the tests (unit + a fake Fabric Manager over real HTTP) with `make test`.
+
 ## Partial GPU allocation
 
 Map or unmap specific GPU indices to a tenant on a shared server. This

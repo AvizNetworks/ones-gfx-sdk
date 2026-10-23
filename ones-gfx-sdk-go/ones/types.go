@@ -49,6 +49,7 @@ type (
 	TokenAuth            = ones_gfx.TokenAuth
 	Transport            = ones_gfx.Transport
 	TransportError       = ones_gfx.TransportError
+	ValidationError      = ones_gfx.ValidationError
 )
 
 // --- request/response types -------------------------------------------------
@@ -77,10 +78,16 @@ type (
 	GpuPortAssignmentResult   = resources.GpuPortAssignmentResult
 	GpuServerInfo             = resources.GpuServerInfo
 	GpuTenantMappingItem      = resources.GpuTenantMappingItem
+	GpuUpdateResult           = resources.GpuUpdateResult
 	HostAction                = resources.HostAction
 	HostItem                  = resources.HostItem
 	HosttenantsRecord         = resources.HosttenantsRecord
 	ImageUpgradeDetailsItem   = resources.ImageUpgradeDetailsItem
+	IpAllocation              = resources.IpAllocation
+	IpAssignStatus            = resources.IpAssignStatus
+	IpCleanupStatus           = resources.IpCleanupStatus
+	IpamConfig                = resources.IpamConfig
+	IpamServerResult          = resources.IpamServerResult
 	IntentItem                = resources.IntentItem
 	InventoryItem             = resources.InventoryItem
 	InventoryRecord           = resources.InventoryRecord
@@ -92,10 +99,17 @@ type (
 	NmxcProbeResult           = resources.NmxcProbeResult
 	NmxcResetResult           = resources.NmxcResetResult
 	OperationStatusItem       = resources.OperationStatusItem
+	Pagination                = resources.Pagination
+	RailAccept                = resources.RailAccept
+	RailCidrPool              = resources.RailCidrPool
+	RailCidrPools             = resources.RailCidrPools
 	RMAInfoItem               = resources.RMAInfoItem
 	RMAInfoRecord             = resources.RMAInfoRecord
 	RMAStatusItem             = resources.RMAStatusItem
+	ServerIpAllocations       = resources.ServerIpAllocations
 	SuidMap                   = resources.SuidMap
+	TenantIpAllocations       = resources.TenantIpAllocations
+	TenantIpPool              = resources.TenantIpPool
 	TriggerBootstrapResult    = resources.TriggerBootstrapResult
 	UfmCredsResult            = resources.UfmCredsResult
 	UploadFileResult          = resources.UploadFileResult
@@ -106,24 +120,33 @@ type (
 // --- enum constants ---------------------------------------------------------
 
 const (
-	GpuActionAdd              = ones_gfx.GpuActionAdd
-	GpuActionDelete           = ones_gfx.GpuActionDelete
-	OperationAdd              = ones_gfx.OperationAdd
-	OperationDelete           = ones_gfx.OperationDelete
-	OperationStatusPending    = ones_gfx.OperationStatusPending
-	OperationStatusRunning    = ones_gfx.OperationStatusRunning
-	OperationStatusSuccess    = ones_gfx.OperationStatusSuccess
-	OperationStatusFailure    = ones_gfx.OperationStatusFailure
-	OperationModeSynchronous  = ones_gfx.OperationModeSynchronous
-	OperationModeAsyncPoll    = ones_gfx.OperationModeAsyncPoll
-	OperationModeAsyncWebhook = ones_gfx.OperationModeAsyncWebhook
-	ConfigScopeWholeServer    = resources.ConfigScopeWholeServer
-	ConfigScopeParticularGPU  = resources.ConfigScopeParticularGPU
-	HostActionAdd             = resources.HostActionAdd
-	HostActionDelete          = resources.HostActionDelete
-	NetOpsActionVlan          = resources.NetOpsActionVlan
-	NetOpsActionPortChange    = resources.NetOpsActionPortChange
-	NetOpsActionVlanMember    = resources.NetOpsActionVlanMember
+	GpuActionAdd                = ones_gfx.GpuActionAdd
+	GpuActionDelete             = ones_gfx.GpuActionDelete
+	OperationAdd                = ones_gfx.OperationAdd
+	OperationDelete             = ones_gfx.OperationDelete
+	OperationStatusPending      = ones_gfx.OperationStatusPending
+	OperationStatusRunning      = ones_gfx.OperationStatusRunning
+	OperationStatusSuccess      = ones_gfx.OperationStatusSuccess
+	OperationStatusFailure      = ones_gfx.OperationStatusFailure
+	OperationModeSynchronous    = ones_gfx.OperationModeSynchronous
+	OperationModeAsyncPoll      = ones_gfx.OperationModeAsyncPoll
+	OperationModeAsyncWebhook   = ones_gfx.OperationModeAsyncWebhook
+	ConfigScopeWholeServer      = resources.ConfigScopeWholeServer
+	ConfigScopeParticularGPU    = resources.ConfigScopeParticularGPU
+	HostActionAdd               = resources.HostActionAdd
+	HostActionDelete            = resources.HostActionDelete
+	NetOpsActionVlan            = resources.NetOpsActionVlan
+	NetOpsActionPortChange      = resources.NetOpsActionPortChange
+	NetOpsActionVlanMember      = resources.NetOpsActionVlanMember
+	RailAcceptYAML              = resources.RailAcceptYAML
+	RailAcceptXYAML             = resources.RailAcceptXYAML
+	RailAcceptText              = resources.RailAcceptText
+	RailAcceptJSON              = resources.RailAcceptJSON
+	IpAssignStatusAllocatedOnly = resources.IpAssignStatusAllocatedOnly
+	IpAssignStatusAssigned      = resources.IpAssignStatusAssigned
+	IpAssignStatusAssignFailed  = resources.IpAssignStatusAssignFailed
+	IpCleanupStatusNone         = resources.IpCleanupStatusNone
+	IpCleanupStatusPending      = resources.IpCleanupStatusPending
 )
 
 // --- errors -----------------------------------------------------------------
@@ -148,6 +171,9 @@ var (
 
 	// WithIdempotencyKey replays a prior async operation instead of duplicating it.
 	WithIdempotencyKey = ones_gfx.WithIdempotencyKey
+
+	// WithTenantDhcpCidrPool sets the tenant IPAM pool on tenant creation.
+	WithTenantDhcpCidrPool = ones_gfx.WithTenantDhcpCidrPool
 
 	// WithRequestOrigin sets the x-request-origin header.
 	WithRequestOrigin = ones_gfx.WithRequestOrigin

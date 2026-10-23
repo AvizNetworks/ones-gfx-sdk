@@ -53,6 +53,9 @@ Issues = "https://github.com/aviznetworks/ones-gfx-sdk/issues"
 include = ["ones_gfx*"]
 exclude = ["examples*", "tests*"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 # Ships the PEP 561 marker so mypy/pyright/IDEs honour our annotations.
 [tool.setuptools.package-data]
 ones_gfx = ["py.typed"]
