@@ -2,6 +2,7 @@ package resources
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 )
@@ -14,6 +15,19 @@ type GPUResource struct {
 // NewGPUResource constructs a GPUResource.
 func NewGPUResource(transport *ones_gfx.Transport) *GPUResource {
 	return &GPUResource{transport: transport}
+}
+
+// GpuTenantMappingItem mirrors Models/GpuTenantMapping.java JSON.
+type GpuTenantMappingItem struct {
+	ID             int    `json:"id,omitempty"`
+	FabricName     string `json:"fabricName,omitempty"`
+	ServerName     string `json:"serverName,omitempty"`
+	GPUIndex       *int   `json:"gpuIndex,omitempty"`
+	LogicalGpuName string `json:"logicalGpuName,omitempty"`
+	TenantName     string `json:"tenantName,omitempty"`
+	ConfigStatus   string `json:"configStatus,omitempty"`
+	CreatedAt      string `json:"createdAt,omitempty"`
+	UpdatedAt      string `json:"updatedAt,omitempty"`
 }
 
 // AvailableServerResult mirrors Cumulus/dto/AvailableServer.java.
@@ -45,6 +59,20 @@ func (r *GPUResource) AssignPorts(ctx context.Context, fabricName, tenantName st
 		Membership  *string            `json:"membership,omitempty"`
 	}{operation, serverNames, gpuIds, membership}
 	return ones_gfx.Call[GpuPortAssignmentResult](r.transport, "POST", "fabrics/"+fabricName+"/tenants/"+tenantName+"/gpus", body, ones_gfx.OperationModeSynchronous, nil)
+}
+
+// TenantMappings returns per-GPU logical tenant mappings, optionally filtered
+// by tenant. Maps to GET /fabrics/{fabricName}/gpuTenantMappings.
+func (r *GPUResource) TenantMappings(ctx context.Context, fabricName string, tenantName *string) ([]GpuTenantMappingItem, error) {
+	q := url.Values{}
+	if tenantName != nil {
+		q.Set("tenantName", *tenantName)
+	}
+	res, err := ones_gfx.Call[[]GpuTenantMappingItem](r.transport, "GET", "fabrics/"+fabricName+"/gpuTenantMappings", nil, ones_gfx.OperationModeSynchronous, &ones_gfx.ReqOpts{Query: q})
+	if err != nil || res == nil {
+		return nil, err
+	}
+	return *res, nil
 }
 
 // AvailableServers lists servers with free GPUs in a fabric.
