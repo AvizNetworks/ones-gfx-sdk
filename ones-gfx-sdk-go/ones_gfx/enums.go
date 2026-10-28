@@ -56,6 +56,27 @@ func (s OperationStatus) String() string {
 	return string(s)
 }
 
+// Valid reports whether s is one of the four states FM reports.
+func (s OperationStatus) Valid() bool {
+	switch s {
+	case OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure:
+		return true
+	}
+	return false
+}
+
+// ParseOperationStatus converts external input into an OperationStatus. It is
+// case-insensitive; anything other than PENDING, RUNNING, SUCCESS or FAILURE
+// is an error.
+func ParseOperationStatus(s string) (OperationStatus, error) {
+	st := OperationStatus(strings.ToUpper(strings.TrimSpace(s)))
+	if !st.Valid() {
+		return "", fmt.Errorf("invalid operation status %q: want one of %s, %s, %s, %s",
+			s, OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure)
+	}
+	return st, nil
+}
+
 // ConfigStatus is a device's configuration state, as Fabric Manager reports it
 // in the config_status field.
 //

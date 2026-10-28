@@ -113,6 +113,9 @@ func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID s
 // not a failure — so this returns them rather than waiting for a PASS that
 // will never come.
 func (r *TenantsResource) WaitForTenantConfigApplied(ctx context.Context, fabricName, tenantName string, opts WaitOptions) (*ones_gfx.Tenant, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	o := opts.withDefaults()
 	started := time.Now()
 	deadline := started.Add(o.Timeout)

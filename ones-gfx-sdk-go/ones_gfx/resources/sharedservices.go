@@ -62,6 +62,9 @@ type SharedServices struct {
 // excluding 500-1020, 3725-3999, 69, 100 and 110, and unused by another
 // tenant. description is at most 60 characters. anycastGateway may be nil.
 func (r *SharedServicesResource) Create(ctx context.Context, fabricName, tenantName string, vlanID int, description *string, anycastGateway *ones_gfx.AnycastGateway, opts ...ones_gfx.CallOption) (*SharedServices, error) {
+	if err := firstErr(pathName("fabricName", fabricName), required("tenantName", tenantName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		TenantName     string                   `json:"tenantName"`
@@ -76,6 +79,9 @@ func (r *SharedServicesResource) Create(ctx context.Context, fabricName, tenantN
 // Maps to GET /fabrics/{fabricName}/shared-services.
 // A fabric with none answers 404 SHARED_SERVICES_NOT_FOUND.
 func (r *SharedServicesResource) Get(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (*SharedServices, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[SharedServices](r.transport, "GET", "fabrics/"+fabricName+"/shared-services", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -88,6 +94,9 @@ func (r *SharedServicesResource) Get(ctx context.Context, fabricName string, opt
 // any remain. If a delete fails partway the tenant is kept, so calling this
 // again is safe and is how a partial failure is retried.
 func (r *SharedServicesResource) Delete(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[ApiResponseMessage](r.transport, "DELETE", "fabrics/"+fabricName+"/shared-services", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }

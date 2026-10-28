@@ -114,6 +114,7 @@ Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 | Nil/missing client | n/a | `ErrNilClient` |
 | Session method on a non-token client | n/a | `ErrNoTokenAuth` |
 | HTTP 4xx/5xx | `requests.HTTPError` | typed: `*AuthenticationError`, `*NotFoundError`, `*ConflictError`, `*ServerError`, … (use `errors.As`) |
+| Invalid argument, caught before sending | n/a (sent to the server) | `*ValidationError`, naming the field ([details](./ones-gfx-sdk-go/README.md#client-side-validation)) |
 
 ### Example: deleting a VPC peering
 

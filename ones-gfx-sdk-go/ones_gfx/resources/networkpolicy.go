@@ -72,6 +72,9 @@ type NetworkPolicyRef struct {
 // Maps to GET /fabrics/{fabricName}/networkpolicy.
 // An unknown fabric answers 404.
 func (r *NetworkPolicyResource) List(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (*NetworkPolicyList, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[NetworkPolicyList](r.transport, "GET", "fabrics/"+fabricName+"/networkpolicy", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -83,6 +86,9 @@ func (r *NetworkPolicyResource) List(ctx context.Context, fabricName string, opt
 // pushed to the border/combined leaves and DPUs, so FM runs a device licence
 // check first and answers 403 when it fails.
 func (r *NetworkPolicyResource) Create(ctx context.Context, fabricName, policyName string, source, destination NetworkPolicySide, opts ...ones_gfx.CallOption) (*NetworkPolicyRef, error) {
+	if err := firstErr(pathName("fabricName", fabricName), newPolicyName(policyName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := NetworkPolicy{
 		Policy: NetworkPolicyName{Name: policyName},
@@ -100,6 +106,9 @@ func (r *NetworkPolicyResource) Create(ctx context.Context, fabricName, policyNa
 // ones to add rather than the full set. A tenant-to-tenant policy has no
 // endpoints and is rejected.
 func (r *NetworkPolicyResource) Patch(ctx context.Context, fabricName, policyName string, source, destination NetworkPolicySide, opts ...ones_gfx.CallOption) (*NetworkPolicyRef, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("policyName", policyName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	// policy.name is echoed into the body as well as the path: FM validates a
 	// patch with the same check it uses for a create, which rejects a body
@@ -114,6 +123,9 @@ func (r *NetworkPolicyResource) Patch(ctx context.Context, fabricName, policyNam
 // Delete removes a policy and its config from the devices it was pushed to.
 // Maps to DELETE /fabrics/{fabricName}/networkpolicy/{policyName}.
 func (r *NetworkPolicyResource) Delete(ctx context.Context, fabricName, policyName string, opts ...ones_gfx.CallOption) (*NetworkPolicyRef, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("policyName", policyName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[NetworkPolicyRef](r.transport, "DELETE", "fabrics/"+fabricName+"/networkpolicy/"+policyName, nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }

@@ -96,6 +96,9 @@ type ServerIPList struct {
 // Maps to GET /fabrics/{fabricName}/ipam/config.
 // An unknown fabric answers 404.
 func (r *IpamResource) GetConfig(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (*IpamConfig, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[IpamConfig](r.transport, "GET", "fabrics/"+fabricName+"/ipam/config", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -112,6 +115,9 @@ func (r *IpamResource) GetConfig(ctx context.Context, fabricName string, opts ..
 // others answer 409 FABRIC_NOT_EXTERNALLY_MANAGED. 404 when the fabric is
 // unknown.
 func (r *IpamResource) UpdateConfig(ctx context.Context, fabricName string, cfg IpamConfig, force bool, opts ...ones_gfx.CallOption) (*IpamConfig, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	ro := rc.ReqOpts()
 	if force {
@@ -132,6 +138,9 @@ func (r *IpamResource) UpdateConfig(ctx context.Context, fabricName string, cfg 
 // when not positive. status filters by assignment state — pass "" for no
 // filter. A tenant with no pool answers 404 IPAM_NOT_CONFIGURED.
 func (r *IpamResource) TenantIPs(ctx context.Context, fabricName, tenantName string, page, size int, status string, opts ...ones_gfx.CallOption) (*TenantIPList, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	ro := rc.ReqOpts()
 	q := url.Values{}
@@ -155,6 +164,9 @@ func (r *IpamResource) TenantIPs(ctx context.Context, fabricName, tenantName str
 // Maps to GET /fabrics/{fabricName}/computes/{serverName}/ip-addresses.
 // A server missing from the fabric inventory answers 404 SERVER_NOT_FOUND.
 func (r *IpamResource) ServerIPs(ctx context.Context, fabricName, serverName string, opts ...ones_gfx.CallOption) (*ServerIPList, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("serverName", serverName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[ServerIPList](r.transport, "GET", "fabrics/"+fabricName+"/computes/"+serverName+"/ip-addresses", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -168,6 +180,9 @@ func (r *IpamResource) ServerIPs(ctx context.Context, fabricName, serverName str
 // SERVER_NOT_ALLOCATED_TO_TENANT when it has one but this server holds no
 // address in it.
 func (r *IpamResource) TenantComputeIP(ctx context.Context, fabricName, tenantName, serverName string, opts ...ones_gfx.CallOption) (IpamAllocation, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), pathName("serverName", serverName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	res, err := ones_gfx.Call[IpamAllocation](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName+"/computes/"+serverName+"/ip-address", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {

@@ -188,3 +188,19 @@ func (e *SyncPatchTimeoutError) ONESError()    {}
 
 // IsTimeout reports true: the underlying cause was a timeout.
 func (e *SyncPatchTimeoutError) IsTimeout() bool { return true }
+
+// ValidationError reports an argument the SDK rejected before sending any
+// request. Nothing reached the server, so the call is safe to fix and retry.
+//
+// Field names the argument as the API spells it (for example fabricName or
+// maxGpusAllowed); Message says what was wrong and what is accepted.
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("invalid %s: %s", e.Field, e.Message)
+}
+
+func (e *ValidationError) ONESError() {}

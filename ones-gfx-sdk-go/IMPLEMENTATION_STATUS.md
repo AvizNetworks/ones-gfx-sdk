@@ -50,24 +50,37 @@ into a typed result, unwrapping the `{"data": ...}` envelope exactly as the
 Python client does. The legacy `Get/Post/Patch/Delete` methods remain for
 back-compat but are no longer used by the resources.
 
-## Open-payload leaves (6)
+## Typed responses
 
-The following returns fall back to `map[string]interface{}` because the Java
-service layer itself returns `Map<String,Object>`:
+Every resource method returns a typed result. The responses FM builds as a
+`Map<String,Object>` are modelled from the Java source:
 
-- `Tenants.List`, `Tenants.Get`
-- `Inventory.Ports`, `Inventory.UFMHosts`, `Inventory.Sync`
-- `NMXC.Inventory`
+- `Tenants.List`, `Tenants.Get` → `[]ones_gfx.Tenant`, `*ones_gfx.Tenant`
+- `Inventory.Ports` → `*InventoryPortsResult`
+- `Inventory.UFMHosts` → `*UFMHostsResult`
+- `Inventory.Sync` → `*InventorySyncResult`
+- `NMXC.Inventory` → `*NmxcInventory`
+
+Each keeps top-level keys it does not model in an `Extra` field, and has a
+`...Raw` twin (`ListRaw`, `GetRaw`, `PortsRaw`, `UFMHostsRaw`, `SyncRaw`,
+`InventoryRaw`) that returns the response as `map[string]interface{}`.
+
+## Client-side validation
+
+`resources/validation.go` checks every method's arguments before a request is
+built and returns `*ones_gfx.ValidationError` (an `ONESError`). See the
+README's "Client-side validation" section for the rules.
 
 ## Resource method index
 
 | Resource | Methods |
 |---|---|
 | `Fabrics` | ListDTOs |
-| `Tenants` | Create/CreateAsync, List, Get, Delete/DeleteAsync, Update/UpdateAsync, ModifyAllocations/ModifyAllocationsAsync |
-| `GPU` | AssignPorts, AvailableServers |
+| `Tenants` | Create/CreateAsync, CreateWith/CreateAsyncWith, List/ListRaw, Get/GetRaw, Delete/DeleteAsync, Update/UpdateAsync, UpdateWith/UpdateAsyncWith, ModifyAllocations/ModifyAllocationsAsync, ModifyAllocationsWith/ModifyAllocationsAsyncWith |
+| `GPU` | AssignPorts, AssignPortsWith, AvailableServers |
 | `VPCPeering` | Create/CreateAsync, Delete |
 | `Devices` | ValidateUFMCreds |
-| `Inventory` | Ports, UFMHosts, Sync |
-| `NMXC` | UpdateDomains, ProbeDomains, Inventory, Reset, FactoryReset |
+| `Inventory` | Ports/PortsRaw, UFMHosts/UFMHostsRaw, Sync/SyncRaw |
+| `NMXC` | UpdateDomains, ProbeDomains, Inventory/InventoryRaw, Reset, FactoryReset |
 | `Operations` | Get |
+| `VFs` | List, Assign, Unassign |

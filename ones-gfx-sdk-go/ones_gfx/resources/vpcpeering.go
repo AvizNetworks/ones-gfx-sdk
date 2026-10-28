@@ -40,6 +40,9 @@ func (r *VPCPeeringResource) buildPayload(name, vpcname, peervpcname string, rc 
 // Create enables route leaking between two VPCs (synchronous).
 // Maps to POST /fabrics/{fabricName}/vpcpeering.
 func (r *VPCPeeringResource) Create(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...ones_gfx.CallOption) (string, error) {
+	if err := firstErr(pathName("fabricName", fabricName), peeringFields(name, vpcname, peervpcname)); err != nil {
+		return "", err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := r.buildPayload(name, vpcname, peervpcname, rc)
 	res, err := ones_gfx.Call[string](r.transport, "POST", "fabrics/"+fabricName+"/vpcpeering", body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
@@ -51,6 +54,9 @@ func (r *VPCPeeringResource) Create(ctx context.Context, fabricName, name, vpcna
 
 // CreateAsync enables route leaking and returns the 202 operation handle.
 func (r *VPCPeeringResource) CreateAsync(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
+	if err := firstErr(pathName("fabricName", fabricName), peeringFields(name, vpcname, peervpcname)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := r.buildPayload(name, vpcname, peervpcname, rc)
 	return ones_gfx.Call[ones_gfx.OperationAccepted](r.transport, "POST", "fabrics/"+fabricName+"/vpcpeering", body, ones_gfx.OperationModeAsyncPoll, rc.ReqOpts())
@@ -75,6 +81,9 @@ type deletePeeringPayload struct {
 // as *NotFoundError, *BadRequestError and *ServerError respectively, with the
 // full envelope (including error.code) in ResponseBody.
 func (r *VPCPeeringResource) Delete(ctx context.Context, fabricName, name, vpcname, peervpcname string, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := firstErr(pathName("fabricName", fabricName), peeringFields(name, vpcname, peervpcname)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := deletePeeringPayload{Name: name, Vpcname: vpcname, Peervpcname: peervpcname}
 	return ones_gfx.Call[ApiResponseMessage](r.transport, "DELETE", "fabrics/"+fabricName+"/vpcpeering", body, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
