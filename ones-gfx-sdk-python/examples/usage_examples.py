@@ -37,6 +37,7 @@ Single actions (each honours --mode where the endpoint supports it):
     --action gpu-allocations  map/unmap individual GPUs (--gpus G0,G1 --su-id 0)
     --action inventory-sync   force a UFM inventory sync
     --action vpcpeering       create a VPC peering
+    --action vpcpeering-delete  delete a VPC peering (same name flags as create)
     --action error-handling   deliberately trigger and catch SDK errors
 
     python examples/usage_examples.py -u ... -U ... -P ... -f my-fabric \
@@ -57,9 +58,9 @@ All flags:
     --gpu-ids          comma-separated GPU port ids
     --gpus             comma-separated GPU names (G0,G1,...)
     --su-id            SU index for --action gpu-allocations  (default: 0)
-    --peering-name     peering name for --action vpcpeering
-    --vpc-name         VPC name for --action vpcpeering
-    --peer-vpc-name    peer VPC name for --action vpcpeering
+    --peering-name     peering name for --action vpcpeering[-delete]
+    --vpc-name         VPC name for --action vpcpeering[-delete]
+    --peer-vpc-name    peer VPC name for --action vpcpeering[-delete]
     --webhook-url      receiver URL, required for --mode async-webhook
     --poll-interval    seconds between polls              (default: 5)
     --poll-attempts    max poll attempts                  (default: 60)
@@ -75,6 +76,8 @@ import sys
 import time
 from typing import Any
 
+import requests
+
 # Run straight from a checkout without installing.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -84,6 +87,7 @@ from ones_gfx.apis import (
     create_tenant,
     create_vpc_peering,
     delete_tenant,
+    delete_vpc_peering,
     get_available_servers,
     get_fabrics,
     get_operation,
@@ -275,11 +279,17 @@ def scenario_inventory_sync(client: Client, args: argparse.Namespace) -> None:
     print(f"  -> {inventory_sync(client, args.fabric)}")
 
 
-def scenario_vpcpeering(client: Client, args: argparse.Namespace) -> bool:
+def peering_names(args: argparse.Namespace) -> tuple[str, str, str]:
+    """(peering, vpc, peer) from the flags, defaulting from the tenant name."""
     name = args.tenant_name or default_tenant_name(args.mode)
     vpc = args.vpc_name or f"{name}-{args.fabric}-north-south"
     peer = args.peer_vpc_name or f"{args.fabric}-Storage-VPC"
     peering = args.peering_name or f"{name}-storage-route-leak"
+    return peering, vpc, peer
+
+
+def scenario_vpcpeering(client: Client, args: argparse.Namespace) -> bool:
+    peering, vpc, peer = peering_names(args)
     print(f"Creating VPC peering {peering!r}: {vpc!r} <-> {peer!r} ({args.mode})...")
     result = create_vpc_peering(
         client,
@@ -290,6 +300,26 @@ def scenario_vpcpeering(client: Client, args: argparse.Namespace) -> bool:
         **mode_kwargs(args.mode, args.webhook_url, ["vpcpeering.create"]),
     )
     return settle(client, result, label="vpcpeering", args=args)
+
+
+def scenario_vpcpeering_delete(client: Client, args: argparse.Namespace) -> None:
+    """Delete a peering. Synchronous only; --mode is ignored."""
+    peering, vpc, peer = peering_names(args)
+    print(f"Deleting VPC peering {peering!r}: {vpc!r} <-> {peer!r}...")
+    try:
+        result = delete_vpc_peering(
+            client, args.fabric, name=peering, vpcname=vpc, peervpcname=peer
+        )
+    except requests.HTTPError as e:
+        # FM's error envelope carries a machine-readable code, e.g.
+        # VPC_PEERING_NOT_FOUND (404) or VPC_PEERING_PAIR_MISMATCH (400).
+        try:
+            code = e.response.json().get("error", {}).get("code")
+        except ValueError:
+            code = None
+        print(f"  -> HTTP {e.response.status_code} {code or ''}: {e.response.text}")
+        raise
+    print(f"  -> {result.get('message') if isinstance(result, dict) else result}")
 
 
 def scenario_error_handling(client: Client, args: argparse.Namespace) -> None:
@@ -367,7 +397,7 @@ def parse_args() -> argparse.Namespace:
         choices=[
             "lifecycle", "read-only", "create", "delete", "allocate", "deallocate",
             "assign-ports", "unassign-ports", "gpu-allocations", "inventory-sync",
-            "vpcpeering", "error-handling",
+            "vpcpeering", "vpcpeering-delete", "error-handling",
         ],
         help="scenario to run",
     )
@@ -382,9 +412,9 @@ def parse_args() -> argparse.Namespace:
                         default=[], help="GPU port ids")
     tenant.add_argument("--gpus", type=csv_list, default=[], help="GPU names, G0,G1,...")
     tenant.add_argument("--su-id", type=int, default=0, help="SU index")
-    tenant.add_argument("--peering-name", help="peering name for vpcpeering")
-    tenant.add_argument("--vpc-name", help="VPC name for vpcpeering")
-    tenant.add_argument("--peer-vpc-name", help="peer VPC name for vpcpeering")
+    tenant.add_argument("--peering-name", help="peering name for vpcpeering[-delete]")
+    tenant.add_argument("--vpc-name", help="VPC name for vpcpeering[-delete]")
+    tenant.add_argument("--peer-vpc-name", help="peer VPC name for vpcpeering[-delete]")
 
     poll = p.add_argument_group("async")
     poll.add_argument("--webhook-url", help="receiver URL (async-webhook)")
@@ -427,6 +457,8 @@ def main() -> int:
             scenario_inventory_sync(client, args)
         elif args.action == "vpcpeering":
             scenario_vpcpeering(client, args)
+        elif args.action == "vpcpeering-delete":
+            scenario_vpcpeering_delete(client, args)
         elif args.action == "error-handling":
             scenario_error_handling(client, args)
         return 0

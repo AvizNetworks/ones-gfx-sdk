@@ -24,7 +24,7 @@ DIST_DIR := dist
 
 # All phony — none of these targets produce a file matching the target name.
 .PHONY: help install install-dev build wheel sdist run-example \
-        check clean uninstall reinstall venv
+        check test clean uninstall reinstall venv
 
 # ----------------------------------------------------------------------------
 # help — auto-generated from the `## ` comments after each target.
@@ -78,6 +78,9 @@ run-example:  ## Run examples/usage_example.py against your configured ONES inst
 # ----------------------------------------------------------------------------
 check:  ## Quick import check — verifies the package loads cleanly
 	$(PYTHON) -c "import ones_gfx; print('ones_gfx', ones_gfx.__version__, 'OK')"
+
+test:  ## Run the unit tests (needs the dev extras: make install-dev)
+	$(PYTHON) -m pytest tests
 
 # ----------------------------------------------------------------------------
 # Cleanup — remove build outputs, caches, and bytecode.

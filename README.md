@@ -115,6 +115,54 @@ Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 | Session method on a non-token client | n/a | `ErrNoTokenAuth` |
 | HTTP 4xx/5xx | `requests.HTTPError` | typed: `*AuthenticationError`, `*NotFoundError`, `*ConflictError`, `*ServerError`, … (use `errors.As`) |
 
+### Example: deleting a VPC peering
+
+`DELETE /fabrics/{fabricName}/vpcpeering` is the inverse of creating one. It is
+synchronous only. The peering is addressed by `name`, and Fabric Manager rejects
+the call unless `vpcname`/`peervpcname` match the pair recorded for it. On
+success both SDKs return the `{"status": "success", "message": ...}` envelope.
+
+```python
+import requests
+from ones_gfx.apis import delete_vpc_peering
+
+try:
+    resp = delete_vpc_peering(
+        client, "Fab101",
+        name="tenant1-storage-route-leak",
+        vpcname="tenant1-Fab101-north-south",
+        peervpcname="Fab101-Storage",
+    )
+    print(resp["message"])
+except requests.HTTPError as e:
+    code = e.response.json().get("error", {}).get("code")  # e.g. VPC_PEERING_NOT_FOUND
+    print(e.response.status_code, code)
+```
+
+```go
+resp, err := ones.DeleteVpcPeering(ctx, client, "Fab101",
+    "tenant1-storage-route-leak", "tenant1-Fab101-north-south", "Fab101-Storage")
+var notFound *ones.NotFoundError
+switch {
+case errors.As(err, &notFound):
+    // 404 VPC_PEERING_NOT_FOUND or FABRIC_NOT_FOUND
+case err != nil:
+    log.Fatal(err)
+default:
+    fmt.Println(resp.Message)
+}
+```
+
+| Status | `error.code` | Go error type |
+|---|---|---|
+| 404 | `VPC_PEERING_NOT_FOUND`, `FABRIC_NOT_FOUND` | `*NotFoundError` |
+| 400 | `VPC_PEERING_PAIR_MISMATCH`, `VPC_PEERING_NAME_REQUIRED`, `VPC_NAME_REQUIRED`, `PEER_VPC_NAME_REQUIRED`, `INVALID_VPC_NAME`, `TENANT_NOT_FOUND`, … | `*BadRequestError` |
+| 401 / 403 | — | `*AuthenticationError` |
+| 500 | `VPC_PEERING_DELETE_FAILED` (a switch could not be updated) | `*ServerError` |
+
+In Python the same body is on `e.response`. In Go it is on the error's
+`ResponseBody`.
+
 ---
 
 ## Example — Python

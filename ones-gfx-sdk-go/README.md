@@ -346,6 +346,27 @@ ports, err = client.GPU.AssignPorts(ctx, fabricName, tenantName,
     ones_gfx.GpuActionDelete, []string{"su00-rack00-node00"}, []int{1, 2, 3}, nil)
 ```
 
+### VPC Peering
+
+```go
+// Create route leaking between two VPCs (sync / async)
+msg, err := client.VPCPeering.Create(ctx, fabricName,
+    "tenant1-storage-route-leak", "tenant1-Fab101-north-south", "Fab101-Storage")
+op, err := client.VPCPeering.CreateAsync(ctx, fabricName, name, vpcname, peervpcname)
+
+// Delete it again — synchronous only. name addresses the peering; FM rejects
+// the call (400 VPC_PEERING_PAIR_MISMATCH) unless the VPC pair matches it.
+resp, err := client.VPCPeering.Delete(ctx, fabricName,
+    "tenant1-storage-route-leak", "tenant1-Fab101-north-south", "Fab101-Storage")
+// or: ones.DeleteVpcPeering(ctx, client, fabricName, name, vpcname, peervpcname)
+fmt.Println(resp.Message)                          // *resources.ApiResponseMessage
+```
+
+An unknown peering or fabric returns `*NotFoundError`. A wrong pair or invalid
+name returns `*BadRequestError`, and a switch failure returns `*ServerError`.
+The FM `error.code` (for example `VPC_PEERING_NOT_FOUND`) is in the error's
+`ResponseBody`.
+
 ### Partial GPU Allocation
 
 Map or unmap specific GPUs to a tenant on a shared server. This is distinct
@@ -390,7 +411,8 @@ For per-GPU scope, pass `ptr(resources.ConfigScopeParticularGPU)` as
 ## Operation Modes
 
 Async-capable endpoints (`Tenants.Create/Delete/Update/ModifyAllocations`,
-`VPCPeering.Create`) come in Sync and Async pairs.
+`VPCPeering.Create`) come in Sync and Async pairs. `VPCPeering.Delete` is
+synchronous only.
 
 ### Synchronous (Default)
 
@@ -544,6 +566,13 @@ staticcheck ./...
 ---
 
 ## Testing the SDK
+
+Unit tests run against an in-process `httptest` server, so they need no ONES
+instance:
+
+```bash
+go test ./...      # or: make test
+```
 
 A runnable CLI tour lives in `examples/`:
 

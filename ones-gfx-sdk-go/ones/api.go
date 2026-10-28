@@ -65,6 +65,14 @@ func DeleteTenantAsync(ctx context.Context, client *Client, fabricName, tenantNa
 	return client.Tenants.DeleteAsync(ctx, fabricName, tenantName, opts...)
 }
 
+// DeleteVpcPeering calls VPCPeering.Delete.
+func DeleteVpcPeering(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.Delete(ctx, fabricName, name, vpcname, peervpcname, opts...)
+}
+
 // FactoryResetNmxcDomain calls NMXC.FactoryReset.
 func FactoryResetNmxcDomain(ctx context.Context, client *Client, domainID string) (*NmxcFactoryResetResult, error) {
 	if client == nil {

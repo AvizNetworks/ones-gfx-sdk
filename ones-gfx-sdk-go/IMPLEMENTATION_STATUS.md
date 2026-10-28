@@ -66,7 +66,7 @@ service layer itself returns `Map<String,Object>`:
 | `Fabrics` | ListDTOs |
 | `Tenants` | Create/CreateAsync, List, Get, Delete/DeleteAsync, Update/UpdateAsync, ModifyAllocations/ModifyAllocationsAsync |
 | `GPU` | AssignPorts, AvailableServers |
-| `VPCPeering` | Create/CreateAsync |
+| `VPCPeering` | Create/CreateAsync, Delete |
 | `Devices` | ValidateUFMCreds |
 | `Inventory` | Ports, UFMHosts, Sync |
 | `NMXC` | UpdateDomains, ProbeDomains, Inventory, Reset, FactoryReset |

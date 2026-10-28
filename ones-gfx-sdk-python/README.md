@@ -65,6 +65,15 @@ Ship the `.whl` to partners; they install with:
 pip install ones_gfx_sdk-1.0.0-py3-none-any.whl
 ```
 
+### Running the unit tests
+
+The tests under `tests/` stub the HTTP session, so they need no ONES instance:
+
+```bash
+make install-dev   # pytest + ruff
+make test          # or: python -m pytest tests
+```
+
 ### Running the example without installing
 
 The bundled `examples/usage_example.py` adds the repo root to `sys.path`
@@ -127,6 +136,46 @@ with ONESClient(base_url="https://10.4.5.76:8089", auth=auth) as client:
         server_names=["su00-rack00-node00", "su00-rack01-node18"],
         gpu_ids=[1, 2, 3],
     )
+```
+
+## VPC peering
+
+```python
+import requests
+from ones_gfx import Client
+from ones_gfx.apis import create_vpc_peering, delete_vpc_peering
+
+client = Client.initialize_with_creds("https://10.4.5.76:8089", "admin", "secret")
+
+create_vpc_peering(
+    client, "Fab101",
+    name="tenant1-storage-route-leak",
+    vpcname="tenant1-Fab101-north-south",
+    peervpcname="Fab101-Storage",
+)
+
+# Delete: synchronous only. `name` addresses the peering, and FM rejects the
+# call unless vpcname/peervpcname match the pair recorded for it.
+try:
+    resp = delete_vpc_peering(
+        client, "Fab101",
+        name="tenant1-storage-route-leak",
+        vpcname="tenant1-Fab101-north-south",
+        peervpcname="Fab101-Storage",
+    )
+    print(resp["message"])
+except requests.HTTPError as e:
+    # 404 VPC_PEERING_NOT_FOUND / FABRIC_NOT_FOUND, 400 VPC_PEERING_PAIR_MISMATCH,
+    # 401/403 auth, 500 VPC_PEERING_DELETE_FAILED
+    print(e.response.status_code, e.response.json().get("error", {}).get("code"))
+```
+
+From the CLI example:
+
+```bash
+python examples/usage_examples.py -u ... -U ... -P ... -f Fab101 \
+    --action vpcpeering-delete --peering-name tenant1-storage-route-leak \
+    --vpc-name tenant1-Fab101-north-south --peer-vpc-name Fab101-Storage
 ```
 
 ## Operation modes
