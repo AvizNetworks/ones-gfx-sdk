@@ -74,6 +74,9 @@ func (e *WaitTimeoutError) ONESError() {}
 // A terminal FAILURE is returned as the operation plus a nil error: the wait
 // succeeded, the operation did not. Inspect Status and ErrorMessage.
 func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID string, opts WaitOptions) (*OperationStatusItem, error) {
+	if err := pathName("operationId", operationID); err != nil {
+		return nil, err
+	}
 	o := opts.withDefaults()
 	started := time.Now()
 	deadline := started.Add(o.Timeout)
@@ -81,6 +84,9 @@ func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID s
 
 	for {
 		op, err := r.Get(ctx, operationID)
+		if isValidation(err) {
+			return nil, err // bad input will not fix itself by polling
+		}
 		if err == nil && op != nil {
 			last = op.Status
 			if ones_gfx.OperationStatus(op.Status).IsTerminal() {
@@ -123,6 +129,9 @@ func (r *TenantsResource) WaitForTenantConfigApplied(ctx context.Context, fabric
 
 	for {
 		tn, err := r.Get(ctx, fabricName, tenantName)
+		if isValidation(err) {
+			return nil, err // bad input will not fix itself by polling
+		}
 		if err == nil && tn != nil {
 			last = tn.ConfigStatus
 			if last.IsTerminal() {

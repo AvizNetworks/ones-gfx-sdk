@@ -1,6 +1,7 @@
 package resources
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -167,6 +168,13 @@ func nmxcDomains(domains []NmxcDomain) error {
 // peeringFields checks the three body fields every VPC peering call needs.
 func peeringFields(name, vpcname, peervpcname string) error {
 	return firstErr(required("name", name), required("vpcname", vpcname), required("peervpcname", peervpcname))
+}
+
+// isValidation reports whether err is a client-side validation failure.
+// Polling loops use it to stop at once: retrying cannot fix bad input.
+func isValidation(err error) bool {
+	var ve *ones_gfx.ValidationError
+	return errors.As(err, &ve)
 }
 
 // firstErr returns the first non-nil error.

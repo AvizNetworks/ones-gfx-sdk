@@ -1,10 +1,12 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
 )
@@ -243,5 +245,26 @@ func TestNmxcInventoryStringDomainID(t *testing.T) {
 	}
 	if n.Domains[0].DomainID.String() != "12" {
 		t.Errorf("DomainID = %q", n.Domains[0].DomainID)
+	}
+}
+
+// Invalid input must fail at once, not poll until the wait times out and
+// surface as a WaitTimeoutError. The resources have no transport here, so any
+// attempt to send a request would panic.
+func TestWaitHelpersRejectInvalidInputImmediately(t *testing.T) {
+	ctx := context.Background()
+	opts := WaitOptions{Timeout: time.Minute, Interval: time.Second}
+	started := time.Now()
+
+	_, err := (&OperationsResource{}).WaitForOperation(ctx, "", opts)
+	assertField(t, err, "operationId")
+	_, err = (&OperationsResource{}).WaitForOperation(ctx, "op/1", opts)
+	assertField(t, err, "operationId")
+
+	_, err = (&TenantsResource{}).WaitForTenantConfigApplied(ctx, "f", "", opts)
+	assertField(t, err, "tenantName")
+
+	if waited := time.Since(started); waited > time.Second {
+		t.Errorf("validation failures took %s; they should return without polling", waited)
 	}
 }
