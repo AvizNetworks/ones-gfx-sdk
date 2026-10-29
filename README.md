@@ -165,6 +165,75 @@ default:
 In Python the same body is on `e.response`. In Go it is on the error's
 `ResponseBody`.
 
+### Example: host N-S interfaces from the fabric topology
+
+`GET /fabrics/{fabricName}` on the ONES gateway returns the fabric's topology
+YAML (the file it was deployed from): every device, cable, credential and
+setting. These calls fetch it and keep only what most automation needs: **each
+host's north-south (N-S) interfaces**, and which leaf port each one is cabled to.
+
+A host link is N-S when the leaf at its far end matches a name pattern. The
+defaults cover the three N-S designs ONES generates:
+
+| Pattern | N-S design |
+|---|---|
+| `^leaf-cn` | converged user + storage network |
+| `^leaf-fn` | front-end network |
+| `^leaf-sn` | dedicated storage network |
+
+E-W leaves always carry an `su` token (`leaf-su00-r0`, `leaf-p0-su00-r1`) and
+never match. Pass your own patterns, one or several, for a reference
+architecture that names its leaves differently.
+
+The Host, Leaf and DPU sections are all read, so a cable listed on only one side
+is still found, and duplicates are reported once. On HBN fabrics the path goes
+host VF → DPU → leaf. A VF on DPU interface `pf<N>…` leaves through uplink
+`p<N>`, and the entry also names the DPU (`via`) and its VF interface
+(`viaInterface`, the `vfId` that VF-assign takes). Links to external routers
+(`H<n>`) are ignored, and **credentials are never copied into the output**.
+
+| Purpose | Python | Go |
+|---|---|---|
+| Fetch + extract | `get_fabric_ns_interfaces(client, fabric, leaf_patterns=None)` | `ones.GetFabricNSInterfaces(ctx, client, fabric, ones.NSInterfaceOptions{})` |
+| Raw topology YAML | `get_fabric_yaml(client, fabric)` | `ones.GetFabricYAML(ctx, client, fabric)` |
+| Extract from a file you already have | `extract_ns_interfaces(text, fabric_name=, leaf_patterns=)` | `ones.ExtractNSInterfaces(data, opts)` |
+| Render as YAML | `ns_interfaces_to_yaml(result)` | `result.YAML()` |
+| Command line | `ones-gfx-ns-interfaces` | `go run ./examples/ns_interfaces` |
+
+Both SDKs print byte-identical YAML:
+
+```yaml
+fabric: Test
+leafPatterns:
+  - ^leaf-cn
+  - ^leaf-fn
+  - ^leaf-sn
+hostCount: 128
+interfaceCount: 256
+hosts:
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: enp8s0f1np0
+        leaf: leaf-cn-00
+        leafPort: swp9
+      - interface: enp9s0f1np0
+        leaf: leaf-cn-01
+        leafPort: swp9
+  ...
+```
+
+On an HBN fabric, a path through a DPU looks like this:
+
+```yaml
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: vf0
+        via: hgx-su00-h00-dpu-00
+        viaInterface: pf0vf0_if
+        leaf: leaf-cn-00
+        leafPort: swp9
+```
+
 ### Example: reading VPC peerings
 
 Three read calls, newer FM only (GFX-5658). The gateway does not proxy these

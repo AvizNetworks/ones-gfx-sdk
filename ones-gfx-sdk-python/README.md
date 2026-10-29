@@ -196,6 +196,96 @@ python examples/usage_examples.py -u ... -U ... -P ... -f Fab101 \
     --vpc-name tenant1-Fab101-north-south --peer-vpc-name Fab101-Storage
 ```
 
+## Host N-S interfaces
+
+`GET /fabrics/{fabricName}` on the ONES gateway returns the fabric's topology
+YAML (the file it was deployed from): every device, cable, credential and
+setting. These calls fetch it and keep only what most automation needs: **each
+host's north-south (N-S) interfaces**, and which leaf port each one is cabled to.
+
+A host link is N-S when the leaf at its far end matches a name pattern. The
+defaults cover the three N-S designs ONES generates:
+
+| Pattern | N-S design |
+|---|---|
+| `^leaf-cn` | converged user + storage network |
+| `^leaf-fn` | front-end network |
+| `^leaf-sn` | dedicated storage network |
+
+E-W leaves always carry an `su` token (`leaf-su00-r0`, `leaf-p0-su00-r1`) and
+never match. Pass your own patterns, one or several, for a reference
+architecture that names its leaves differently.
+
+The Host, Leaf and DPU sections are all read, so a cable listed on only one side
+is still found, and duplicates are reported once. On HBN fabrics the path goes
+host VF → DPU → leaf. A VF on DPU interface `pf<N>…` leaves through uplink
+`p<N>`, and the entry also names the DPU (`via`) and its VF interface
+(`viaInterface`, the `vfId` that VF-assign takes). Links to external routers
+(`H<n>`) are ignored, and **credentials are never copied into the output**.
+
+```python
+from ones_gfx import Client, extract_ns_interfaces, ns_interfaces_to_yaml
+from ones_gfx.apis import get_fabric_ns_interfaces, get_fabric_yaml
+
+client = Client.initialize_with_creds("https://10.4.5.76", "admin", "secret")
+
+result = get_fabric_ns_interfaces(client, "Test")                     # default ^leaf-cn, ^leaf-fn, ^leaf-sn
+result = get_fabric_ns_interfaces(client, "Test", leaf_patterns=["^leaf-cn"])         # converged only
+print(ns_interfaces_to_yaml(result))
+
+# Or from a topology file you already downloaded:
+result = extract_ns_interfaces(open("Test_yaml.yaml").read(), fabric_name="Test")
+```
+
+Output:
+
+```yaml
+fabric: Test
+leafPatterns:
+  - ^leaf-cn
+  - ^leaf-fn
+  - ^leaf-sn
+hostCount: 128
+interfaceCount: 256
+hosts:
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: enp8s0f1np0
+        leaf: leaf-cn-00
+        leafPort: swp9
+      - interface: enp9s0f1np0
+        leaf: leaf-cn-01
+        leafPort: swp9
+  ...
+```
+
+On an HBN fabric, a path through a DPU looks like this:
+
+```yaml
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: vf0
+        via: hgx-su00-h00-dpu-00
+        viaInterface: pf0vf0_if
+        leaf: leaf-cn-00
+        leafPort: swp9
+```
+
+`get_fabric_ns_interfaces` raises `requests.HTTPError` when the gateway has no
+topology for the fabric (404), and `ones_gfx.TopologyError` when the response is
+not a topology. That usually means an HTML page, from a gateway without the
+route.
+
+Command line (installed with the package):
+
+```bash
+ones-gfx-ns-interfaces Test_yaml.yaml --fabric Test -o ns.yaml           # from a file
+ones-gfx-ns-interfaces --url https://<ones> -U admin -P '<pw>' --fabric Test \
+    --leaf-pattern '^leaf-cn'                                         # fetch; converged only
+```
+
+This adds **PyYAML** (`pyyaml>=5.4`) as a dependency.
+
 ## Operation modes
 
 Mutating methods (`create`, `delete`, `allocate_gpus`, `deallocate_gpus`)

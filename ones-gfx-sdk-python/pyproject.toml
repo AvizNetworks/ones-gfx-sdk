@@ -31,6 +31,7 @@ classifiers = [
 ]
 dependencies = [
     "requests>=2.28",
+    "pyyaml>=5.4",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +39,9 @@ dev = [
     "pytest>=7",
     "ruff>=0.1",
 ]
+
+[project.scripts]
+ones-gfx-ns-interfaces = "ones_gfx.topology:main"
 
 [project.urls]
 Homepage = "https://github.com/aviznetworks/ones-gfx-sdk"

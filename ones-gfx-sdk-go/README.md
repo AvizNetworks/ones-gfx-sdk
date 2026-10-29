@@ -404,6 +404,73 @@ for _, p := range tl.Peerings {
 `ones.VPCPeeringOriginNetworkPolicy`. Peerings made by a VRF-LITE network
 policy are not recorded here; `NetworkPolicy.List` is their system of record.
 
+### Host N-S interfaces
+
+`GET /fabrics/{fabricName}` on the ONES gateway returns the fabric's topology
+YAML (the file it was deployed from): every device, cable, credential and
+setting. These calls fetch it and keep only what most automation needs: **each
+host's north-south (N-S) interfaces**, and which leaf port each one is cabled to.
+
+A host link is N-S when the leaf at its far end matches a name pattern. The
+defaults (`ones.DefaultNSLeafPatterns`) cover the three N-S designs ONES
+generates:
+
+| Pattern | N-S design |
+|---|---|
+| `^leaf-cn` | converged user + storage network |
+| `^leaf-fn` | front-end network |
+| `^leaf-sn` | dedicated storage network |
+
+E-W leaves always carry an `su` token (`leaf-su00-r0`, `leaf-p0-su00-r1`) and
+never match. Pass your own patterns, one or several, for a reference
+architecture that names its leaves differently.
+
+The Host, Leaf and DPU sections are all read, so a cable listed on only one side
+is still found, and duplicates are reported once. On HBN fabrics the path goes
+host VF → DPU → leaf. A VF on DPU interface `pf<N>…` leaves through uplink
+`p<N>`, and the entry also sets `Via` (the DPU) and `ViaInterface` (its VF
+interface, the `vfId` that `AssignVfInterface` takes). Links to external
+routers (`H<n>`) are ignored, and **credentials are never copied into the
+output**.
+
+```go
+// Fetch + extract (default ^leaf-cn, ^leaf-fn, ^leaf-sn)
+ns, err := ones.GetFabricNSInterfaces(ctx, client, "Test", ones.NSInterfaceOptions{})
+ns, err = ones.GetFabricNSInterfaces(ctx, client, "Test", ones.NSInterfaceOptions{
+    LeafPatterns: []string{"^leaf-cn"}, // converged only
+})
+for _, h := range ns.Hosts {
+    for _, i := range h.NSInterfaces {
+        fmt.Println(h.Host, i.Interface, "->", i.Leaf, i.LeafPort, i.Via) // Via: DPU, HBN only
+    }
+}
+y, _ := ns.YAML() // same bytes as the Python SDK
+
+// Or from a topology file you already have
+data, _ := os.ReadFile("Test_yaml.yaml")
+ns, err = ones.ExtractNSInterfaces(data, ones.NSInterfaceOptions{FabricName: "Test"})
+
+// The raw topology YAML
+text, err := ones.GetFabricYAML(ctx, client, "Test")
+```
+
+The resource forms are `client.Fabrics.TopologyYAML` and
+`client.Fabrics.NSInterfaces`. A fabric with no topology returns
+`*NotFoundError`. A response that is not a topology returns
+`*ones.TopologyError`; that usually means an HTML page, from a gateway without
+the route.
+
+Command line:
+
+```bash
+go run ./examples/ns_interfaces -file Test_yaml.yaml -fabric Test -o ns.yaml
+go run ./examples/ns_interfaces -url https://<ones> -user admin -pass '<pw>' -fabric Test \
+    -leaf-pattern '^leaf-cn'
+```
+
+This adds **`gopkg.in/yaml.v3` v3.0.1**, the module's first external
+dependency. Its checksums are recorded in `go.sum`.
+
 ### Request structs
 
 The calls that take several optional pointers also accept a request struct.
@@ -867,6 +934,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 │   ├── models.go               # Operation struct + timestamp parsing
 │   ├── options.go              # Functional call options
 │   ├── timestamp.go            # Timestamp: FM time values, kept as sent
+│   ├── topology.go             # N-S interface extraction from a fabric YAML
 │   └── resources/              # One file per API domain (20 endpoints)
 │       ├── devices.go
 │       ├── fabrics.go
@@ -881,6 +949,7 @@ ones-gfx-sdk/ones-gfx-sdk-go/
 │       └── vpcpeering.go
 └── examples/
     ├── usage_examples.go       # Runnable CLI tour
+    ├── ns_interfaces/main.go   # Host N-S interfaces as YAML
     └── index/main.go           # Minimal login + fabrics walkthrough
 ```
 

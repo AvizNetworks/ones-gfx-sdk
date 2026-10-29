@@ -1,0 +1,54 @@
+fabric: EW
+leafPatterns:
+  - ^leaf-cn
+  - ^leaf-fn
+  - ^leaf-sn
+hostCount: 4
+interfaceCount: 10
+hosts:
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: enp8s0f1np0
+        leaf: leaf-cn-00
+        leafPort: swp9
+      - interface: enp9s0f1np0
+        leaf: leaf-cn-01
+        leafPort: swp9
+  - host: hgx-su00-h01
+    nsInterfaces:
+      - interface: enp8s0f1np0
+        leaf: leaf-cn-00
+        leafPort: swp10
+      - interface: enp9s0f1np0
+        leaf: leaf-cn-01
+        leafPort: swp10
+  - host: hgx-su00-h02
+    nsInterfaces:
+      - interface: enp12s0f1np0
+        leaf: leaf-sn-00
+        leafPort: swp5
+      - interface: enp8s0f1np0
+        leaf: leaf-fn-00
+        leafPort: swp5
+  - host: hgx-su00-h03
+    nsInterfaces:
+      - interface: hostif
+        via: hgx-su00-h03-dpu-00
+        viaInterface: mgmt_if
+        leaf: leaf-cn-00
+        leafPort: swp20
+      - interface: hostif
+        via: hgx-su00-h03-dpu-00
+        viaInterface: mgmt_if
+        leaf: leaf-cn-01
+        leafPort: swp20
+      - interface: vf0
+        via: hgx-su00-h03-dpu-00
+        viaInterface: pf0vf0_if
+        leaf: leaf-cn-00
+        leafPort: swp20
+      - interface: vf4
+        via: hgx-su00-h03-dpu-00
+        viaInterface: pf1vf0_if
+        leaf: leaf-cn-01
+        leafPort: swp20

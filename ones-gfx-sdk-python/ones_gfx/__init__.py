@@ -46,6 +46,12 @@ from .exceptions import (
     TransportError,
 )
 from .models import Fabric, NMXCPartition, Operation, Tenant, VNetInfo
+from .topology import (
+    DEFAULT_NS_LEAF_PATTERNS,
+    TopologyError,
+    extract_ns_interfaces,
+    ns_interfaces_to_yaml,
+)
 from .workflows import CleanUpResult, clean_up_tenant
 from .apis import (
     create_tenant,
@@ -64,6 +70,8 @@ from .apis import (
     get_nmxc_inventory,
     create_vpc_peering,
     delete_vpc_peering,
+    get_fabric_ns_interfaces,
+    get_fabric_yaml,
     get_vpc_peering,
     list_tenant_vpc_peerings,
     list_vpc_peerings,
@@ -158,7 +166,13 @@ __all__ = [
     "get_nmxc_inventory",
     "create_vpc_peering",
     "delete_vpc_peering",
+    "get_fabric_ns_interfaces",
+    "get_fabric_yaml",
     "get_vpc_peering",
+    "DEFAULT_NS_LEAF_PATTERNS",
+    "TopologyError",
+    "extract_ns_interfaces",
+    "ns_interfaces_to_yaml",
     "list_tenant_vpc_peerings",
     "list_vpc_peerings",
     "modify_gpu_allocations",

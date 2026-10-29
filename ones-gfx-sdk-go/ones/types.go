@@ -53,6 +53,11 @@ type (
 	Transport            = ones_gfx.Transport
 	TransportError       = ones_gfx.TransportError
 	Timestamp            = ones_gfx.Timestamp
+	NSInterfaces         = ones_gfx.NSInterfaces
+	NSHost               = ones_gfx.NSHost
+	NSInterface          = ones_gfx.NSInterface
+	NSInterfaceOptions   = ones_gfx.NSInterfaceOptions
+	TopologyError        = ones_gfx.TopologyError
 	ValidationError      = ones_gfx.ValidationError
 )
 
@@ -124,6 +129,13 @@ const (
 
 	// UnlimitedGPUs is the maxGpusAllowed value meaning "no quota".
 	UnlimitedGPUs = ones_gfx.UnlimitedGPUs
+)
+
+// N-S interface extraction from a fabric topology YAML (offline; use
+// GetFabricNSInterfaces to fetch and extract in one call).
+var (
+	ExtractNSInterfaces   = ones_gfx.ExtractNSInterfaces
+	DefaultNSLeafPatterns = ones_gfx.DefaultNSLeafPatterns
 )
 
 // Enum parsers turn external input (CLI flags, config files) into checked

@@ -1,0 +1,167 @@
+# Trimmed fabric topology in the format GET /fabrics/{name} returns.
+# Edge cases: duplicate links (host + leaf side), a leaf-side-only link, a host
+# link with no destination, border-leaf links to external routers (H<n>), a DPU
+# with no uplinks, a host behind a DPU (HBN: vf -> pf<N>vf<M>_if -> p<N>_if ->
+# leaf), a DPU interface with no PF index, front-end (leaf-fn) and dedicated
+# storage (leaf-sn) leaves, an E-W leaf, and non-empty credentials that must not
+# appear in the output.
+Inventory:
+  Spines: 1
+  Leafs: 6
+  Hosts: 4
+DevicesType: "SpectrumX"
+Connectivity:
+  SSpine: []
+  Spine:
+    - switchId: 1
+      switchName: "spine-s00"
+      Credentials:
+        user: "admin"
+        password: "spine-secret"
+      Links:
+        - link: "S1_swp1 | L1_swp65"
+          staticLink: true
+          properties: null
+  Leaf:
+    - switchId: 1
+      switchName: "leaf-su00-r0"
+      Credentials:
+        user: "admin"
+        password: "leaf-secret"
+      Links:
+        - link: "L1_swp65 | S1_swp1"
+          staticLink: true
+          properties: null
+        - link: "L1_swp1 | G1_enp26s0f0np0"
+          staticLink: true
+          properties: null
+    - switchId: 2
+      switchName: "leaf-cn-00"
+      Credentials:
+        user: "admin"
+        password: "leaf-secret"
+      Links:
+        - link: "L2_swp9 | G1_enp8s0f1np0"
+          staticLink: true
+          properties: null
+        - link: "L2_swp10 | G2_enp8s0f1np0"
+          staticLink: true
+          properties: null
+        # DPU uplink also listed from the DPU side: reported once.
+        - link: "L2_swp20 | D2_p0_if"
+          staticLink: true
+          properties: null
+    - switchId: 3
+      switchName: "leaf-cn-01"
+      Links:
+        - link: "L3_swp9 | G1_enp9s0f1np0"
+          staticLink: true
+          properties: null
+        # Only listed on the leaf side:
+        - link: "L3_swp10 | G2_enp9s0f1np0"
+          staticLink: true
+          properties: null
+    - switchId: 4
+      switchName: "leaf-border-00"
+      Links:
+        - link: "L4_swp5 | H1_eth1"
+          staticLink: true
+          properties: null
+    - switchId: 5
+      switchName: "leaf-fn-00"
+      Links:
+        - link: "L5_swp5 | G3_enp8s0f1np0"
+          staticLink: true
+          properties: null
+    - switchId: 6
+      switchName: "leaf-sn-00"
+      Links:
+        - link: "L6_swp5 | G3_enp12s0f1np0"
+          staticLink: true
+          properties: null
+  Tor: []
+  DPU:
+    - switchId: 1
+      switchName: "hgx-su00-h00-dpu-00"
+      Links: []
+    - switchId: 2
+      switchName: "hgx-su00-h03-dpu-00"
+      Credentials:
+        user: "admin"
+        password: "dpu-secret"
+      Links:
+        - link: "D2_p0_if | L2_swp20"
+          staticLink: true
+          properties: null
+        - link: "D2_p1_if | L3_swp20"
+          staticLink: true
+          properties: null
+        - link: "D2_pf0vf0_if | G4_vf0"
+          staticLink: true
+          properties:
+            mode: "L3"
+            destination: "hgx-su00-h03"
+        - link: "D2_pf1vf0_if | G4_vf4"
+          staticLink: true
+          properties:
+            mode: "L3"
+            destination: "hgx-su00-h03"
+  Host:
+    - hostId: 1
+      hostName: "hgx-su00-h00"
+      Credentials:
+        user: "root"
+        password: "host-secret"
+      Links:
+        - link: "G1_enp26s0f0np0 | L1_swp1"
+          staticLink: true
+          properties:
+            destination: "leaf-su00-r0"
+        - link: "G1_enp8s0f1np0 | L2_swp9"
+          staticLink: true
+          properties:
+            destination: "leaf-cn-00"
+        - link: "G1_enp9s0f1np0 | L3_swp9"
+          staticLink: true
+          properties:
+            destination: "leaf-cn-01"
+        - link: "G1_vf0 | D1_pf0vf0_if"
+          staticLink: true
+          properties:
+            destination: "hgx-su00-h00-dpu-00"
+    - hostId: 2
+      hostName: "hgx-su00-h01"
+      Credentials:
+        user: "root"
+        password: "host-secret"
+      Links:
+        # No destination: the leaf is resolved from L2's switchId.
+        - link: "G2_enp8s0f1np0 | L2_swp10"
+          staticLink: true
+          properties: null
+    - hostId: 3
+      hostName: "hgx-su00-h02"
+      Links:
+        - link: "G3_enp8s0f1np0 | L5_swp5"
+          staticLink: true
+          properties:
+            destination: "leaf-fn-00"
+        - link: "G3_enp12s0f1np0 | L6_swp5"
+          staticLink: true
+          properties:
+            destination: "leaf-sn-00"
+    - hostId: 4
+      hostName: "hgx-su00-h03"
+      Links:
+        # HBN: host VFs reach the leaves through DPU D2.
+        - link: "G4_vf0 | D2_pf0vf0_if"
+          staticLink: true
+          properties:
+            destination: "hgx-su00-h03-dpu-00"
+        # No PF index in the DPU interface: every N-S uplink is reported.
+        - link: "G4_hostif | D2_mgmt_if"
+          staticLink: true
+          properties:
+            destination: "hgx-su00-h03-dpu-00"
+BGP:
+  Host: null

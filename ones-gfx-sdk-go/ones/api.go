@@ -121,6 +121,22 @@ func GetFabrics(ctx context.Context, client *Client) (*FabricsListResponse, erro
 	return client.Fabrics.ListDTOs(ctx)
 }
 
+// GetFabricYAML calls Fabrics.TopologyYAML.
+func GetFabricYAML(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
+	}
+	return client.Fabrics.TopologyYAML(ctx, fabricName, opts...)
+}
+
+// GetFabricNSInterfaces calls Fabrics.NSInterfaces.
+func GetFabricNSInterfaces(ctx context.Context, client *Client, fabricName string, nsOpts NSInterfaceOptions, opts ...CallOption) (*NSInterfaces, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Fabrics.NSInterfaces(ctx, fabricName, nsOpts, opts...)
+}
+
 // GetInventoryHosts calls Inventory.UFMHosts.
 func GetInventoryHosts(ctx context.Context, client *Client, fabricName string) (*UFMHostsResult, error) {
 	if client == nil {
