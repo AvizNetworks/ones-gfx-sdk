@@ -158,11 +158,44 @@ default:
 |---|---|---|
 | 404 | `VPC_PEERING_NOT_FOUND`, `FABRIC_NOT_FOUND` | `*NotFoundError` |
 | 400 | `VPC_PEERING_PAIR_MISMATCH`, `VPC_PEERING_NAME_REQUIRED`, `VPC_NAME_REQUIRED`, `PEER_VPC_NAME_REQUIRED`, `INVALID_VPC_NAME`, `TENANT_NOT_FOUND`, … | `*BadRequestError` |
+| 409 | `VPC_PEERING_OWNED_BY_POLICY` (created by a network policy; delete the policy instead) | `*ConflictError` |
 | 401 / 403 | — | `*AuthenticationError` |
 | 500 | `VPC_PEERING_DELETE_FAILED` (a switch could not be updated) | `*ServerError` |
 
 In Python the same body is on `e.response`. In Go it is on the error's
 `ResponseBody`.
+
+### Example: reading VPC peerings
+
+Three read calls, newer FM only (GFX-5658). The gateway does not proxy these
+routes yet, so both SDKs send these GETs straight to Fabric Manager. Create and
+delete on the same path still go through the gateway.
+
+| Purpose | Python | Go |
+|---|---|---|
+| A fabric's peerings (paged) | `list_vpc_peerings(client, fabric, page=, size=)` | `ones.ListVpcPeerings(ctx, client, fabric, page, size)` |
+| One peering by name | `get_vpc_peering(client, fabric, name)` | `ones.GetVpcPeering(ctx, client, fabric, name)` |
+| A tenant's peerings (paged) | `list_tenant_vpc_peerings(client, fabric, tenant, page=, size=)` | `ones.ListTenantVpcPeerings(ctx, client, fabric, tenant, page, size)` |
+
+`page` is zero-based and `size` defaults to 50; FM caps it at 500. Fabric-wide
+results report the pair as an unordered `vpcs` list. The tenant call reports
+the tenant's own `vpc` and the `peerVpc` on the other side instead. `origin` is
+`VPC_PEERING` or `NETWORK_POLICY`. An unknown fabric, tenant or peering returns
+404 (`FABRIC_NOT_FOUND`, `TENANT_NOT_FOUND`, `VPC_PEERING_NOT_FOUND`).
+
+```python
+from ones_gfx.apis import list_tenant_vpc_peerings
+for p in list_tenant_vpc_peerings(client, "Fab101", "tenant1")["peerings"]:
+    print(p["name"], p["vpc"], "<->", p["peerVpc"], p["origin"])
+```
+
+```go
+page, err := ones.ListVpcPeerings(ctx, client, "Fab101", 0, 100)
+for _, p := range page.Peerings {
+    fmt.Println(p.Name, p.Vpcs, p.Origin)
+}
+fmt.Println(page.Pagination.TotalElements, "total")
+```
 
 ---
 

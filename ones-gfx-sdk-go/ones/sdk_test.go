@@ -24,6 +24,7 @@ type fmStub struct {
 type stubRequest struct {
 	Method string
 	Path   string
+	Query  string
 	Body   map[string]interface{}
 }
 
@@ -36,7 +37,7 @@ func newFMStub(t *testing.T, responses map[string]stubResponse) (*fmStub, *Clien
 	t.Helper()
 	s := &fmStub{t: t, responses: responses}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req := stubRequest{Method: r.Method, Path: r.URL.Path}
+		req := stubRequest{Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery}
 		raw, _ := io.ReadAll(r.Body)
 		if len(raw) > 0 {
 			if err := json.Unmarshal(raw, &req.Body); err != nil {

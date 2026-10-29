@@ -373,9 +373,36 @@ fmt.Println(resp.Message)                          // *resources.ApiResponseMess
 ```
 
 An unknown peering or fabric returns `*NotFoundError`. A wrong pair or invalid
-name returns `*BadRequestError`, and a switch failure returns `*ServerError`.
-The FM `error.code` (for example `VPC_PEERING_NOT_FOUND`) is in the error's
-`ResponseBody`.
+name returns `*BadRequestError`. A peering created by a network policy returns
+`*ConflictError` (`VPC_PEERING_OWNED_BY_POLICY`); delete the policy instead.
+A switch failure returns `*ServerError`. The FM `error.code` (for example
+`VPC_PEERING_NOT_FOUND`) is in the error's `ResponseBody`.
+
+Reads (FM with GFX-5658). These go straight to Fabric Manager, because the
+gateway does not proxy them yet:
+
+```go
+// One page of a fabric's peerings, oldest first. page < 0 / size <= 0 use FM's
+// defaults (0 and 50); FM caps size at 500.
+list, err := client.VPCPeering.List(ctx, "Fab101", 0, 100)  // *resources.VPCPeeringList
+for _, p := range list.Peerings {
+    fmt.Println(p.Name, p.Vpcs, p.Origin)  // Vpcs: the pair, unordered
+}
+
+// One peering by name
+p, err := client.VPCPeering.Get(ctx, "Fab101", "tenant1-storage-route-leak")
+
+// A tenant's peerings: each reports the tenant's own Vpc and the PeerVpc
+tl, err := client.VPCPeering.ListForTenant(ctx, "Fab101", "tenant1", -1, 0)
+for _, p := range tl.Peerings {
+    fmt.Println(p.Name, p.Vpc, "<->", p.PeerVpc)
+}
+// Flat forms: ones.ListVpcPeerings, ones.GetVpcPeering, ones.ListTenantVpcPeerings
+```
+
+`Origin` is `ones.VPCPeeringOriginVPCPeering` or
+`ones.VPCPeeringOriginNetworkPolicy`. Peerings made by a VRF-LITE network
+policy are not recorded here; `NetworkPolicy.List` is their system of record.
 
 ### Request structs
 

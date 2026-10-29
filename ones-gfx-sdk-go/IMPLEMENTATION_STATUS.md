@@ -78,7 +78,7 @@ README's "Client-side validation" section for the rules.
 | `Fabrics` | ListDTOs |
 | `Tenants` | Create/CreateAsync, CreateWith/CreateAsyncWith, List/ListRaw, Get/GetRaw, Delete/DeleteAsync, Update/UpdateAsync, UpdateWith/UpdateAsyncWith, ModifyAllocations/ModifyAllocationsAsync, ModifyAllocationsWith/ModifyAllocationsAsyncWith |
 | `GPU` | AssignPorts, AssignPortsWith, AvailableServers |
-| `VPCPeering` | Create/CreateAsync, Delete |
+| `VPCPeering` | Create/CreateAsync, Delete, List, Get, ListForTenant |
 | `Devices` | ValidateUFMCreds |
 | `Inventory` | Ports/PortsRaw, UFMHosts/UFMHostsRaw, Sync/SyncRaw |
 | `NMXC` | UpdateDomains, ProbeDomains, Inventory/InventoryRaw, Reset, FactoryReset |

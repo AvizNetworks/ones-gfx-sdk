@@ -166,8 +166,26 @@ try:
     print(resp["message"])
 except requests.HTTPError as e:
     # 404 VPC_PEERING_NOT_FOUND / FABRIC_NOT_FOUND, 400 VPC_PEERING_PAIR_MISMATCH,
+    # 409 VPC_PEERING_OWNED_BY_POLICY (delete the network policy instead),
     # 401/403 auth, 500 VPC_PEERING_DELETE_FAILED
     print(e.response.status_code, e.response.json().get("error", {}).get("code"))
+```
+
+Reading peerings (FM with GFX-5658). The gateway does not proxy these GETs
+yet, so the SDK sends them straight to Fabric Manager (`DIRECT_FM_GET_PATHS`):
+
+```python
+from ones_gfx.apis import get_vpc_peering, list_tenant_vpc_peerings, list_vpc_peerings
+
+page = list_vpc_peerings(client, "Fab101", page=0, size=100)    # size defaults to 50, max 500
+for p in page["peerings"]:
+    print(p["name"], p["vpcs"], p["origin"])                       # origin: VPC_PEERING | NETWORK_POLICY
+print(page["pagination"]["totalElements"], "total")
+
+peering = get_vpc_peering(client, "Fab101", "tenant1-storage-route-leak")
+
+for p in list_tenant_vpc_peerings(client, "Fab101", "tenant1")["peerings"]:
+    print(p["name"], p["vpc"], "<->", p["peerVpc"])               # tenant's own side first
 ```
 
 From the CLI example:

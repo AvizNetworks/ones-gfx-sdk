@@ -78,6 +78,32 @@ def is_direct_path(path: str) -> bool:
     return any(pat.match(p) for pat in _PATTERNS)
 
 
+#: Path templates that bypass the gateway for GET only. The gateway proxies
+#: POST and DELETE on ``fabrics/{}/vpcpeering`` but not the read routes FM
+#: added for VPC peering (GFX-5658), so only the reads go direct; writes keep
+#: going through the gateway as before.
+DIRECT_FM_GET_PATHS: tuple[str, ...] = (
+    "fabrics/{}/vpcpeering",
+    "fabrics/{}/vpcpeering/{}",
+    "fabrics/{}/tenants/{}/vpcpeering",
+)
+
+_GET_PATTERNS: tuple[re.Pattern[str], ...] = tuple(_compile(t) for t in DIRECT_FM_GET_PATHS)
+
+
+def is_direct_route(method: str, path: str) -> bool:
+    """True when a `method` request to `path` must bypass the gateway.
+
+    `is_direct_path` for every method, plus `DIRECT_FM_GET_PATHS` for GET.
+    """
+    if is_direct_path(path):
+        return True
+    if method.upper() != "GET":
+        return False
+    p = path.strip("/").split("?", 1)[0]
+    return any(pat.match(p) for pat in _GET_PATTERNS)
+
+
 def derive_fm_base_url(base_url: str, port: int = FM_DIRECT_PORT) -> str:
     """Fabric Manager's own base URL, from the gateway's.
 

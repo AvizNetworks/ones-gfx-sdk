@@ -65,6 +65,30 @@ func DeleteTenantAsync(ctx context.Context, client *Client, fabricName, tenantNa
 	return client.Tenants.DeleteAsync(ctx, fabricName, tenantName, opts...)
 }
 
+// GetVpcPeering calls VPCPeering.Get.
+func GetVpcPeering(ctx context.Context, client *Client, fabricName, peeringName string, opts ...CallOption) (*VPCPeering, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.Get(ctx, fabricName, peeringName, opts...)
+}
+
+// ListVpcPeerings calls VPCPeering.List.
+func ListVpcPeerings(ctx context.Context, client *Client, fabricName string, page, size int, opts ...CallOption) (*VPCPeeringList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.List(ctx, fabricName, page, size, opts...)
+}
+
+// ListTenantVpcPeerings calls VPCPeering.ListForTenant.
+func ListTenantVpcPeerings(ctx context.Context, client *Client, fabricName, tenantName string, page, size int, opts ...CallOption) (*VPCPeeringList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.ListForTenant(ctx, fabricName, tenantName, page, size, opts...)
+}
+
 // DeleteVpcPeering calls VPCPeering.Delete.
 func DeleteVpcPeering(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (*ApiResponseMessage, error) {
 	if client == nil {

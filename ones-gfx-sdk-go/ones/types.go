@@ -88,6 +88,12 @@ type (
 	NmxcInventoryServer    = resources.NmxcInventoryServer
 	NmxcInventoryGPU       = resources.NmxcInventoryGPU
 
+	// VPC peering reads.
+	VPCPeering       = resources.VPCPeering
+	VPCPeeringList   = resources.VPCPeeringList
+	VPCPeeringOrigin = resources.VPCPeeringOrigin
+	ListPagination   = resources.ListPagination
+
 	// Request structs for the ...With methods.
 	CreateTenantRequest        = resources.CreateTenantRequest
 	UpdateTenantServersRequest = resources.UpdateTenantServersRequest
@@ -111,6 +117,10 @@ const (
 	OperationModeAsyncWebhook = ones_gfx.OperationModeAsyncWebhook
 	ConfigScopeWholeServer    = resources.ConfigScopeWholeServer
 	ConfigScopeParticularGPU  = resources.ConfigScopeParticularGPU
+
+	// Which API created a VPC peering.
+	VPCPeeringOriginVPCPeering    = resources.VPCPeeringOriginVPCPeering
+	VPCPeeringOriginNetworkPolicy = resources.VPCPeeringOriginNetworkPolicy
 
 	// UnlimitedGPUs is the maxGpusAllowed value meaning "no quota".
 	UnlimitedGPUs = ones_gfx.UnlimitedGPUs

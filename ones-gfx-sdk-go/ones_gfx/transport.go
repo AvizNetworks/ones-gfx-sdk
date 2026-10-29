@@ -113,7 +113,7 @@ func (t *Transport) Close() error {
 // request is the internal method that handles auth, retry-on-401, and error mapping.
 func (t *Transport) request(method, path string, body interface{}, mode OperationMode, timeout *time.Duration) (interface{}, error) {
 	// Build URL
-	fullURL, err := t.buildURL(path)
+	fullURL, err := t.buildURL(method, path)
 	if err != nil {
 		return nil, err
 	}
@@ -247,8 +247,8 @@ func (t *Transport) SetFMDirectURL(u string) { t.fmDirectURL = strings.TrimRight
 // buildURL joins the right base and path. Most routes resolve against the
 // gateway base (.../api/fm/); the ones the gateway does not proxy resolve
 // against Fabric Manager itself, which serves them at the root.
-func (t *Transport) buildURL(path string) (string, error) {
-	if t.fmDirectURL != "" && IsDirectPath(path) {
+func (t *Transport) buildURL(method, path string) (string, error) {
+	if t.fmDirectURL != "" && IsDirectRoute(method, path) {
 		return strings.TrimRight(t.fmDirectURL, "/") + "/" + strings.TrimLeft(path, "/"), nil
 	}
 	base, err := url.Parse(t.baseURL)
@@ -468,7 +468,7 @@ func (t *Transport) doRaw(method, path, contentType string, payload []byte, mode
 	if ro != nil && len(ro.Query) > 0 {
 		path = path + "?" + ro.Query.Encode()
 	}
-	fullURL, err := t.buildURL(path)
+	fullURL, err := t.buildURL(method, path)
 	if err != nil {
 		return nil, err
 	}

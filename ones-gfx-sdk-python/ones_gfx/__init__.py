@@ -23,7 +23,7 @@ Public API:
         OperationFailedError, APIError
 """
 
-from ._fm_direct import DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path
+from ._fm_direct import DIRECT_FM_GET_PATHS, DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path, is_direct_route
 from ._version import __version__
 from .auth import AuthBase, JWTAuth
 from .client import ApiRoutingError, Client, NotAuthenticatedError, ONESClient
@@ -64,6 +64,9 @@ from .apis import (
     get_nmxc_inventory,
     create_vpc_peering,
     delete_vpc_peering,
+    get_vpc_peering,
+    list_tenant_vpc_peerings,
+    list_vpc_peerings,
     modify_gpu_allocations,
     assign_gpu_ports,
     get_available_servers,
@@ -155,6 +158,9 @@ __all__ = [
     "get_nmxc_inventory",
     "create_vpc_peering",
     "delete_vpc_peering",
+    "get_vpc_peering",
+    "list_tenant_vpc_peerings",
+    "list_vpc_peerings",
     "modify_gpu_allocations",
     "assign_gpu_ports",
     "get_available_servers",
@@ -188,7 +194,9 @@ __all__ = [
     "get_rail_cidr_pools",
     "get_rail_cidr_pool",
     "ApiRoutingError",
+    "DIRECT_FM_GET_PATHS",
     "DIRECT_FM_PATHS",
     "derive_fm_base_url",
     "is_direct_path",
+    "is_direct_route",
 ]
