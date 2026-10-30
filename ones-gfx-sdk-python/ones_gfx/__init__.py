@@ -10,7 +10,7 @@ Public API:
     ONESClient         - main entry point
     JWTAuth            - JWT-based authentication
     OperationMode      - sync / async-poll / async-webhook
-    OperationStatus    - PENDING / RUNNING / SUCCESS / FAILURE
+    OperationStatus    - PENDING / RUNNING / SUCCESS / FAILURE (FM sends FAILED)
     ConfigStatus       - tenant configuration state enum
     UNLIMITED_GPUS     - sentinel value for max_gpus_allowed=-1
 

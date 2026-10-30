@@ -10,6 +10,9 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx/resources"
 )
 
 // fmStub is a fake Fabric Manager: it records every request and answers from
@@ -363,5 +366,38 @@ func TestWithMatchesPositional(t *testing.T) {
 	}
 	if b := stub.last().Body; !reflect.DeepEqual(b, map[string]interface{}{"tenantName": "t"}) {
 		t.Errorf("zero-value optionals were sent: %v", b)
+	}
+
+	// PATCH /tenants/{t} takes the action as "operation" (FM's UpdateTenant
+	// body); "gpuAction" belongs to gpuAllocations and FM rejects it here
+	// with 400 INVALID_OPERATION.
+	upd := UpdateTenantServersRequest{FabricName: "f", TenantName: "t",
+		Servers: []GpuServerInfo{{ServerName: "h0"}}, Action: GpuActionAdd}
+	if _, err := UpdateTenantWith(ctx, c, upd); err != nil {
+		t.Fatal(err)
+	}
+	if b := stub.last().Body; b["operation"] != "ADD" || b["gpuAction"] != nil {
+		t.Errorf("update sent the action under the wrong key: %v", b)
+	}
+}
+
+// FM reports a failed operation as FAILED, not FAILURE. The wait must stop on
+// the first poll and hand back the operation, not poll out its timeout.
+func TestWaitForOperationStopsOnFailed(t *testing.T) {
+	stub, c := newFMStub(t, map[string]stubResponse{
+		"GET /api/fm/operations/op1": ok(`{"id":"op1","type":"GPU_ALLOCATE","status":"FAILED","progress":10,` +
+			`"errorMessage":"Server must be attached to the tenant before assigning GPUs."}`),
+	})
+	start := time.Now()
+	op, err := c.Operations.WaitForOperation(context.Background(), "op1",
+		resources.WaitOptions{Interval: 50 * time.Millisecond, Timeout: 2 * time.Second})
+	if err != nil {
+		t.Fatalf("want the failed operation and a nil error, got %v", err)
+	}
+	if op == nil || op.Status != "FAILED" || op.ErrorMessage == "" {
+		t.Fatalf("got %+v", op)
+	}
+	if n := len(stub.all()); n != 1 || time.Since(start) > time.Second {
+		t.Errorf("polled %d times over %s; want one poll", n, time.Since(start))
 	}
 }

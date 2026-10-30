@@ -117,6 +117,7 @@ const (
 	OperationStatusRunning    = ones_gfx.OperationStatusRunning
 	OperationStatusSuccess    = ones_gfx.OperationStatusSuccess
 	OperationStatusFailure    = ones_gfx.OperationStatusFailure
+	OperationStatusFailed     = ones_gfx.OperationStatusFailed
 	OperationModeSynchronous  = ones_gfx.OperationModeSynchronous
 	OperationModeAsyncPoll    = ones_gfx.OperationModeAsyncPoll
 	OperationModeAsyncWebhook = ones_gfx.OperationModeAsyncWebhook

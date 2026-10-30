@@ -75,7 +75,7 @@ func (o *Operation) IsSuccess() bool {
 
 // IsFailure returns true if the operation failed.
 func (o *Operation) IsFailure() bool {
-	return o.Status == OperationStatusFailure
+	return o.Status.IsFailure()
 }
 
 // parseTimestamp handles both ms-since-epoch and ISO-8601 timestamps.

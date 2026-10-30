@@ -234,7 +234,7 @@ func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName str
 	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
@@ -328,7 +328,7 @@ func (r *TenantsResource) UpdateAsync(ctx context.Context, fabricName, tenantNam
 	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}

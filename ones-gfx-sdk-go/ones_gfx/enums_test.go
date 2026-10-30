@@ -35,6 +35,19 @@ func TestParseOperationStatus(t *testing.T) {
 	if OperationStatus("DONE").Valid() || !OperationStatusPending.Valid() {
 		t.Error("OperationStatus.Valid misreports")
 	}
+
+	// FM sends FAILED for a failed operation; it must end a wait like FAILURE.
+	for _, s := range []OperationStatus{OperationStatusFailure, OperationStatusFailed} {
+		if !s.Valid() || !s.IsTerminal() || !s.IsFailure() {
+			t.Errorf("%s: want valid, terminal and a failure", s)
+		}
+	}
+	if OperationStatusSuccess.IsFailure() || OperationStatusRunning.IsTerminal() {
+		t.Error("SUCCESS/RUNNING misreported")
+	}
+	if got, err := ParseOperationStatus("failed"); err != nil || got != OperationStatusFailed {
+		t.Errorf("ParseOperationStatus(failed) = %q, %v", got, err)
+	}
 }
 
 func TestValidationErrorIsONESError(t *testing.T) {

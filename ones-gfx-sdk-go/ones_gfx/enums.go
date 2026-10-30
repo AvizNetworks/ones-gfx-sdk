@@ -44,11 +44,22 @@ const (
 
 	// OperationStatusFailure means completed with error (terminal).
 	OperationStatusFailure OperationStatus = "FAILURE"
+
+	// OperationStatusFailed is the spelling Fabric Manager actually sends for
+	// a failed operation (terminal). It means the same as
+	// OperationStatusFailure; use IsFailure to test for either.
+	OperationStatusFailed OperationStatus = "FAILED"
 )
 
 // IsTerminal returns true if the operation has reached a final state.
 func (s OperationStatus) IsTerminal() bool {
-	return s == OperationStatusSuccess || s == OperationStatusFailure
+	return s == OperationStatusSuccess || s.IsFailure()
+}
+
+// IsFailure reports whether the operation ended with an error, under either
+// spelling (FAILURE or FAILED).
+func (s OperationStatus) IsFailure() bool {
+	return s == OperationStatusFailure || s == OperationStatusFailed
 }
 
 // String returns the string representation of the status.
@@ -56,23 +67,23 @@ func (s OperationStatus) String() string {
 	return string(s)
 }
 
-// Valid reports whether s is one of the four states FM reports.
+// Valid reports whether s is one of the states FM reports.
 func (s OperationStatus) Valid() bool {
 	switch s {
-	case OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure:
+	case OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure, OperationStatusFailed:
 		return true
 	}
 	return false
 }
 
 // ParseOperationStatus converts external input into an OperationStatus. It is
-// case-insensitive; anything other than PENDING, RUNNING, SUCCESS or FAILURE
-// is an error.
+// case-insensitive; anything other than PENDING, RUNNING, SUCCESS, FAILURE or
+// FAILED is an error.
 func ParseOperationStatus(s string) (OperationStatus, error) {
 	st := OperationStatus(strings.ToUpper(strings.TrimSpace(s)))
 	if !st.Valid() {
-		return "", fmt.Errorf("invalid operation status %q: want one of %s, %s, %s, %s",
-			s, OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure)
+		return "", fmt.Errorf("invalid operation status %q: want one of %s, %s, %s, %s, %s",
+			s, OperationStatusPending, OperationStatusRunning, OperationStatusSuccess, OperationStatusFailure, OperationStatusFailed)
 	}
 	return st, nil
 }

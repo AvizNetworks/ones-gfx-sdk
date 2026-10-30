@@ -12,10 +12,16 @@ class OperationStatus(str, Enum):
     RUNNING = "RUNNING"
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
+    # The spelling FM actually sends for a failed operation; same meaning as FAILURE.
+    FAILED = "FAILED"
 
     @classmethod
     def is_terminal(cls, status: str) -> bool:
-        return status in (cls.SUCCESS.value, cls.FAILURE.value)
+        return status in (cls.SUCCESS.value, cls.FAILURE.value, cls.FAILED.value)
+
+    @classmethod
+    def is_failure(cls, status: str) -> bool:
+        return status in (cls.FAILURE.value, cls.FAILED.value)
 
 
 class ConfigStatus(int, Enum):

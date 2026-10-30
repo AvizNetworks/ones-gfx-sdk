@@ -190,7 +190,7 @@ func (r *TenantsResource) AwaitTenantChange(
 			return out, err
 		}
 		out.Operation = op
-		if ones_gfx.OperationStatus(op.Status) == ones_gfx.OperationStatusFailure {
+		if ones_gfx.OperationStatus(op.Status).IsFailure() {
 			return out, fmt.Errorf("operation %s failed: %s", operationID, op.ErrorMessage)
 		}
 	}
