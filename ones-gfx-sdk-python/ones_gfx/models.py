@@ -221,7 +221,7 @@ class Operation:
 
     @property
     def is_done(self) -> bool:
-        return self.status in ("SUCCESS", "FAILURE")
+        return self.status in ("SUCCESS", "FAILURE", "FAILED")
 
     @property
     def is_success(self) -> bool:
@@ -229,4 +229,5 @@ class Operation:
 
     @property
     def is_failure(self) -> bool:
-        return self.status == "FAILURE"
+        # FM sends FAILED; FAILURE is kept for older payloads.
+        return self.status in ("FAILURE", "FAILED")

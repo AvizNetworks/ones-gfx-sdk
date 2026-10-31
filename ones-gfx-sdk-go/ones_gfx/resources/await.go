@@ -74,6 +74,9 @@ func (e *WaitTimeoutError) ONESError() {}
 // A terminal FAILURE is returned as the operation plus a nil error: the wait
 // succeeded, the operation did not. Inspect Status and ErrorMessage.
 func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID string, opts WaitOptions) (*OperationStatusItem, error) {
+	if err := pathName("operationId", operationID); err != nil {
+		return nil, err
+	}
 	o := opts.withDefaults()
 	started := time.Now()
 	deadline := started.Add(o.Timeout)
@@ -81,6 +84,9 @@ func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID s
 
 	for {
 		op, err := r.Get(ctx, operationID)
+		if isValidation(err) {
+			return nil, err // bad input will not fix itself by polling
+		}
 		if err == nil && op != nil {
 			last = op.Status
 			if ones_gfx.OperationStatus(op.Status).IsTerminal() {
@@ -113,6 +119,9 @@ func (r *OperationsResource) WaitForOperation(ctx context.Context, operationID s
 // not a failure — so this returns them rather than waiting for a PASS that
 // will never come.
 func (r *TenantsResource) WaitForTenantConfigApplied(ctx context.Context, fabricName, tenantName string, opts WaitOptions) (*ones_gfx.Tenant, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	o := opts.withDefaults()
 	started := time.Now()
 	deadline := started.Add(o.Timeout)
@@ -120,6 +129,9 @@ func (r *TenantsResource) WaitForTenantConfigApplied(ctx context.Context, fabric
 
 	for {
 		tn, err := r.Get(ctx, fabricName, tenantName)
+		if isValidation(err) {
+			return nil, err // bad input will not fix itself by polling
+		}
 		if err == nil && tn != nil {
 			last = tn.ConfigStatus
 			if last.IsTerminal() {
@@ -178,7 +190,7 @@ func (r *TenantsResource) AwaitTenantChange(
 			return out, err
 		}
 		out.Operation = op
-		if ones_gfx.OperationStatus(op.Status) == ones_gfx.OperationStatusFailure {
+		if ones_gfx.OperationStatus(op.Status).IsFailure() {
 			return out, fmt.Errorf("operation %s failed: %s", operationID, op.ErrorMessage)
 		}
 	}

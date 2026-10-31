@@ -37,6 +37,9 @@ fmt: ## Format code with gofmt
 	$(GOFMT) ./...
 	@echo "✓ Code formatted"
 
+test: ## Run unit tests
+	$(GOTEST) ./...
+
 check: vet ## Run static checks
 	@echo "✓ All checks passed"
 

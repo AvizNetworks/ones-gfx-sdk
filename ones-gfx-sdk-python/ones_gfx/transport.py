@@ -38,8 +38,8 @@ class Transport:
     def patch(self, path: str, json_body: dict | None = None, mode: OperationMode = OperationMode.SYNCHRONOUS, timeout: int | None = None) -> Any:
         return self._request("PATCH", path, json_body=json_body, mode=mode, timeout=timeout)
 
-    def delete(self, path: str, mode: OperationMode = OperationMode.SYNCHRONOUS, timeout: int | None = None) -> Any:
-        return self._request("DELETE", path, mode=mode, timeout=timeout)
+    def delete(self, path: str, mode: OperationMode = OperationMode.SYNCHRONOUS, timeout: int | None = None, json_body: dict | None = None) -> Any:
+        return self._request("DELETE", path, json_body=json_body, mode=mode, timeout=timeout)
 
     def close(self) -> None:
         self._session.close()

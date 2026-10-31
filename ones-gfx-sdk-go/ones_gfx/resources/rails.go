@@ -38,6 +38,9 @@ type RailCidrPools = map[string]interface{}
 // 404 INVALID_FABRIC when the fabric is unknown, or RAIL_CIDRPOOL_NOT_FOUND
 // when it has no East-West rails.
 func (r *RailsResource) CidrPools(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (RailCidrPools, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	res, err := ones_gfx.Call[RailCidrPools](r.transport, "GET", "fabrics/"+fabricName+"/rails/cidrpools", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {
@@ -51,6 +54,9 @@ func (r *RailsResource) CidrPools(ctx context.Context, fabricName string, opts .
 // RailTextMediaType. Pass "" for RailYamlMediaType.
 // Maps to GET /fabrics/{fabricName}/rails/cidrpools.
 func (r *RailsResource) CidrPoolsYAML(ctx context.Context, fabricName, mediaType string, opts ...ones_gfx.CallOption) (string, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return "", err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	ro := rc.ReqOpts()
 	if mediaType == "" {
@@ -71,6 +77,9 @@ func (r *RailsResource) CidrPoolsYAML(ctx context.Context, fabricName, mediaType
 // 404 INVALID_FABRIC when the fabric is unknown, or INVALID_RAIL when the
 // rail is not one of its rails.
 func (r *RailsResource) CidrPool(ctx context.Context, fabricName, railName string, opts ...ones_gfx.CallOption) (RailCidrPools, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("railName", railName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	res, err := ones_gfx.Call[RailCidrPools](r.transport, "GET", "fabrics/"+fabricName+"/rails/"+railName+"/cidrpool", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {
@@ -83,6 +92,9 @@ func (r *RailsResource) CidrPool(ctx context.Context, fabricName, railName strin
 // type given. Pass "" for RailYamlMediaType.
 // Maps to GET /fabrics/{fabricName}/rails/{railName}/cidrpool.
 func (r *RailsResource) CidrPoolYAML(ctx context.Context, fabricName, railName, mediaType string, opts ...ones_gfx.CallOption) (string, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("railName", railName)); err != nil {
+		return "", err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	ro := rc.ReqOpts()
 	if mediaType == "" {

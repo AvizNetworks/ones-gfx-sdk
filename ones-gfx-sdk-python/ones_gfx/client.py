@@ -22,7 +22,7 @@ from typing import Any
 
 import requests
 
-from ._fm_direct import derive_fm_base_url, is_direct_path
+from ._fm_direct import derive_fm_base_url, is_direct_route
 from ._types import AuthResponse
 
 
@@ -297,7 +297,7 @@ class Client:
         # The gateway proxies most Fabric Manager routes under /api/fm/, but its
         # allowlist does not cover them all; those go straight to FM, which
         # serves them at the root with no prefix. See ones_gfx._fm_direct.
-        if is_direct_path(path):
+        if is_direct_route(method, path):
             url = f"{self.fmDirectUrl}/{path.lstrip('/')}"
         else:
             url = f"{self.baseUrl}/api/fm/{path.lstrip('/')}"

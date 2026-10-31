@@ -113,6 +113,9 @@ func (r *WebhooksResource) List(ctx context.Context, opts ...ones_gfx.CallOption
 // unknown.
 // Maps to GET /webhooks/{webhookId}.
 func (r *WebhooksResource) Get(ctx context.Context, webhookID string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := pathName("webhookId", webhookID); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[WebhookRegistration](r.transport, "GET", "webhooks/"+webhookID, nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -125,6 +128,9 @@ func (r *WebhooksResource) Get(ctx context.Context, webhookID string, opts ...on
 // untouched, while an explicitly empty slice clears it to "every event type";
 // the same distinction applies to each filter list.
 func (r *WebhooksResource) Update(ctx context.Context, webhookID string, callbackURL *string, enabled *bool, eventTypes []string, filters *WebhookFilters, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := pathName("webhookId", webhookID); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		CallbackURL *string         `json:"callbackUrl,omitempty"`
@@ -139,6 +145,9 @@ func (r *WebhooksResource) Update(ctx context.Context, webhookID string, callbac
 // on success; 404 when webhookID is unknown.
 // Maps to DELETE /webhooks/{webhookId}.
 func (r *WebhooksResource) Delete(ctx context.Context, webhookID string, opts ...ones_gfx.CallOption) error {
+	if err := pathName("webhookId", webhookID); err != nil {
+		return err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	_, err := ones_gfx.Call[WebhookRegistration](r.transport, "DELETE", "webhooks/"+webhookID, nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	return err
@@ -151,6 +160,9 @@ func (r *WebhooksResource) Delete(ctx context.Context, webhookID string, opts ..
 // to receive every event for the fabric.
 // Maps to POST /fabrics/{fabricName}/webhook.
 func (r *WebhooksResource) RegisterFabric(ctx context.Context, fabricName, callbackURL string, enabled *bool, eventTypes []string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		CallbackURL string   `json:"callbackUrl"`
@@ -163,6 +175,9 @@ func (r *WebhooksResource) RegisterFabric(ctx context.Context, fabricName, callb
 // GetFabric returns the fabric's registration, or 404 when none is registered.
 // Maps to GET /fabrics/{fabricName}/webhook.
 func (r *WebhooksResource) GetFabric(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[WebhookRegistration](r.transport, "GET", "fabrics/"+fabricName+"/webhook", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -174,6 +189,9 @@ func (r *WebhooksResource) GetFabric(ctx context.Context, fabricName string, opt
 // rather than as "leave unchanged when absent". An empty eventTypes slice
 // clears the filter, subscribing the registration to every event.
 func (r *WebhooksResource) UpdateFabric(ctx context.Context, fabricName string, callbackURL *string, enabled bool, eventTypes []string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		CallbackURL *string  `json:"callbackUrl,omitempty"`
@@ -187,6 +205,9 @@ func (r *WebhooksResource) UpdateFabric(ctx context.Context, fabricName string, 
 // none is registered.
 // Maps to DELETE /fabrics/{fabricName}/webhook.
 func (r *WebhooksResource) DeleteFabric(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) error {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	_, err := ones_gfx.Call[WebhookRegistration](r.transport, "DELETE", "fabrics/"+fabricName+"/webhook", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	return err
@@ -199,6 +220,9 @@ func (r *WebhooksResource) DeleteFabric(ctx context.Context, fabricName string, 
 // to receive every event for the tenant.
 // Maps to POST /fabrics/{fabricName}/tenants/{tenantName}/webhook.
 func (r *WebhooksResource) RegisterTenant(ctx context.Context, fabricName, tenantName, callbackURL string, enabled *bool, eventTypes []string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		CallbackURL string   `json:"callbackUrl"`
@@ -211,6 +235,9 @@ func (r *WebhooksResource) RegisterTenant(ctx context.Context, fabricName, tenan
 // GetTenant returns the tenant's registration, or 404 when none is registered.
 // Maps to GET /fabrics/{fabricName}/tenants/{tenantName}/webhook.
 func (r *WebhooksResource) GetTenant(ctx context.Context, fabricName, tenantName string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[WebhookRegistration](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName+"/webhook", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -222,6 +249,9 @@ func (r *WebhooksResource) GetTenant(ctx context.Context, fabricName, tenantName
 // rather than as "leave unchanged when absent". An empty eventTypes slice
 // clears the filter, subscribing the registration to every event.
 func (r *WebhooksResource) UpdateTenant(ctx context.Context, fabricName, tenantName string, callbackURL *string, enabled bool, eventTypes []string, opts ...ones_gfx.CallOption) (*WebhookRegistration, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		CallbackURL *string  `json:"callbackUrl,omitempty"`
@@ -235,6 +265,9 @@ func (r *WebhooksResource) UpdateTenant(ctx context.Context, fabricName, tenantN
 // none is registered.
 // Maps to DELETE /fabrics/{fabricName}/tenants/{tenantName}/webhook.
 func (r *WebhooksResource) DeleteTenant(ctx context.Context, fabricName, tenantName string, opts ...ones_gfx.CallOption) error {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	_, err := ones_gfx.Call[WebhookRegistration](r.transport, "DELETE", "fabrics/"+fabricName+"/tenants/"+tenantName+"/webhook", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	return err

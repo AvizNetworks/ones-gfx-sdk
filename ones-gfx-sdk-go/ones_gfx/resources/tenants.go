@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aviznetworks/ones-gfx-sdk/ones-gfx-sdk-go/ones_gfx"
@@ -46,6 +47,25 @@ const (
 	ConfigScopeParticularGPU ConfigScope = "PARTICULAR_GPU"
 )
 
+// Valid reports whether s is WHOLE_SERVER or PARTICULAR_GPU.
+func (s ConfigScope) Valid() bool {
+	return s == ConfigScopeWholeServer || s == ConfigScopeParticularGPU
+}
+
+// String returns the wire value.
+func (s ConfigScope) String() string { return string(s) }
+
+// ParseConfigScope converts external input into a ConfigScope. It is
+// case-insensitive; anything other than WHOLE_SERVER or PARTICULAR_GPU is an
+// error.
+func ParseConfigScope(s string) (ConfigScope, error) {
+	cs := ConfigScope(strings.ToUpper(strings.TrimSpace(s)))
+	if !cs.Valid() {
+		return "", fmt.Errorf("invalid config scope %q: want %s or %s", s, ConfigScopeWholeServer, ConfigScopeParticularGPU)
+	}
+	return cs, nil
+}
+
 // ApiResponseMessage is the {"status", "message"} body returned by
 // ApiResponse.success(message) calls that carry no data payload.
 type ApiResponseMessage struct {
@@ -64,6 +84,9 @@ type tenantWebhookFields struct {
 // Maps to POST /fabrics/{fabricName}/tenants.
 // Returns the unwrapped success payload (tenant details string).
 func (r *TenantsResource) Create(ctx context.Context, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...ones_gfx.CallOption) (string, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), maxGpus(maxGpusAllowed)); err != nil {
+		return "", err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		TenantName     string                   `json:"tenantName"`
@@ -83,6 +106,9 @@ func (r *TenantsResource) Create(ctx context.Context, fabricName, tenantName str
 // Poll with Operations.Get; use WithWebhook for push delivery and
 // WithIdempotencyKey to make retries replay-safe.
 func (r *TenantsResource) CreateAsync(ctx context.Context, fabricName, tenantName string, description *string, maxGpusAllowed *int, shared *bool, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), maxGpus(maxGpusAllowed)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		TenantName     string  `json:"tenantName"`
@@ -111,6 +137,9 @@ type tenantEnvelope struct {
 // FM wraps the array in a {"tenants": [...]} envelope; that is unwrapped here,
 // so an empty fabric yields an empty slice rather than a nil map to inspect.
 func (r *TenantsResource) List(ctx context.Context, fabricName string) ([]ones_gfx.Tenant, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	res, err := ones_gfx.Call[tenantListEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -123,6 +152,9 @@ func (r *TenantsResource) List(ctx context.Context, fabricName string) ([]ones_g
 // Prefer List. This exists for a payload the typed model does not cover and
 // Tenant.Extra cannot express — a response whose envelope itself changes.
 func (r *TenantsResource) ListRaw(ctx context.Context, fabricName string) (map[string]interface{}, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants", nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -137,6 +169,9 @@ func (r *TenantsResource) ListRaw(ctx context.Context, fabricName string) (map[s
 // Fields FM adds per fabric type that this SDK does not model are kept in
 // Tenant.Extra rather than dropped.
 func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string) (*ones_gfx.Tenant, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	res, err := ones_gfx.Call[tenantEnvelope](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -149,6 +184,9 @@ func (r *TenantsResource) Get(ctx context.Context, fabricName, tenantName string
 // Prefer Get. This exists for a payload the typed model does not cover and
 // Tenant.Extra cannot express — a response whose envelope itself changes.
 func (r *TenantsResource) GetRaw(ctx context.Context, fabricName, tenantName string) (map[string]interface{}, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	res, err := ones_gfx.Call[map[string]interface{}](r.transport, "GET", "fabrics/"+fabricName+"/tenants/"+tenantName, nil, ones_gfx.OperationModeSynchronous, nil)
 	if err != nil || res == nil {
 		return nil, err
@@ -159,6 +197,9 @@ func (r *TenantsResource) GetRaw(ctx context.Context, fabricName, tenantName str
 // Delete removes a tenant (synchronous).
 // Maps to DELETE /fabrics/{fabricName}/tenants/{tenantName}.
 func (r *TenantsResource) Delete(ctx context.Context, fabricName, tenantName string, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		tenantWebhookFields
@@ -169,6 +210,9 @@ func (r *TenantsResource) Delete(ctx context.Context, fabricName, tenantName str
 
 // DeleteAsync removes a tenant and returns the 202 operation handle.
 func (r *TenantsResource) DeleteAsync(ctx context.Context, fabricName, tenantName string, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		tenantWebhookFields
@@ -185,9 +229,12 @@ func (r *TenantsResource) DeleteAsync(ctx context.Context, fabricName, tenantNam
 // only difference between this and UpdateAsync is that argument. Never set
 // Prefer in a resource method — see CONTRIBUTING.md.
 func (r *TenantsResource) Update(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), gpuServers(servers), optGpuAction("gpuAction", operation)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
@@ -276,9 +323,12 @@ func (r *TenantsResource) awaitAfterTimeout(
 
 // UpdateAsync adds or removes whole GPU servers and returns the 202 handle.
 func (r *TenantsResource) UpdateAsync(ctx context.Context, fabricName, tenantName string, servers []GpuServerInfo, operation *ones_gfx.GpuAction, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), gpuServers(servers), optGpuAction("gpuAction", operation)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
-		Operation *ones_gfx.GpuAction `json:"gpuAction,omitempty"`
+		Operation *ones_gfx.GpuAction `json:"operation,omitempty"`
 		Servers   []GpuServerInfo     `json:"servers"`
 		tenantWebhookFields
 	}{Operation: operation, Servers: servers}
@@ -290,6 +340,9 @@ func (r *TenantsResource) UpdateAsync(ctx context.Context, fabricName, tenantNam
 // to a tenant on an externally managed fabric (synchronous).
 // Maps to POST /fabrics/{fabricName}/tenants/{tenantName}/gpuAllocations.
 func (r *TenantsResource) ModifyAllocations(ctx context.Context, fabricName, tenantName string, suid SuidMap, operation *ones_gfx.GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), suidMap(suid), optGpuAction("gpuAction", operation), optConfigScope(configScope)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		Suid               SuidMap             `json:"suid"`
@@ -306,6 +359,9 @@ func (r *TenantsResource) ModifyAllocations(ctx context.Context, fabricName, ten
 
 // ModifyAllocationsAsync is the async variant of ModifyAllocations.
 func (r *TenantsResource) ModifyAllocationsAsync(ctx context.Context, fabricName, tenantName string, suid SuidMap, operation *ones_gfx.GpuAction, configScope *ConfigScope, unreachableDevices []string, opts ...ones_gfx.CallOption) (*ones_gfx.OperationAccepted, error) {
+	if err := firstErr(fabricTenant(fabricName, tenantName), suidMap(suid), optGpuAction("gpuAction", operation), optConfigScope(configScope)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		Suid               SuidMap             `json:"suid"`

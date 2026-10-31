@@ -65,6 +65,38 @@ func DeleteTenantAsync(ctx context.Context, client *Client, fabricName, tenantNa
 	return client.Tenants.DeleteAsync(ctx, fabricName, tenantName, opts...)
 }
 
+// GetVpcPeering calls VPCPeering.Get.
+func GetVpcPeering(ctx context.Context, client *Client, fabricName, peeringName string, opts ...CallOption) (*VPCPeering, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.Get(ctx, fabricName, peeringName, opts...)
+}
+
+// ListVpcPeerings calls VPCPeering.List.
+func ListVpcPeerings(ctx context.Context, client *Client, fabricName string, page, size int, opts ...CallOption) (*VPCPeeringList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.List(ctx, fabricName, page, size, opts...)
+}
+
+// ListTenantVpcPeerings calls VPCPeering.ListForTenant.
+func ListTenantVpcPeerings(ctx context.Context, client *Client, fabricName, tenantName string, page, size int, opts ...CallOption) (*VPCPeeringList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.ListForTenant(ctx, fabricName, tenantName, page, size, opts...)
+}
+
+// DeleteVpcPeering calls VPCPeering.Delete.
+func DeleteVpcPeering(ctx context.Context, client *Client, fabricName, name, vpcname, peervpcname string, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VPCPeering.Delete(ctx, fabricName, name, vpcname, peervpcname, opts...)
+}
+
 // FactoryResetNmxcDomain calls NMXC.FactoryReset.
 func FactoryResetNmxcDomain(ctx context.Context, client *Client, domainID string) (*NmxcFactoryResetResult, error) {
 	if client == nil {
@@ -89,8 +121,24 @@ func GetFabrics(ctx context.Context, client *Client) (*FabricsListResponse, erro
 	return client.Fabrics.ListDTOs(ctx)
 }
 
+// GetFabricYAML calls Fabrics.TopologyYAML.
+func GetFabricYAML(ctx context.Context, client *Client, fabricName string, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
+	}
+	return client.Fabrics.TopologyYAML(ctx, fabricName, opts...)
+}
+
+// GetFabricNSInterfaces calls Fabrics.NSInterfaces.
+func GetFabricNSInterfaces(ctx context.Context, client *Client, fabricName string, nsOpts NSInterfaceOptions, opts ...CallOption) (*NSInterfaces, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Fabrics.NSInterfaces(ctx, fabricName, nsOpts, opts...)
+}
+
 // GetInventoryHosts calls Inventory.UFMHosts.
-func GetInventoryHosts(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func GetInventoryHosts(ctx context.Context, client *Client, fabricName string) (*UFMHostsResult, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
@@ -98,7 +146,7 @@ func GetInventoryHosts(ctx context.Context, client *Client, fabricName string) (
 }
 
 // GetInventoryPorts calls Inventory.Ports.
-func GetInventoryPorts(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func GetInventoryPorts(ctx context.Context, client *Client, fabricName string) (*InventoryPortsResult, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
@@ -106,11 +154,35 @@ func GetInventoryPorts(ctx context.Context, client *Client, fabricName string) (
 }
 
 // GetNmxcInventory calls NMXC.Inventory.
-func GetNmxcInventory(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func GetNmxcInventory(ctx context.Context, client *Client, fabricName string) (*NmxcInventory, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.NMXC.Inventory(ctx, fabricName)
+}
+
+// GetInventoryHostsRaw calls Inventory.UFMHostsRaw.
+func GetInventoryHostsRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Inventory.UFMHostsRaw(ctx, fabricName)
+}
+
+// GetInventoryPortsRaw calls Inventory.PortsRaw.
+func GetInventoryPortsRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Inventory.PortsRaw(ctx, fabricName)
+}
+
+// GetNmxcInventoryRaw calls NMXC.InventoryRaw.
+func GetNmxcInventoryRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.NMXC.InventoryRaw(ctx, fabricName)
 }
 
 // GetOperation calls Operations.Get.
@@ -138,11 +210,19 @@ func GetTenantRaw(ctx context.Context, client *Client, fabricName, tenantName st
 }
 
 // InventorySync calls Inventory.Sync.
-func InventorySync(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+func InventorySync(ctx context.Context, client *Client, fabricName string) (*InventorySyncResult, error) {
 	if client == nil {
 		return nil, ErrNilClient
 	}
 	return client.Inventory.Sync(ctx, fabricName)
+}
+
+// InventorySyncRaw calls Inventory.SyncRaw.
+func InventorySyncRaw(ctx context.Context, client *Client, fabricName string) (map[string]interface{}, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Inventory.SyncRaw(ctx, fabricName)
 }
 
 // ListTenants calls Tenants.List.
@@ -465,4 +545,88 @@ func GetRailCidrPoolYAML(ctx context.Context, client *Client, fabricName, railNa
 		return "", ErrNilClient
 	}
 	return client.Rails.CidrPoolYAML(ctx, fabricName, railName, mediaType, opts...)
+}
+
+// --- request-struct variants -------------------------------------------------
+
+// CreateTenantWith calls Tenants.CreateWith.
+func CreateTenantWith(ctx context.Context, client *Client, req CreateTenantRequest, opts ...CallOption) (string, error) {
+	if client == nil {
+		return "", ErrNilClient
+	}
+	return client.Tenants.CreateWith(ctx, req, opts...)
+}
+
+// CreateTenantAsyncWith calls Tenants.CreateAsyncWith.
+func CreateTenantAsyncWith(ctx context.Context, client *Client, req CreateTenantRequest, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.CreateAsyncWith(ctx, req, opts...)
+}
+
+// UpdateTenantWith calls Tenants.UpdateWith.
+func UpdateTenantWith(ctx context.Context, client *Client, req UpdateTenantServersRequest, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.UpdateWith(ctx, req, opts...)
+}
+
+// UpdateTenantAsyncWith calls Tenants.UpdateAsyncWith.
+func UpdateTenantAsyncWith(ctx context.Context, client *Client, req UpdateTenantServersRequest, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.UpdateAsyncWith(ctx, req, opts...)
+}
+
+// ModifyGpuAllocationsWith calls Tenants.ModifyAllocationsWith.
+func ModifyGpuAllocationsWith(ctx context.Context, client *Client, req ModifyAllocationsRequest, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.ModifyAllocationsWith(ctx, req, opts...)
+}
+
+// ModifyGpuAllocationsAsyncWith calls Tenants.ModifyAllocationsAsyncWith.
+func ModifyGpuAllocationsAsyncWith(ctx context.Context, client *Client, req ModifyAllocationsRequest, opts ...CallOption) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.Tenants.ModifyAllocationsAsyncWith(ctx, req, opts...)
+}
+
+// AssignGpuPortsWith calls GPU.AssignPortsWith.
+func AssignGpuPortsWith(ctx context.Context, client *Client, req AssignPortsRequest) (*GpuPortAssignmentResult, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.GPU.AssignPortsWith(ctx, req)
+}
+
+// --- HBN VF interfaces -------------------------------------------------------
+
+// ListVfInterfaces calls VFs.List.
+func ListVfInterfaces(ctx context.Context, client *Client, fabricName, serverName string, opts ...CallOption) (*VFInterfaceList, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VFs.List(ctx, fabricName, serverName, opts...)
+}
+
+// AssignVfInterface calls VFs.Assign.
+func AssignVfInterface(ctx context.Context, client *Client, fabricName, serverName, vfID, tenantName string, opts ...CallOption) (*VFAssignment, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VFs.Assign(ctx, fabricName, serverName, vfID, tenantName, opts...)
+}
+
+// UnassignVfInterface calls VFs.Unassign.
+func UnassignVfInterface(ctx context.Context, client *Client, fabricName, serverName, vfID string, opts ...CallOption) (*ApiResponseMessage, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.VFs.Unassign(ctx, fabricName, serverName, vfID, opts...)
 }

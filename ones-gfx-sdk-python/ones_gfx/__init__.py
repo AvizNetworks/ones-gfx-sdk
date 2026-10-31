@@ -10,7 +10,7 @@ Public API:
     ONESClient         - main entry point
     JWTAuth            - JWT-based authentication
     OperationMode      - sync / async-poll / async-webhook
-    OperationStatus    - PENDING / RUNNING / SUCCESS / FAILURE
+    OperationStatus    - PENDING / RUNNING / SUCCESS / FAILURE (FM sends FAILED)
     ConfigStatus       - tenant configuration state enum
     UNLIMITED_GPUS     - sentinel value for max_gpus_allowed=-1
 
@@ -23,7 +23,7 @@ Public API:
         OperationFailedError, APIError
 """
 
-from ._fm_direct import DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path
+from ._fm_direct import DIRECT_FM_GET_PATHS, DIRECT_FM_PATHS, derive_fm_base_url, is_direct_path, is_direct_route
 from ._version import __version__
 from .auth import AuthBase, JWTAuth
 from .client import ApiRoutingError, Client, NotAuthenticatedError, ONESClient
@@ -46,6 +46,12 @@ from .exceptions import (
     TransportError,
 )
 from .models import Fabric, NMXCPartition, Operation, Tenant, VNetInfo
+from .topology import (
+    DEFAULT_NS_LEAF_PATTERNS,
+    TopologyError,
+    extract_ns_interfaces,
+    ns_interfaces_to_yaml,
+)
 from .workflows import CleanUpResult, clean_up_tenant
 from .apis import (
     create_tenant,
@@ -63,6 +69,12 @@ from .apis import (
     probe_nmxc_domains,
     get_nmxc_inventory,
     create_vpc_peering,
+    delete_vpc_peering,
+    get_fabric_ns_interfaces,
+    get_fabric_yaml,
+    get_vpc_peering,
+    list_tenant_vpc_peerings,
+    list_vpc_peerings,
     modify_gpu_allocations,
     assign_gpu_ports,
     get_available_servers,
@@ -153,6 +165,16 @@ __all__ = [
     "probe_nmxc_domains",
     "get_nmxc_inventory",
     "create_vpc_peering",
+    "delete_vpc_peering",
+    "get_fabric_ns_interfaces",
+    "get_fabric_yaml",
+    "get_vpc_peering",
+    "DEFAULT_NS_LEAF_PATTERNS",
+    "TopologyError",
+    "extract_ns_interfaces",
+    "ns_interfaces_to_yaml",
+    "list_tenant_vpc_peerings",
+    "list_vpc_peerings",
     "modify_gpu_allocations",
     "assign_gpu_ports",
     "get_available_servers",
@@ -186,7 +208,9 @@ __all__ = [
     "get_rail_cidr_pools",
     "get_rail_cidr_pool",
     "ApiRoutingError",
+    "DIRECT_FM_GET_PATHS",
     "DIRECT_FM_PATHS",
     "derive_fm_base_url",
     "is_direct_path",
+    "is_direct_route",
 ]

@@ -38,5 +38,8 @@ type OperationStatusItem struct {
 // Get fetches the current state of an async operation.
 // Maps to GET /operations/{operationId}.
 func (r *OperationsResource) Get(ctx context.Context, operationID string) (*OperationStatusItem, error) {
+	if err := pathName("operationId", operationID); err != nil {
+		return nil, err
+	}
 	return ones_gfx.Call[OperationStatusItem](r.transport, "GET", "operations/"+operationID, nil, ones_gfx.OperationModeSynchronous, nil)
 }

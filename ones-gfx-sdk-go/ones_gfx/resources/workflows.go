@@ -68,6 +68,9 @@ func isNotFound(err error) bool {
 // collected in Failures instead of returning early, so one bad step never
 // strands the rest. Pass servers to skip discovery.
 func (r *WorkflowsResource) CleanUpTenant(ctx context.Context, fabricName, tenantName string, servers []string, opts ...ones_gfx.CallOption) (*CleanUpResult, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	result := &CleanUpResult{
 		FabricName: fabricName,
 		TenantName: tenantName,

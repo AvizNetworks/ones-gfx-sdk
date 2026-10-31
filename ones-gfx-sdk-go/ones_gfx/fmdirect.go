@@ -66,6 +66,18 @@ var DirectFMPaths = []string{
 
 var directPatterns = compileDirectPaths(DirectFMPaths)
 
+// DirectFMGetPaths bypass the gateway for GET only. The gateway proxies POST
+// and DELETE on fabrics/{}/vpcpeering but not the read routes FM added for
+// VPC peering (GFX-5658), so only the reads go direct; writes keep going
+// through the gateway as before.
+var DirectFMGetPaths = []string{
+	"fabrics/{}/vpcpeering",
+	"fabrics/{}/vpcpeering/{}",
+	"fabrics/{}/tenants/{}/vpcpeering",
+}
+
+var directGetPatterns = compileDirectPaths(DirectFMGetPaths)
+
 func compileDirectPaths(templates []string) []*regexp.Regexp {
 	out := make([]*regexp.Regexp, 0, len(templates))
 	for _, t := range templates {
@@ -88,6 +100,28 @@ func IsDirectPath(path string) bool {
 		p = p[:i]
 	}
 	for _, re := range directPatterns {
+		if re.MatchString(p) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDirectRoute reports whether a request must bypass the gateway, taking the
+// method into account: IsDirectPath for every method, plus DirectFMGetPaths
+// for GET.
+func IsDirectRoute(method, path string) bool {
+	if IsDirectPath(path) {
+		return true
+	}
+	if !strings.EqualFold(method, "GET") {
+		return false
+	}
+	p := strings.Trim(path, "/")
+	if i := strings.IndexByte(p, '?'); i >= 0 {
+		p = p[:i]
+	}
+	for _, re := range directGetPatterns {
 		if re.MatchString(p) {
 			return true
 		}

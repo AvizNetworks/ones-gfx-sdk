@@ -114,6 +114,157 @@ Python, and pointers (`ones.Ptr(v)`, `nil` to omit) in Go.
 | Nil/missing client | n/a | `ErrNilClient` |
 | Session method on a non-token client | n/a | `ErrNoTokenAuth` |
 | HTTP 4xx/5xx | `requests.HTTPError` | typed: `*AuthenticationError`, `*NotFoundError`, `*ConflictError`, `*ServerError`, … (use `errors.As`) |
+| Invalid argument, caught before sending | n/a (sent to the server) | `*ValidationError`, naming the field ([details](./ones-gfx-sdk-go/README.md#client-side-validation)) |
+
+### Example: deleting a VPC peering
+
+`DELETE /fabrics/{fabricName}/vpcpeering` is the inverse of creating one. It is
+synchronous only. The peering is addressed by `name`, and Fabric Manager rejects
+the call unless `vpcname`/`peervpcname` match the pair recorded for it. On
+success both SDKs return the `{"status": "success", "message": ...}` envelope.
+
+```python
+import requests
+from ones_gfx.apis import delete_vpc_peering
+
+try:
+    resp = delete_vpc_peering(
+        client, "Fab101",
+        name="tenant1-storage-route-leak",
+        vpcname="tenant1-Fab101-north-south",
+        peervpcname="Fab101-Storage",
+    )
+    print(resp["message"])
+except requests.HTTPError as e:
+    code = e.response.json().get("error", {}).get("code")  # e.g. VPC_PEERING_NOT_FOUND
+    print(e.response.status_code, code)
+```
+
+```go
+resp, err := ones.DeleteVpcPeering(ctx, client, "Fab101",
+    "tenant1-storage-route-leak", "tenant1-Fab101-north-south", "Fab101-Storage")
+var notFound *ones.NotFoundError
+switch {
+case errors.As(err, &notFound):
+    // 404 VPC_PEERING_NOT_FOUND or FABRIC_NOT_FOUND
+case err != nil:
+    log.Fatal(err)
+default:
+    fmt.Println(resp.Message)
+}
+```
+
+| Status | `error.code` | Go error type |
+|---|---|---|
+| 404 | `VPC_PEERING_NOT_FOUND`, `FABRIC_NOT_FOUND` | `*NotFoundError` |
+| 400 | `VPC_PEERING_PAIR_MISMATCH`, `VPC_PEERING_NAME_REQUIRED`, `VPC_NAME_REQUIRED`, `PEER_VPC_NAME_REQUIRED`, `INVALID_VPC_NAME`, `TENANT_NOT_FOUND`, … | `*BadRequestError` |
+| 409 | `VPC_PEERING_OWNED_BY_POLICY` (created by a network policy; delete the policy instead) | `*ConflictError` |
+| 401 / 403 | — | `*AuthenticationError` |
+| 500 | `VPC_PEERING_DELETE_FAILED` (a switch could not be updated) | `*ServerError` |
+
+In Python the same body is on `e.response`. In Go it is on the error's
+`ResponseBody`.
+
+### Example: host N-S interfaces from the fabric topology
+
+`GET /fabrics/{fabricName}` on the ONES gateway returns the fabric's topology
+YAML (the file it was deployed from): every device, cable, credential and
+setting. These calls fetch it and keep only what most automation needs: **each
+host's north-south (N-S) interfaces**, and which leaf port each one is cabled to.
+
+A host link is N-S when the leaf at its far end matches a name pattern. The
+defaults cover the three N-S designs ONES generates:
+
+| Pattern | N-S design |
+|---|---|
+| `^leaf-cn` | converged user + storage network |
+| `^leaf-fn` | front-end network |
+| `^leaf-sn` | dedicated storage network |
+
+E-W leaves always carry an `su` token (`leaf-su00-r0`, `leaf-p0-su00-r1`) and
+never match. Pass your own patterns, one or several, for a reference
+architecture that names its leaves differently.
+
+The Host, Leaf and DPU sections are all read, so a cable listed on only one side
+is still found, and duplicates are reported once. On HBN fabrics the path goes
+host VF → DPU → leaf. A VF on DPU interface `pf<N>…` leaves through uplink
+`p<N>`, and the entry also names the DPU (`via`) and its VF interface
+(`viaInterface`, the `vfId` that VF-assign takes). Links to external routers
+(`H<n>`) are ignored, and **credentials are never copied into the output**.
+
+| Purpose | Python | Go |
+|---|---|---|
+| Fetch + extract | `get_fabric_ns_interfaces(client, fabric, leaf_patterns=None)` | `ones.GetFabricNSInterfaces(ctx, client, fabric, ones.NSInterfaceOptions{})` |
+| Raw topology YAML | `get_fabric_yaml(client, fabric)` | `ones.GetFabricYAML(ctx, client, fabric)` |
+| Extract from a file you already have | `extract_ns_interfaces(text, fabric_name=, leaf_patterns=)` | `ones.ExtractNSInterfaces(data, opts)` |
+| Render as YAML | `ns_interfaces_to_yaml(result)` | `result.YAML()` |
+| Command line | `ones-gfx-ns-interfaces` | `go run ./examples/ns_interfaces` |
+
+Both SDKs print byte-identical YAML:
+
+```yaml
+fabric: Test
+leafPatterns:
+  - ^leaf-cn
+  - ^leaf-fn
+  - ^leaf-sn
+hostCount: 128
+interfaceCount: 256
+hosts:
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: enp8s0f1np0
+        leaf: leaf-cn-00
+        leafPort: swp9
+      - interface: enp9s0f1np0
+        leaf: leaf-cn-01
+        leafPort: swp9
+  ...
+```
+
+On an HBN fabric, a path through a DPU looks like this:
+
+```yaml
+  - host: hgx-su00-h00
+    nsInterfaces:
+      - interface: vf0
+        via: hgx-su00-h00-dpu-00
+        viaInterface: pf0vf0_if
+        leaf: leaf-cn-00
+        leafPort: swp9
+```
+
+### Example: reading VPC peerings
+
+Three read calls, newer FM only (GFX-5658). The gateway does not proxy these
+routes yet, so both SDKs send these GETs straight to Fabric Manager. Create and
+delete on the same path still go through the gateway.
+
+| Purpose | Python | Go |
+|---|---|---|
+| A fabric's peerings (paged) | `list_vpc_peerings(client, fabric, page=, size=)` | `ones.ListVpcPeerings(ctx, client, fabric, page, size)` |
+| One peering by name | `get_vpc_peering(client, fabric, name)` | `ones.GetVpcPeering(ctx, client, fabric, name)` |
+| A tenant's peerings (paged) | `list_tenant_vpc_peerings(client, fabric, tenant, page=, size=)` | `ones.ListTenantVpcPeerings(ctx, client, fabric, tenant, page, size)` |
+
+`page` is zero-based and `size` defaults to 50; FM caps it at 500. Fabric-wide
+results report the pair as an unordered `vpcs` list. The tenant call reports
+the tenant's own `vpc` and the `peerVpc` on the other side instead. `origin` is
+`VPC_PEERING` or `NETWORK_POLICY`. An unknown fabric, tenant or peering returns
+404 (`FABRIC_NOT_FOUND`, `TENANT_NOT_FOUND`, `VPC_PEERING_NOT_FOUND`).
+
+```python
+from ones_gfx.apis import list_tenant_vpc_peerings
+for p in list_tenant_vpc_peerings(client, "Fab101", "tenant1")["peerings"]:
+    print(p["name"], p["vpc"], "<->", p["peerVpc"], p["origin"])
+```
+
+```go
+page, err := ones.ListVpcPeerings(ctx, client, "Fab101", 0, 100)
+for _, p := range page.Peerings {
+    fmt.Println(p.Name, p.Vpcs, p.Origin)
+}
+fmt.Println(page.Pagination.TotalElements, "total")
+```
 
 ---
 

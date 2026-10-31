@@ -70,6 +70,9 @@ type VFInterfaceList struct {
 // List returns the VF interfaces on a server, grouped by DPU.
 // Maps to GET /fabrics/{fabricName}/servers/{serverName}/vf-interfaces.
 func (r *VFInterfacesResource) List(ctx context.Context, fabricName, serverName string, opts ...ones_gfx.CallOption) (*VFInterfaceList, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("serverName", serverName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	return ones_gfx.Call[VFInterfaceList](r.transport, "GET", "fabrics/"+fabricName+"/servers/"+serverName+"/vf-interfaces", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 }
@@ -93,6 +96,9 @@ func (l *VFInterfaceList) Flatten() []VFInterface {
 // FM requires the tenant to exist and the server to be in it first. vfID is
 // the DPU interface name or the host interface name.
 func (r *VFInterfacesResource) Assign(ctx context.Context, fabricName, serverName, vfID, tenantName string, opts ...ones_gfx.CallOption) (*VFAssignment, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("serverName", serverName), pathName("vfId", vfID), required("tenantName", tenantName)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	body := struct {
 		TenantName string `json:"tenantName"`
@@ -108,6 +114,9 @@ func (r *VFInterfacesResource) Assign(ctx context.Context, fabricName, serverNam
 // the tenant, so unassign every VF before detaching GPU servers or deleting
 // the tenant. CleanUpTenant does this in order.
 func (r *VFInterfacesResource) Unassign(ctx context.Context, fabricName, serverName, vfID string, opts ...ones_gfx.CallOption) (*ApiResponseMessage, error) {
+	if err := firstErr(pathName("fabricName", fabricName), pathName("serverName", serverName), pathName("vfId", vfID)); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	path := "fabrics/" + fabricName + "/servers/" + serverName + "/vf-interfaces/" + vfID + "/assign"
 	return ones_gfx.Call[ApiResponseMessage](r.transport, "DELETE", path, nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())

@@ -23,6 +23,8 @@ How to run
 	go run examples/usage_examples.go                    # from module root
 	go run examples/usage_examples.go --mode async-poll  # async polling
 	go run examples/usage_examples.go --action read-only # just list fabrics/tenants
+	go run examples/usage_examples.go --action vpcpeering-delete \
+		--peering-name p1 --vpc-name t1-fab-north-south --peer-vpc-name fab-Storage
 */
 package main
 
@@ -617,7 +619,7 @@ func scenarioTenantAction(
 			fmt.Println("  -> delete done")
 		}
 
-	case "vpcpeering":
+	case "vpcpeering", "vpcpeering-delete":
 		if mode != "sync" {
 			fmt.Println("VPC peering is supported only in sync mode.")
 			return
@@ -633,6 +635,18 @@ func scenarioTenantAction(
 		pName := peeringNameOverride
 		if pName == "" {
 			pName = fmt.Sprintf("%s-storage-route-leak", tName)
+		}
+		if action == "vpcpeering-delete" {
+			// FM addresses the peering by name and rejects the call (400
+			// VPC_PEERING_PAIR_MISMATCH) unless the VPC pair matches it.
+			fmt.Printf("Deleting VPC peering %q between %q and %q...\n", pName, vName, pvName)
+			resp, err := ones.DeleteVpcPeering(ctx, client, fabricName, pName, vName, pvName)
+			if err != nil {
+				reportSDKError(err)
+				return
+			}
+			fmt.Printf("  -> %s\n", resp.Message)
+			return
 		}
 		fmt.Printf("Creating VPC peering %q between %q and %q...\n", pName, vName, pvName)
 		result, err := client.VPCPeering.Create(ctx, fabricName, pName, vName, pvName)
@@ -707,16 +721,16 @@ func scenarioErrorHandling(client *ones.Client) {
 
 func main() {
 	mode := flag.String("mode", "sync", "Tenant lifecycle mode: sync, async-poll, async-webhook")
-	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete, gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering")
+	action := flag.String("action", "lifecycle", "Action: lifecycle, read-only, login, create, allocate, deallocate, delete, gpu-allocations, assign-ports, unassign-ports, inventory-sync, vpcpeering, vpcpeering-delete")
 	tenantNameFlag := flag.String("tenant-name", "", "Override tenant name")
 	username := flag.String("username", "", "Username for login action (default: loginUsername)")
 	password := flag.String("password", "", "Password for login action (default: loginPassword)")
 	serversFlag := flag.String("servers", "", "Comma-separated server list for allocate/deallocate/assign-ports/unassign-ports")
 	portsFlag := flag.String("ports", "", "Comma-separated port IDs for assign-ports/unassign-ports (e.g. 1,2,3,4)")
 	sharedFlag := flag.Bool("shared", false, "Set shared on allocate/deallocate server specs (e.g. --shared=true)")
-	peeringNameFlag := flag.String("peering-name", "", "Peering name for vpcpeering (default: <tenant>-storage-route-leak)")
-	vpcNameFlag := flag.String("vpc-name", "", "Tenant VPC name for vpcpeering (default: <tenant>-<fabric>-north-south)")
-	peerVPCNameFlag := flag.String("peer-vpc-name", "", "Peer VPC name for vpcpeering (default: <fabric>-Storage-VPC)")
+	peeringNameFlag := flag.String("peering-name", "", "Peering name for vpcpeering[-delete] (default: <tenant>-storage-route-leak)")
+	vpcNameFlag := flag.String("vpc-name", "", "Tenant VPC name for vpcpeering[-delete] (default: <tenant>-<fabric>-north-south)")
+	peerVPCNameFlag := flag.String("peer-vpc-name", "", "Peer VPC name for vpcpeering[-delete] (default: <fabric>-Storage-VPC)")
 	gpuOperation := flag.String("gpu-operation", "ADD", "GPU allocation operation: ADD or DELETE (used with --action gpu-allocations)")
 	gpuHostname := flag.String("gpu-hostname", "", "Compute node hostname for gpu-allocations (e.g. hgx-su00-h00)")
 	gpuIDs := flag.String("gpu-ids", "G0,G1,G2,G3", "Comma-separated GPU IDs for gpu-allocations (e.g. G0,G1,G2,G3)")
@@ -733,8 +747,8 @@ func main() {
 	validActions := map[string]bool{
 		"lifecycle": true, "read-only": true, "login": true,
 		"create": true, "allocate": true, "deallocate": true,
-		"delete": true, "vpcpeering": true, "gpu-allocations": true,
-		"assign-ports": true, "unassign-ports": true,
+		"delete": true, "vpcpeering": true, "vpcpeering-delete": true,
+		"gpu-allocations": true, "assign-ports": true, "unassign-ports": true,
 		"inventory-sync": true,
 	}
 	if !validActions[*action] {

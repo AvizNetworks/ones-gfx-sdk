@@ -51,6 +51,9 @@ type DhcpReapplySummary = map[string]interface{}
 // 404 DHCP_SUBNET_NOT_FOUND when the fabric does not assign addresses by
 // DHCP, or the tenant has no VLAN or IPAM pool.
 func (r *DhcpResource) GetTenant(ctx context.Context, fabricName, tenantName string, page, size int, opts ...ones_gfx.CallOption) (*TenantDhcp, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	ro := rc.ReqOpts()
 	q := url.Values{}
@@ -75,6 +78,9 @@ func (r *DhcpResource) GetTenant(ctx context.Context, fabricName, tenantName str
 // 404 DHCP_SUBNET_NOT_FOUND when DHCP does not apply to the tenant, 400 on a
 // validation failure, 502 when Kea cannot be reached.
 func (r *DhcpResource) RetryTenant(ctx context.Context, fabricName, tenantName string, opts ...ones_gfx.CallOption) (DhcpReapplySummary, error) {
+	if err := fabricTenant(fabricName, tenantName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	res, err := ones_gfx.Call[DhcpReapplySummary](r.transport, "POST", "fabrics/"+fabricName+"/tenants/"+tenantName+"/dhcp/retry", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {
@@ -96,6 +102,9 @@ func (r *DhcpResource) RetryTenant(ctx context.Context, fabricName, tenantName s
 // 404 when the fabric is unknown, 400 on a validation failure, 502 when Kea
 // cannot be reached.
 func (r *DhcpResource) Reconcile(ctx context.Context, fabricName string, opts ...ones_gfx.CallOption) (DhcpReapplySummary, error) {
+	if err := pathName("fabricName", fabricName); err != nil {
+		return nil, err
+	}
 	rc := ones_gfx.ResolveCallOptions(opts...)
 	res, err := ones_gfx.Call[DhcpReapplySummary](r.transport, "POST", "fabrics/"+fabricName+"/dhcp/reconcile", nil, ones_gfx.OperationModeSynchronous, rc.ReqOpts())
 	if err != nil || res == nil {

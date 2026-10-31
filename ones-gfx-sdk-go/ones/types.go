@@ -52,6 +52,13 @@ type (
 	TokenAuth            = ones_gfx.TokenAuth
 	Transport            = ones_gfx.Transport
 	TransportError       = ones_gfx.TransportError
+	Timestamp            = ones_gfx.Timestamp
+	NSInterfaces         = ones_gfx.NSInterfaces
+	NSHost               = ones_gfx.NSHost
+	NSInterface          = ones_gfx.NSInterface
+	NSInterfaceOptions   = ones_gfx.NSInterfaceOptions
+	TopologyError        = ones_gfx.TopologyError
+	ValidationError      = ones_gfx.ValidationError
 )
 
 // --- request/response types -------------------------------------------------
@@ -71,6 +78,32 @@ type (
 	OperationStatusItem     = resources.OperationStatusItem
 	SuidMap                 = resources.SuidMap
 	UfmCredsResult          = resources.UfmCredsResult
+
+	// Typed inventory responses.
+	InventoryPortsResult   = resources.InventoryPortsResult
+	InventoryHost          = resources.InventoryHost
+	InventoryPort          = resources.InventoryPort
+	UFMHostsResult         = resources.UFMHostsResult
+	UFMHost                = resources.UFMHost
+	InventorySyncResult    = resources.InventorySyncResult
+	NmxcInventory          = resources.NmxcInventory
+	NmxcInventorySummary   = resources.NmxcInventorySummary
+	NmxcInventoryDomain    = resources.NmxcInventoryDomain
+	NmxcInventoryPartition = resources.NmxcInventoryPartition
+	NmxcInventoryServer    = resources.NmxcInventoryServer
+	NmxcInventoryGPU       = resources.NmxcInventoryGPU
+
+	// VPC peering reads.
+	VPCPeering       = resources.VPCPeering
+	VPCPeeringList   = resources.VPCPeeringList
+	VPCPeeringOrigin = resources.VPCPeeringOrigin
+	ListPagination   = resources.ListPagination
+
+	// Request structs for the ...With methods.
+	CreateTenantRequest        = resources.CreateTenantRequest
+	UpdateTenantServersRequest = resources.UpdateTenantServersRequest
+	ModifyAllocationsRequest   = resources.ModifyAllocationsRequest
+	AssignPortsRequest         = resources.AssignPortsRequest
 )
 
 // --- enum constants ---------------------------------------------------------
@@ -84,11 +117,35 @@ const (
 	OperationStatusRunning    = ones_gfx.OperationStatusRunning
 	OperationStatusSuccess    = ones_gfx.OperationStatusSuccess
 	OperationStatusFailure    = ones_gfx.OperationStatusFailure
+	OperationStatusFailed     = ones_gfx.OperationStatusFailed
 	OperationModeSynchronous  = ones_gfx.OperationModeSynchronous
 	OperationModeAsyncPoll    = ones_gfx.OperationModeAsyncPoll
 	OperationModeAsyncWebhook = ones_gfx.OperationModeAsyncWebhook
 	ConfigScopeWholeServer    = resources.ConfigScopeWholeServer
 	ConfigScopeParticularGPU  = resources.ConfigScopeParticularGPU
+
+	// Which API created a VPC peering.
+	VPCPeeringOriginVPCPeering    = resources.VPCPeeringOriginVPCPeering
+	VPCPeeringOriginNetworkPolicy = resources.VPCPeeringOriginNetworkPolicy
+
+	// UnlimitedGPUs is the maxGpusAllowed value meaning "no quota".
+	UnlimitedGPUs = ones_gfx.UnlimitedGPUs
+)
+
+// N-S interface extraction from a fabric topology YAML (offline; use
+// GetFabricNSInterfaces to fetch and extract in one call).
+var (
+	ExtractNSInterfaces   = ones_gfx.ExtractNSInterfaces
+	DefaultNSLeafPatterns = ones_gfx.DefaultNSLeafPatterns
+)
+
+// Enum parsers turn external input (CLI flags, config files) into checked
+// values. Each is case-insensitive and returns an error for unknown input.
+var (
+	ParseGPUOperation    = ones_gfx.ParseGPUOperation
+	ParseOperationStatus = ones_gfx.ParseOperationStatus
+	ParseConfigScope     = resources.ParseConfigScope
+	ParseConfigStatus    = ones_gfx.ParseConfigStatus
 )
 
 // --- errors -----------------------------------------------------------------
@@ -148,6 +205,8 @@ type (
 	RailCidrPools       = resources.RailCidrPools
 	VFInterfaceList     = resources.VFInterfaceList
 	VFDpuEntry          = resources.VFDpuEntry
+	VFInterface         = resources.VFInterface
+	VFAssignment        = resources.VFAssignment
 )
 
 // Network policy endpoint types and the longest name FM accepts.

@@ -20,6 +20,11 @@ from .update_nmxc_domains import update_nmxc_domains
 from .probe_nmxc_domains import probe_nmxc_domains
 from .get_nmxc_inventory import get_nmxc_inventory
 from .create_vpc_peering import create_vpc_peering
+from .delete_vpc_peering import delete_vpc_peering
+from .get_fabric_ns_interfaces import get_fabric_ns_interfaces, get_fabric_yaml
+from .get_vpc_peering import get_vpc_peering
+from .list_tenant_vpc_peerings import list_tenant_vpc_peerings
+from .list_vpc_peerings import list_vpc_peerings
 from .modify_gpu_allocations import modify_gpu_allocations
 from .assign_gpu_ports import assign_gpu_ports
 from .get_available_servers import get_available_servers
@@ -91,6 +96,12 @@ __all__ = [
     "probe_nmxc_domains",
     "get_nmxc_inventory",
     "create_vpc_peering",
+    "delete_vpc_peering",
+    "get_fabric_ns_interfaces",
+    "get_fabric_yaml",
+    "get_vpc_peering",
+    "list_tenant_vpc_peerings",
+    "list_vpc_peerings",
     "modify_gpu_allocations",
     "assign_gpu_ports",
     "get_available_servers",
