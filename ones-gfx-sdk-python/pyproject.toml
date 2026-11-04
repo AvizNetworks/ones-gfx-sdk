@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ones-gfx-sdk"
-version="1.0.0"
+version="2.0.0"
 description = "Python SDK for the AVIZ ONES Spectrum-X tenant management API"
 readme = "README.md"
 # 3.9 minimum: ones_gfx/_types.py evaluates `dict[...]` at runtime (SuidMap),

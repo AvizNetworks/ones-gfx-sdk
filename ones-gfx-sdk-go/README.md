@@ -1,6 +1,7 @@
 # ONES GFX SDK — Go
 
-Go client library for **AVIZ ONES Spectrum-X** tenant management API (v4.2).
+Go client library for **AVIZ ONES Spectrum-X** tenant management API (ONES 4.4; see the
+[Compatibility Matrix](#compatibility-matrix) for earlier versions).
 
 ## Status
 
@@ -1018,6 +1019,15 @@ resp, err := client.Tenants.Update(ctx, fabricName, tenantName, servers,
   [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md).
 - **Legacy transport verbs** — `Transport.Get/Post/Patch/Delete` remain for
   back-compat but are unused by the resources; prefer the typed resource methods.
+
+---
+
+## Compatibility Matrix
+
+| Go SDK | Python SDK | Supported ONES Version |
+|--------|------------|------------------------|
+| v1.0.0 | v1.0.0     | 4.2.1, 4.3             |
+| v2.0.0 | v2.0.0     | 4.4                    |
 
 ---
 
