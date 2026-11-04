@@ -1,12 +1,13 @@
 # ONES Spectrum-X Python SDK
 
 Python client library for the AVIZ **ONES Spectrum-X** tenant management API
-(ONES 4.2). Provides a small, typed surface for managing tenants and GPU
+(ONES 4.4; see the [Compatibility Matrix](#compatibility-matrix) for earlier
+versions). Provides a small, typed surface for managing tenants and GPU
 allocations across an NVIDIA Spectrum-X fabric.
 
 ## Status
 
-**v1.0.0** — initial release. Covers tenant CRUD, GPU allocate/deallocate,
+**v2.0.0** — ONES 4.4 release. Covers tenant CRUD, GPU allocate/deallocate,
 fabric and operation reads, and VPC peering. JWT-based auth with automatic
 token refresh.
 
@@ -56,13 +57,13 @@ pip install build && python -m build
 
 Outputs land in `dist/`:
 
-- `ones_gfx_sdk-1.0.0-py3-none-any.whl` — the wheel partners install
-- `ones_gfx_sdk-1.0.0.tar.gz` — the source distribution
+- `ones_gfx_sdk-2.0.0-py3-none-any.whl` — the wheel partners install
+- `ones_gfx_sdk-2.0.0.tar.gz` — the source distribution
 
 Ship the `.whl` to partners; they install with:
 
 ```bash
-pip install ones_gfx_sdk-1.0.0-py3-none-any.whl
+pip install ones_gfx_sdk-2.0.0-py3-none-any.whl
 ```
 
 ### Running the unit tests
@@ -447,6 +448,13 @@ ONESClient(base_url=..., auth=..., verify_tls=True)              # default
 ONESClient(base_url=..., auth=..., verify_tls="/etc/ssl/ca.pem") # custom CA
 ONESClient(base_url=..., auth=..., verify_tls=False)             # dev only!
 ```
+
+## Compatibility Matrix
+
+| Go SDK | Python SDK | Supported ONES Version |
+|--------|------------|------------------------|
+| v1.0.0 | v1.0.0     | 4.2.1, 4.3             |
+| v2.0.0 | v2.0.0     | 4.4                    |
 
 ## Limitations / planned
 

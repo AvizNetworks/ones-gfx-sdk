@@ -1,6 +1,7 @@
 # ONES GFX SDK
 
-Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (v4.2.1).
+Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (ONES 4.4; see the
+[Compatibility Matrix](#compatibility-matrix) for earlier versions).
 Python and Go implementations expose the **same 130 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
@@ -552,6 +553,7 @@ corresponding change in the ONES platform version, and vice versa.
 | Go SDK | Python SDK | Supported ONES Version |
 |--------|------------|------------------------|
 | v1.0.0 | v1.0.0     | 4.2.1, 4.3             |
+| v2.0.0 | v2.0.0     | 4.4                    |
 
 ---
 
