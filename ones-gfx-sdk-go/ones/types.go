@@ -79,6 +79,10 @@ type (
 	SuidMap                 = resources.SuidMap
 	UfmCredsResult          = resources.UfmCredsResult
 
+	// Topology Audit (GFX-6219/GFX-6225).
+	TopologyAuditLink   = resources.TopologyAuditLink
+	TopologyAuditReport = resources.TopologyAuditReport
+
 	// Typed inventory responses.
 	InventoryPortsResult   = resources.InventoryPortsResult
 	InventoryHost          = resources.InventoryHost
@@ -149,6 +153,10 @@ var (
 )
 
 // --- errors -----------------------------------------------------------------
+
+// ErrTopologyAuditNotDone is returned by TopologyAudit.Result (and
+// GetTopologyAuditResult) while the operation is still PENDING or RUNNING.
+var ErrTopologyAuditNotDone = resources.ErrTopologyAuditNotDone
 
 // --- options and helpers ----------------------------------------------------
 

@@ -47,3 +47,14 @@ class OperationFailedError(ONESError):
 
 class ConfigurationFailedError(ONESError):
     pass
+
+
+class OperationNotDoneError(ONESError):
+    """Raised by result-retrieval helpers (e.g. get_topology_audit_result) when
+    the operation is still PENDING or RUNNING. Not a failure - poll again
+    later."""
+
+    def __init__(self, operation_id: str, status: str | None):
+        super().__init__(f"Operation {operation_id} has not finished yet (status={status}).")
+        self.operation_id = operation_id
+        self.status = status

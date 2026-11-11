@@ -84,3 +84,4 @@ README's "Client-side validation" section for the rules.
 | `NMXC` | UpdateDomains, ProbeDomains, Inventory/InventoryRaw, Reset, FactoryReset |
 | `Operations` | Get |
 | `VFs` | List, Assign, Unassign |
+| `TopologyAudit` | Trigger, Status (alias of `Operations.Get`), Result |
