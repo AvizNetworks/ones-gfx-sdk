@@ -193,6 +193,30 @@ func GetOperation(ctx context.Context, client *Client, operationID string) (*Ope
 	return client.Operations.Get(ctx, operationID)
 }
 
+// TriggerTopologyAudit calls TopologyAudit.Trigger.
+func TriggerTopologyAudit(ctx context.Context, client *Client, fabricName string) (*OperationAccepted, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.TopologyAudit.Trigger(ctx, fabricName)
+}
+
+// GetTopologyAuditStatus calls TopologyAudit.Status.
+func GetTopologyAuditStatus(ctx context.Context, client *Client, operationID string) (*OperationStatusItem, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.TopologyAudit.Status(ctx, operationID)
+}
+
+// GetTopologyAuditResult calls TopologyAudit.Result.
+func GetTopologyAuditResult(ctx context.Context, client *Client, operationID string) (*TopologyAuditReport, error) {
+	if client == nil {
+		return nil, ErrNilClient
+	}
+	return client.TopologyAudit.Result(ctx, operationID)
+}
+
 // GetTenant calls Tenants.Get.
 func GetTenant(ctx context.Context, client *Client, fabricName, tenantName string) (*Tenant, error) {
 	if client == nil {

@@ -38,14 +38,15 @@ type Client struct {
 	auth      *ones_gfx.TokenAuth
 	transport *ones_gfx.Transport
 
-	Tenants    *resources.TenantsResource
-	GPU        *resources.GPUResource
-	Fabrics    *resources.FabricsResource
-	Inventory  *resources.InventoryResource
-	Devices    *resources.DevicesResource
-	NMXC       *resources.NMXCResource
-	VPCPeering *resources.VPCPeeringResource
-	Operations *resources.OperationsResource
+	Tenants       *resources.TenantsResource
+	GPU           *resources.GPUResource
+	Fabrics       *resources.FabricsResource
+	Inventory     *resources.InventoryResource
+	Devices       *resources.DevicesResource
+	NMXC          *resources.NMXCResource
+	VPCPeering    *resources.VPCPeeringResource
+	Operations    *resources.OperationsResource
+	TopologyAudit *resources.TopologyAuditResource
 
 	// SharedServices and VFs are the GFX-5709 shared-services tenant and the
 	// DPU VF interfaces it is joined through. Workflows holds the multi-call
@@ -99,6 +100,7 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		auth,
 		all...,
 	)
+	operations := resources.NewOperationsResource(transport)
 	return &Client{
 		baseUrl:        baseUrl,
 		auth:           auth,
@@ -118,7 +120,8 @@ func NewClient(baseUrl string, opts ...ones_gfx.ClientOption) (*Client, error) {
 		Devices:        resources.NewDevicesResource(transport),
 		NMXC:           resources.NewNMXCResource(transport),
 		VPCPeering:     resources.NewVPCPeeringResource(transport),
-		Operations:     resources.NewOperationsResource(transport),
+		Operations:     operations,
+		TopologyAudit:  resources.NewTopologyAuditResource(transport, operations),
 	}, nil
 }
 
@@ -132,6 +135,7 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 	root := strings.TrimRight(baseUrl, "/")
 	transport := ones_gfx.NewTransportWithOptions(ones_gfx.FMBaseURL(root), auth, opts...)
 	tokenAuth, _ := auth.(*ones_gfx.TokenAuth)
+	operations := resources.NewOperationsResource(transport)
 	c := &Client{
 		baseUrl:        root,
 		auth:           tokenAuth,
@@ -151,7 +155,8 @@ func NewClientWithAuth(baseUrl string, auth ones_gfx.AuthProvider, opts ...ones_
 		Devices:        resources.NewDevicesResource(transport),
 		NMXC:           resources.NewNMXCResource(transport),
 		VPCPeering:     resources.NewVPCPeeringResource(transport),
-		Operations:     resources.NewOperationsResource(transport),
+		Operations:     operations,
+		TopologyAudit:  resources.NewTopologyAuditResource(transport, operations),
 	}
 	return c
 }

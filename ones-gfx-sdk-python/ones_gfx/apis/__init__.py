@@ -11,6 +11,13 @@ from .get_tenant import get_tenant
 from .update_tenant import update_tenant
 from .delete_tenant import delete_tenant
 from .get_operation import get_operation
+from .trigger_topology_audit import trigger_topology_audit
+from .get_topology_audit_result import (
+    TopologyAuditLink,
+    TopologyAuditReport,
+    get_topology_audit_result,
+    get_topology_audit_status,
+)
 from .get_fabrics import get_fabrics
 from .get_inventory_ports import get_inventory_ports
 from .get_inventory_hosts import get_inventory_hosts
@@ -87,6 +94,11 @@ __all__ = [
     "update_tenant",
     "delete_tenant",
     "get_operation",
+    "trigger_topology_audit",
+    "get_topology_audit_status",
+    "get_topology_audit_result",
+    "TopologyAuditLink",
+    "TopologyAuditReport",
     "get_fabrics",
     "get_inventory_ports",
     "get_inventory_hosts",

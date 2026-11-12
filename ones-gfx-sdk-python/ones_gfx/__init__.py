@@ -3,7 +3,7 @@ ONES Spectrum-X Python SDK.
 
 Public API:
 
-    All 130 Fabric Manager API functions are re-exported here
+    All 131 Fabric Manager API functions are re-exported here
     (create_tenant, get_all_fabrics, update_tenant, ...),
     mirroring ones_gfx.apis.
 
@@ -42,6 +42,7 @@ from .exceptions import (
     NotFoundError,
     ONESError,
     OperationFailedError,
+    OperationNotDoneError,
     ServerError,
     TransportError,
 )
@@ -60,6 +61,11 @@ from .apis import (
     update_tenant,
     delete_tenant,
     get_operation,
+    trigger_topology_audit,
+    get_topology_audit_status,
+    get_topology_audit_result,
+    TopologyAuditLink,
+    TopologyAuditReport,
     get_fabrics,
     get_inventory_ports,
     get_inventory_hosts,
@@ -149,6 +155,7 @@ __all__ = [
     "ServerError",
     "TransportError",
     "OperationFailedError",
+    "OperationNotDoneError",
     "ConfigurationFailedError",
     "create_tenant",
     "list_tenants",
@@ -156,6 +163,11 @@ __all__ = [
     "update_tenant",
     "delete_tenant",
     "get_operation",
+    "trigger_topology_audit",
+    "get_topology_audit_status",
+    "get_topology_audit_result",
+    "TopologyAuditLink",
+    "TopologyAuditReport",
     "get_fabrics",
     "get_inventory_ports",
     "get_inventory_hosts",

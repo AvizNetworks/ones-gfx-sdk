@@ -2,7 +2,7 @@
 
 Multi-language SDK for **AVIZ ONES Spectrum-X** tenant management API (ONES 4.4; see the
 [Compatibility Matrix](#compatibility-matrix) for earlier versions).
-Python and Go implementations expose the **same 130 Fabric Manager endpoints**
+Python and Go implementations expose the **same 131 Fabric Manager endpoints**
 through the same `Client` shape, so code translates almost line-for-line between
 them.
 
@@ -91,7 +91,9 @@ Identical on both sides — Python is snake_case, Go is exported PascalCase.
 Every endpoint is a flat function taking the client. Go additionally takes a
 `context.Context` first, and offers `...Async` variants for the 5 async-capable
 endpoints (135 functions vs Python's 130; Python selects async with the `prefer`
-argument on the same function).
+argument on the same function). Topology Audit (GFX-6219/GFX-6225) adds 3 more
+functions in each language — Trigger, Status and Result — on top of those
+counts; it is async-only, so it has no `...Async` pair.
 
 ```python
 from ones_gfx.apis import get_fabrics
@@ -265,6 +267,58 @@ for _, p := range page.Peerings {
     fmt.Println(p.Name, p.Vpcs, p.Origin)
 }
 fmt.Println(page.Pagination.TotalElements, "total")
+```
+
+---
+
+### Example: on-demand Topology Audit
+
+Triggers an LLDP-vs-intent check of a fabric's live cabling against its
+deployed YAML intent (GFX-6219/GFX-6225). Async-only — there is no
+synchronous variant, since a large DGX/HGX fabric's LLDP collection can take
+real time. The trigger returns a Job ID (`operationId`); status and the final
+report both ride the existing operation-poll endpoint.
+
+| Purpose | Python | Go |
+|---|---|---|
+| Trigger | `trigger_topology_audit(client, fabric)` | `ones.TriggerTopologyAudit(ctx, client, fabric)` |
+| Status (`PENDING`/`RUNNING`/`SUCCESS`/`FAILED`) | `get_topology_audit_status(client, operationId)` | `ones.GetTopologyAuditStatus(ctx, client, operationId)` |
+| Final report | `get_topology_audit_result(client, operationId)` | `ones.GetTopologyAuditResult(ctx, client, operationId)` |
+
+`get_topology_audit_result`/`GetTopologyAuditResult` raise/return an error
+while the operation is still `PENDING` or `RUNNING` (Python:
+`OperationNotDoneError`; Go: `ErrTopologyAuditNotDone`, check with
+`errors.Is`), and raise/return the operation's `errorMessage` if the audit
+itself failed — poll `get_topology_audit_status`/`GetTopologyAuditStatus`
+first if you just want to know whether it's done. Once `SUCCESS`, the report's
+`overallStatus` is `PASS`, `FAIL`, or `INCOMPLETE` (any `UNVERIFIABLE` link —
+a collection failure, not a clean pass — forces the whole run to
+`INCOMPLETE`), and `links` is the per-link breakdown (`PASS`, `MISSING_LINK`,
+`MISMATCH`, `UNVERIFIABLE`, `UNEXPECTED_LINK` or `SKIPPED`).
+
+```python
+from ones_gfx import OperationNotDoneError, OperationFailedError
+from ones_gfx.apis import trigger_topology_audit, get_topology_audit_result
+
+accepted = trigger_topology_audit(client, "Fab101")
+try:
+    report = get_topology_audit_result(client, accepted["operationId"])
+    print(report["overallStatus"], [l["status"] for l in report["links"]])
+except OperationNotDoneError:
+    print("still running, poll again later")
+except OperationFailedError as e:
+    print("audit failed:", e.error_message)
+```
+
+```go
+accepted, err := ones.TriggerTopologyAudit(ctx, client, "Fab101")
+report, err := ones.GetTopologyAuditResult(ctx, client, accepted.OperationID)
+if errors.Is(err, ones.ErrTopologyAuditNotDone) {
+    // still running, poll again later
+} else if err != nil {
+    log.Fatal(err) // audit itself failed
+}
+fmt.Println(report.OverallStatus, report.Links)
 ```
 
 ---
